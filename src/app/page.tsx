@@ -1,103 +1,848 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/context/AuthContext";
+import Link from "next/link";
 import Image from "next/image";
+import { supabase } from "@/lib/supabase/client";
+import Notification from "@/components/Notification";
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+interface Profile {
+  id: string;
+  full_name: string;
+  bio: string;
+  avatar_url: string;
+  cover_url: string;
+  follower_count: number;
+  social_links: {
+    twitter?: string;
+    instagram?: string;
+    youtube?: string;
+    website?: string;
+    tiktok?: string;
+    twitch?: string;
+    discord?: string;
+    patreon?: string;
+    facebook?: string;
+    linkedin?: string;
+    pinterest?: string;
+    snapchat?: string;
+    telegram?: string;
+    vimeo?: string;
+  };
+}
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+interface FeaturedContent {
+  id: string;
+  type: "blog" | "product" | "video" | "vip" | "podcast" | "course";
+  title: string;
+  description: string;
+  thumbnail_url: string;
+  url: string;
+  is_vip?: boolean;
+}
+
+interface NotificationState {
+  message: string;
+  type: "success" | "error" | "info";
+}
+
+export function formatFollowers(count: number): string {
+  if (count >= 1_000_000) return (count / 1_000_000).toFixed(1) + "M";
+  if (count >= 1_000) return (count / 1_000).toFixed(1) + "K";
+  return count?.toString();
+}
+
+export default function CreatorProfilePage() {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [featuredContent, setFeaturedContent] = useState<FeaturedContent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [notification, setNotification] = useState<NotificationState | null>(
+    null
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0);
+
+  useEffect(() => {
+    async function fetchProfileData() {
+      if (!user) {
+        setProfile({
+          id: "demo",
+          full_name: "Demo Creator",
+          bio: "Welcome to my creator profile! This is a demo account showcasing the features of Creator HQ.",
+          avatar_url: "/profile.png",
+          cover_url: "",
+          follower_count: 1234,
+          social_links: {
+            twitter: "https://twitter.com/demo",
+            instagram: "https://instagram.com/demo",
+            youtube: "https://youtube.com/demo",
+            website: "https://demo.com",
+            tiktok: "https://tiktok.com/demo",
+            twitch: "https://twitch.com/demo",
+            discord: "https://discord.com/demo",
+            patreon: "https://patreon.com/demo",
+            facebook: "https://facebook.com/demo",
+            linkedin: "https://linkedin.com/demo",
+            pinterest: "https://pinterest.com/demo",
+            snapchat: "https://snapchat.com/demo",
+            telegram: "https://telegram.com/demo",
+            vimeo: "https://vimeo.com/demo",
+          },
+        });
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+
+        if (profileData) {
+          setProfile(profileData);
+        }
+
+        const { data: contentData } = await supabase
+          .from("featured_content")
+          .select("*")
+          .eq("creator_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(3);
+
+        if (contentData) {
+          setFeaturedContent(contentData);
+        }
+
+        // Check if current user is following this profile
+        if (user.id !== profileData?.id) {
+          const { data: followData } = await supabase
+            .from("followers")
+            .select("*")
+            .eq("follower_id", user.id)
+            .eq("following_id", profileData?.id)
+            .single();
+
+          setIsFollowing(!!followData);
+        }
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchProfileData();
+  }, [user]);
+
+  const handleFollow = async () => {
+    if (!user || !profile) return;
+
+    setFollowLoading(true);
+    try {
+      if (isFollowing) {
+        const { error } = await supabase
+          .from("followers")
+          .delete()
+          .eq("follower_id", user.id)
+          .eq("following_id", profile.id);
+
+        if (error) throw error;
+        setIsFollowing(false);
+      } else {
+        const { error } = await supabase.from("followers").insert([
+          {
+            follower_id: user.id,
+            following_id: profile.id,
+          },
+        ]);
+
+        if (error) throw error;
+        setIsFollowing(true);
+      }
+    } catch (error) {
+      console.error("Error following/unfollowing:", error);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  if (loading && user !== undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900">
+            Profile Not Found
+          </h1>
+          <p className="mt-2 text-gray-600">
+            This creator's profile is not available.
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Profile Icon in Top-right */}
+      <div className="fixed top-4 right-4 z-50">
+        {user ? (
+          <Link href="/dashboard" className="relative">
+            <div className="h-10 w-10 rounded-full bg-white shadow-md overflow-hidden">
+              {profile.avatar_url ? (
+                <Image
+                  src={profile.avatar_url}
+                  alt="Profile"
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="h-full w-full bg-gray-200 flex items-center justify-center">
+                  <span className="text-xl text-gray-500">
+                    {profile.full_name?.charAt(0)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </Link>
+        ) : (
+          <Link
+            href="/login"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          >
+            Sign In
+          </Link>
+        )}
+      </div>
+
+      {/* Cover Banner */}
+      <div className="relative h-48 bg-gradient-to-r from-blue-500 to-purple-600">
+        {profile.cover_url && (
           <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+            src={profile.cover_url}
+            alt="Cover"
+            fill
+            className="object-cover"
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        )}
+      </div>
+
+      {/* Profile Section */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative -mt-16">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex items-end space-x-4">
+              <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full border-4 border-white overflow-hidden flex-shrink-0">
+                {profile.avatar_url ? (
+                  <Image
+                    src={profile.avatar_url}
+                    alt={profile.full_name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="h-full w-full bg-gray-200 flex items-center justify-center">
+                    <span className="text-4xl text-gray-500">
+                      {profile.full_name?.charAt(0)}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
+                  {profile.full_name}
+                </h1>
+                <p className="text-sm sm:text-base text-gray-600 line-clamp-2">
+                  {profile.bio}
+                </p>
+                <div className="mt-2 flex items-center text-sm text-gray-500">
+                  <svg
+                    className="h-5 w-5 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                  <span className="text-xs w-full">
+                    {formatFollowers(profile.follower_count)} Followers Across
+                  </span>
+                </div>
+              </div>
+            </div>
+            {user && user.id !== profile.id && (
+              <div className="mt-4 sm:mt-0">
+                <button
+                  onClick={handleFollow}
+                  disabled={followLoading}
+                  className={`w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
+                    isFollowing
+                      ? "bg-gray-600 hover:bg-gray-700"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
+                >
+                  {followLoading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  ) : isFollowing ? (
+                    "Following"
+                  ) : (
+                    "Follow"
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Social Links */}
+          <div className="mt-4 flex flex-wrap gap-4">
+            {profile.social_links?.twitter && (
+              <a
+                href={profile.social_links.twitter}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-blue-400 transition-colors duration-200"
+              >
+                <span className="sr-only">Twitter</span>
+                <svg
+                  className="h-6 w-6"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
+                </svg>
+              </a>
+            )}
+            {profile.social_links?.instagram && (
+              <a
+                href={profile.social_links.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-pink-400 transition-colors duration-200"
+              >
+                <span className="sr-only">Instagram</span>
+                <svg
+                  className="h-6 w-6"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M12.315 2c2.43 0 2.784.013 3.808.09 1.064.077 1.791.232 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.233.636.388 1.363.465 2.427.077 1.067.09 1.407.09 4.123v.08c0 2.643-.012 2.987-.09 4.043-.077 1.064-.232 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.233-1.363.388-2.427.465-1.067.077-1.407.09-4.123.09h-.08c-2.643 0-2.987-.012-4.043-.09-1.064-.077-1.791-.232-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.233-.636-.388-1.363-.465-2.427-.047-1.024-.09-1.379-.09-3.808v-.63c0-2.43.013-2.784.09-3.808.077-1.064.232-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.233 1.363-.388 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </a>
+            )}
+            {profile.social_links?.youtube && (
+              <a
+                href={profile.social_links.youtube}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-red-400 transition-colors duration-200"
+              >
+                <span className="sr-only">YouTube</span>
+                <svg
+                  className="h-6 w-6"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M19.812 5.418c.861.23 1.538.907 1.768 1.768C21.998 8.746 22 12 22 12s0 3.255-.418 4.814a2.504 2.504 0 0 1-1.768 1.768c-1.56.419-7.814.419-7.814.419s-6.255 0-7.814-.419a2.505 2.505 0 0 1-1.768-1.768C2 15.255 2 12 2 12s0-3.255.417-4.814a2.507 2.507 0 0 1 1.768-1.768C5.744 5 11.998 5 11.998 5s6.255 0 7.814.418ZM15.194 12 10 15V9l5.194 3Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </a>
+            )}
+            {profile.social_links?.tiktok && (
+              <a
+                href={profile.social_links.tiktok}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-black transition-colors duration-200"
+              >
+                <span className="sr-only">TikTok</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="h-6 w-6"
+                >
+                  <path d="M12 2C13.6 2 15 3.4 15 5V6.5C16.6 7.6 18.6 8 20.5 8V12C18.2 12 16 11.3 14.2 10V16C14.2 19.3 11.3 22 8 22C4.7 22 2 19.3 2 16C2 12.7 4.7 10 8 10H9V14H8C6.3 14 5 15.3 5 16.9C5 18.6 6.3 20 8 20C9.7 20 11 18.6 11 16.9V2H12Z" />
+                </svg>
+              </a>
+            )}
+
+            {profile.social_links?.twitch && (
+              <a
+                href={profile.social_links.twitch}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-purple-400 transition-colors duration-200"
+              >
+                <span className="sr-only">Twitch</span>
+                <svg
+                  className="h-6 w-6"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+                </svg>
+              </a>
+            )}
+            {profile.social_links?.discord && (
+              <a
+                href={profile.social_links.discord}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-indigo-400 transition-colors duration-200"
+              >
+                <span className="sr-only">Discord</span>
+                <svg
+                  className="h-6 w-6"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                </svg>
+              </a>
+            )}
+            {profile.social_links?.patreon && (
+              <a
+                href={profile.social_links.patreon}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-orange-400 transition-colors duration-200"
+              >
+                <span className="sr-only">Patreon</span>
+                <svg
+                  className="h-6 w-6"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M14.82 2.41c3.96 0 7.18 3.24 7.18 7.21 0 3.96-3.22 7.18-7.18 7.18-3.97 0-7.21-3.22-7.21-7.18 0-3.97 3.24-7.21 7.21-7.21M2 21.6h3.5V2.41H2V21.6z" />
+                </svg>
+              </a>
+            )}
+            {profile.social_links?.website && (
+              <a
+                href={profile.social_links.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+              >
+                <span className="sr-only">Website</span>
+                <svg
+                  className="h-6 w-6"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c5.51 0 10-4.48 10-10S17.51 2 12 2zm6.605 4.61a8.502 8.502 0 011.93 5.314c-.281-.054-3.101-.629-5.943-.271-.065-.141-.12-.293-.184-.445a25.416 25.416 0 00-.564-1.236c3.145-1.28 4.577-3.124 4.761-3.362zM12 3.475c2.17 0 4.154.813 5.662 2.148-.152.216-1.443 1.941-4.48 3.08-1.399-2.57-2.95-4.675-3.189-5A8.687 8.687 0 0112 3.475zm-3.633.803a53.896 53.896 0 013.167 4.935c-3.992 1.063-7.517 1.04-7.896 1.04a8.581 8.581 0 014.729-5.975zM3.453 12.01v-.26c.37.01 4.512.065 8.775-1.215.25.477.477.965.694 1.453-.109.033-.228.065-.336.098-4.404 1.42-6.747 5.303-6.942 5.629a8.522 8.522 0 01-2.19-5.705zM12 20.547a8.482 8.482 0 01-5.239-1.8c.152-.315 1.888-3.656 6.703-5.337.022-.01.033-.01.054-.022a35.318 35.318 0 011.823 6.475 8.4 8.4 0 01-3.341.684zm4.761-1.465c-.086-.52-.542-3.015-1.659-6.084 2.679-.423 5.022.271 5.314.369a8.468 8.468 0 01-3.655 5.715z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Links */}
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Link
+            href="/blog"
+            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-6 w-6 text-blue-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2.5 2.5 0 00-2.5-2.5H15"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">Blog</h3>
+                <p className="text-sm text-gray-500">Read my latest articles</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/videos"
+            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-6 w-6 text-red-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">Videos</h3>
+                <p className="text-sm text-gray-500">Watch my latest videos</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/store"
+            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-6 w-6 text-green-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">Store</h3>
+                <p className="text-sm text-gray-500">Shop my products</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/vip"
+            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-6 w-6 text-yellow-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  VIP Content
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Exclusive content for members
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/podcast"
+            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-6 w-6 text-indigo-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">Podcast</h3>
+                <p className="text-sm text-gray-500">
+                  Listen to my latest episodes
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/courses"
+            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-6 w-6 text-teal-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">Courses</h3>
+                <p className="text-sm text-gray-500">Learn from my courses</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href="/lyrics"
+            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+          >
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-6 w-6 text-purple-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+                  />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">Lyrics</h3>
+                <p className="text-sm text-gray-500">Read song lyrics</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        {/* Featured Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <h2 className="text-2xl font-bold text-gray-900 mb-8">
+            Featured Content
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {featuredContent.map((content) => (
+              <div
+                key={content.id}
+                className="bg-white rounded-lg shadow-sm overflow-hidden group relative"
+              >
+                {content.is_vip && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                      VIP
+                    </span>
+                  </div>
+                )}
+                <div className="relative h-48">
+                  <Image
+                    src={content.thumbnail_url}
+                    alt={content.title}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-200"
+                  />
+                </div>
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {content.type?.charAt(0).toUpperCase() +
+                        content.type?.slice(1)}
+                    </span>
+                    {content.is_vip && (
+                      <svg
+                        className="h-5 w-5 text-yellow-500"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">
+                    {content.title}
+                  </h3>
+                  <p className="text-sm text-gray-500 line-clamp-2 mb-4">
+                    {content.description}
+                  </p>
+                  <Link
+                    href={content.url}
+                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    View {content.type}
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Newsletter Section */}
+        <div className="bg-gray-50 border-t border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="max-w-3xl mx-auto text-center">
+              <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
+                Stay Updated
+              </h2>
+              <p className="mt-4 text-lg text-gray-500">
+                Subscribe to my newsletter to get the latest updates, exclusive
+                content, and behind-the-scenes insights.
+              </p>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const email = formData.get("email") as string;
+
+                  // Email validation
+                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                  if (!emailRegex.test(email)) {
+                    setNotification({
+                      message: "Please enter a valid email address",
+                      type: "error",
+                    });
+                    return;
+                  }
+
+                  // Rate limiting (5 seconds between submissions)
+                  const now = Date.now();
+                  if (now - lastSubmissionTime < 5000) {
+                    setNotification({
+                      message: "Please wait a moment before trying again",
+                      type: "info",
+                    });
+                    return;
+                  }
+
+                  setIsSubmitting(true);
+                  try {
+                    const { error } = await supabase
+                      .from("newsletter_subscribers")
+                      .insert([{ email }]);
+
+                    if (error) throw error;
+
+                    setNotification({
+                      message: "Thank you for subscribing!",
+                      type: "success",
+                    });
+                    e.currentTarget.reset();
+                    setLastSubmissionTime(now);
+                  } catch (error: any) {
+                    if (error.code === "23505") {
+                      setNotification({
+                        message: "You're already subscribed!",
+                        type: "info",
+                      });
+                    } else {
+                      setNotification({
+                        message: "Something went wrong. Please try again.",
+                        type: "error",
+                      });
+                    }
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+                className="mt-8 sm:flex justify-center"
+              >
+                <div className="min-w-0 flex-1">
+                  <label htmlFor="email" className="sr-only">
+                    Email address
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    className="block w-full rounded-md border border-gray-300 px-4 py-3 text-base placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500 sm:flex-1"
+                    placeholder="Enter your email"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="mt-3 sm:mt-0 sm:ml-3">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`block w-full rounded-md border border-transparent bg-blue-600 px-4 py-3 font-medium text-white shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:px-10 ${
+                      isSubmitting ? "opacity-75 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
+                        Subscribing...
+                      </div>
+                    ) : (
+                      "Subscribe"
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
     </div>
   );
 }
