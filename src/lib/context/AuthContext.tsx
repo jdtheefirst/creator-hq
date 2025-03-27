@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase, User as CustomUser } from "../supabase/client";
 import { isAdmin } from "@/config/admin";
-import { redirect } from "next/navigation";
+import { redirect, usePathname } from "next/navigation";
 
 interface AuthContextType {
   user: CustomUser | null;
@@ -23,16 +23,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log("Initial session check:", session?.user?.email);
       if (session?.user) {
         fetchUserRole(session.user);
       } else {
         setUser(null);
         setLoading(false);
+
+        if (pathname.startsWith("/dashboard")) {
+          redirect("/login");
+        }
       }
     });
 
@@ -46,14 +50,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setUser(null);
         setLoading(false);
+
+        if (pathname.startsWith("/dashboard")) {
+          redirect("/login");
+        }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [pathname]);
 
   async function fetchUserRole(supabaseUser: User) {
-    console.log("Fetching user role for:", supabaseUser.email);
     const { data, error } = await supabase
       .from("users")
       .select("*")
@@ -64,8 +71,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Error fetching user role:", error);
       return;
     }
-
-    console.log("User role data:", data);
 
     setUser(data);
     setLoading(false);
