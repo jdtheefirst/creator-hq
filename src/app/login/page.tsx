@@ -17,15 +17,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
 
-  useEffect(() => {
-    // Check for access token in URL
-    const hash = window.location.hash;
-    if (hash.includes("access_token")) {
-      // If there's an access token, redirect to home
-      router.push("/");
-    }
-  }, [router]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -34,14 +25,6 @@ export default function LoginPage() {
     try {
       const { error } = await signIn(email, password);
       if (error) throw error;
-
-      // Check if user is admin and redirect accordingly
-      if (isAdmin(email)) {
-        router.push("/dashboard");
-      } else {
-        // For guests, stay on the main page
-        router.push("/");
-      }
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -52,12 +35,14 @@ export default function LoginPage() {
   const handleSocialLogin = async (provider: "google" | "twitter") => {
     setError(null);
     try {
+      console.log(`Initiating ${provider} login with PKCE flow`);
       if (provider === "google") {
         await signInWithGoogle();
       } else {
         await signInWithTwitter();
       }
     } catch (error: any) {
+      console.error(`${provider} login error:`, error);
       setError(error.message);
     }
   };

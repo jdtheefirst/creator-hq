@@ -3,6 +3,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase, User as CustomUser } from "../supabase/client";
+import { isAdmin } from "@/config/admin";
+import { redirect } from "next/navigation";
 
 interface AuthContextType {
   user: CustomUser | null;
@@ -25,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("Initial session check:", session?.user?.email);
       if (session?.user) {
         fetchUserRole(session.user);
       } else {
@@ -37,6 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session?.user?.email);
       if (session?.user) {
         await fetchUserRole(session.user);
       } else {
@@ -49,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function fetchUserRole(supabaseUser: User) {
+    console.log("Fetching user role for:", supabaseUser.email);
     const { data, error } = await supabase
       .from("users")
       .select("*")
@@ -60,8 +65,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    console.log("User role data:", data);
+
     setUser(data);
     setLoading(false);
+
+    if (data.role === "creator") {
+      redirect("/dashboard");
+    } else {
+      redirect("/");
+    }
   }
 
   const signIn = async (email: string, password: string) => {
@@ -83,13 +96,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) throw error;
+    try {
+      // Check if there's already a session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session) {
+        console.log(
+          "Session already exists, redirecting based on admin status"
+        );
+        const redirectUrl = isAdmin(session.user.email!) ? "/dashboard" : "/";
+        window.location.href = redirectUrl;
+        return;
+      }
+
+      console.log("No existing session, initiating Google sign-in with PKCE");
+
+      // Start OAuth sign-in (Supabase handles PKCE internally)
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) {
+        console.error("Google sign-in error:", error);
+        throw error;
+      }
+
+      console.log("OAuth response data:", data);
+    } catch (error) {
+      console.error("Error in signInWithGoogle:", error);
+      throw error;
+    }
   };
 
   const signInWithTwitter = async () => {

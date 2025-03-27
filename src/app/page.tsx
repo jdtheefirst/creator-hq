@@ -206,7 +206,9 @@ export default function CreatorProfilePage() {
                 <Image
                   src={profile.avatar_url}
                   alt="Profile"
+                  sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
                   fill
+                  priority
                   className="object-cover"
                 />
               ) : (
@@ -234,7 +236,9 @@ export default function CreatorProfilePage() {
           <Image
             src={profile.cover_url}
             alt="Cover"
+            sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
             fill
+            priority
             className="object-cover"
           />
         )}
@@ -250,6 +254,8 @@ export default function CreatorProfilePage() {
                   <Image
                     src={profile.avatar_url}
                     alt={profile.full_name}
+                    sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
+                    priority
                     fill
                     className="object-cover"
                   />
