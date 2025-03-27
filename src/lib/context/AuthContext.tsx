@@ -65,7 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from("users")
       .select("*")
       .eq("id", supabaseUser.id)
-      .single();
+      .maybeSingle()
+      .throwOnError();
 
     if (error) {
       console.error("Error fetching user role:", error);
@@ -75,11 +76,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data);
     setLoading(false);
 
-    if (data.role === "creator") {
-      redirect("/dashboard");
-    } else {
-      redirect("/");
-    }
+    setTimeout(() => {
+      if (data.role === "creator") {
+        redirect("/dashboard");
+      } else {
+        redirect("/");
+      }
+    }, 100);
   }
 
   const signIn = async (email: string, password: string) => {
@@ -102,23 +105,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      // Check if there's already a session
       const {
         data: { session },
+        error: sessionError,
       } = await supabase.auth.getSession();
 
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+      } else {
+        console.log("Session data:", session);
+      }
+
       if (session) {
-        console.log(
-          "Session already exists, redirecting based on admin status"
-        );
+        console.log("Session exists, redirecting...");
         const redirectUrl = isAdmin(session.user.email!) ? "/dashboard" : "/";
         window.location.href = redirectUrl;
         return;
       }
 
-      console.log("No existing session, initiating Google sign-in with PKCE");
+      console.log("No session, initiating Google sign-in...");
 
-      // Start OAuth sign-in (Supabase handles PKCE internally)
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -138,7 +144,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("OAuth response data:", data);
     } catch (error) {
       console.error("Error in signInWithGoogle:", error);
-      throw error;
     }
   };
 

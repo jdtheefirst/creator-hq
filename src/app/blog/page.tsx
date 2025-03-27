@@ -1,69 +1,111 @@
 import Link from "next/link";
 import { format } from "date-fns";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+import Image from "next/image";
 
-// Temporary blog post data
-const posts = [
-  {
-    id: 1,
-    title: "Getting Started with Digital Art",
-    excerpt:
-      "Learn the basics of digital art creation and tools you need to get started.",
-    date: "2024-03-15",
-    category: "Tutorial",
-    slug: "getting-started-with-digital-art",
-  },
-  {
-    id: 2,
-    title: "Behind the Scenes: My Creative Process",
-    excerpt:
-      "A peek into how I approach creating new content and managing my creative workflow.",
-    date: "2024-03-10",
-    category: "Process",
-    slug: "behind-the-scenes-creative-process",
-  },
-  {
-    id: 3,
-    title: "Top 10 Tools for Content Creators",
-    excerpt:
-      "Essential tools and software that every content creator should know about.",
-    date: "2024-03-05",
-    category: "Resources",
-    slug: "top-10-tools-content-creators",
-  },
-];
+interface BlogPost {
+  id: string;
+  title: string;
+  excerpt: string;
+  created_at: string;
+  category: string;
+  slug: string;
+  cover_image: string | null;
+  ads_enabled: boolean;
+}
 
-export default function BlogPage() {
+interface BlogPageProps {
+  searchParams: {
+    category?: string;
+  };
+}
+
+export default async function BlogPage({ searchParams }: BlogPageProps) {
+  const supabase = createServerComponentClient({ cookies });
+  const category = searchParams.category;
+
+  // Fetch blog posts
+  let query = supabase
+    .from("blogs")
+    .select(
+      "id, title, slug, excerpt, category, created_at, cover_image, ads_enabled"
+    )
+    .eq("status", "published")
+    .order("created_at", { ascending: false });
+
+  if (category && category !== "All") {
+    query = query.eq("category", category);
+  }
+
+  const { data: posts, error } = await query;
+
+  if (error) {
+    console.error("Error fetching blog posts:", error);
+    return (
+      <div className="min-h-screen bg-gray-50 py-12">
+        <div className="container mx-auto px-4">
+          <h1 className="text-4xl font-bold text-center mb-12">Blog</h1>
+          <p className="text-center text-red-600">
+            Error loading blog posts. Please try again later.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Get unique categories
+  const categories = [
+    "All",
+    ...new Set(posts?.map((post) => post.category) || []),
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="container mx-auto px-4">
         <h1 className="text-4xl font-bold text-center mb-12">Blog</h1>
 
         {/* Categories */}
-        <div className="flex justify-center gap-4 mb-8">
-          {["All", "Tutorial", "Process", "Resources"].map((category) => (
-            <button
-              key={category}
-              className="px-4 py-2 rounded-full bg-white shadow-sm hover:shadow-md transition-shadow"
+        <div className="flex justify-center gap-4 mb-8 flex-wrap">
+          {categories.map((cat) => (
+            <Link
+              key={cat}
+              href={`/blog${cat === "All" ? "" : `?category=${cat}`}`}
+              className={`px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-shadow ${
+                (cat === "All" && !category) || cat === category
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-700"
+              }`}
             >
-              {category}
-            </button>
+              {cat}
+            </Link>
           ))}
         </div>
 
         {/* Blog Posts Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {posts.map((post) => (
+          {posts?.map((post) => (
             <article
               key={post.id}
               className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
             >
+              {post.cover_image && (
+                <div className="relative h-48 w-full">
+                  <Image
+                    src={post.cover_image}
+                    alt={post.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              )}
               <div className="p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <span className="text-sm text-blue-600 font-medium">
                     {post.category}
                   </span>
                   <span className="text-sm text-gray-500">
-                    {format(new Date(post.date), "MMM d, yyyy")}
+                    {format(new Date(post.created_at), "MMM d, yyyy")}
                   </span>
                 </div>
                 <h2 className="text-xl font-semibold mb-2">
@@ -85,6 +127,13 @@ export default function BlogPage() {
             </article>
           ))}
         </div>
+
+        {/* Ad Space */}
+        {posts?.some((post) => post.ads_enabled) && (
+          <div className="mt-12 p-4 bg-gray-100 rounded-lg text-center">
+            <p className="text-gray-500">Advertisement Space</p>
+          </div>
+        )}
       </div>
     </div>
   );

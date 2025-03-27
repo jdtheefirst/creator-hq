@@ -39,9 +39,12 @@ export default function DashboardPage() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">Dashboard</h1>
           <div className="flex gap-4">
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <Link
+              href="/dashboard/posts/new"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
               New Post
-            </button>
+            </Link>
             <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
               Add Product
             </button>

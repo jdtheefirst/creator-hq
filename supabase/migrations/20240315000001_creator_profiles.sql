@@ -1,97 +1,116 @@
--- Create featured_content table
+-- Ensure 'lyrics' is part of content types
 CREATE TABLE public.featured_content (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   creator_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
-  type TEXT NOT NULL CHECK (type IN ('blog', 'product', 'video')),
+  type TEXT NOT NULL CHECK (type IN ('blog', 'product', 'video', 'vip', 'podcast', 'course', 'lyrics')),
   title TEXT NOT NULL,
   description TEXT,
   thumbnail_url TEXT,
   url TEXT NOT NULL,
+  is_vip BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- Enable RLS
-ALTER TABLE public.featured_content ENABLE ROW LEVEL SECURITY;
+-- Search & Filters (Indexes for fast filtering)
+CREATE INDEX idx_featured_content_type ON public.featured_content(type);
+CREATE INDEX idx_featured_content_created_at ON public.featured_content(created_at DESC);
 
--- Create policies for featured_content
-CREATE POLICY "Anyone can view featured content"
-  ON public.featured_content FOR SELECT
-  TO authenticated
-  USING (true);
-
-CREATE POLICY "Creators can manage their featured content"
-  ON public.featured_content FOR ALL
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.users
-      WHERE id = auth.uid()
-      AND role = 'creator'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.users
-      WHERE id = auth.uid()
-      AND role = 'creator'
-    )
-  );
-
--- Create trigger for updated_at
-CREATE TRIGGER handle_featured_content_updated_at
-  BEFORE UPDATE ON public.featured_content
-  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
-
--- Add follower count to profiles table
-ALTER TABLE public.profiles
-ADD COLUMN follower_count INTEGER DEFAULT 0;
-
--- Create followers table
-CREATE TABLE public.followers (
-  follower_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
-  following_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+-- Likes Table
+CREATE TABLE public.likes (
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  post_id UUID NOT NULL,
+  post_type TEXT CHECK (post_type IN ('blog', 'product', 'video', 'podcast', 'course', 'lyrics')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-  PRIMARY KEY (follower_id, following_id)
+  PRIMARY KEY (user_id, post_id, post_type)
 );
 
--- Enable RLS for followers
-ALTER TABLE public.followers ENABLE ROW LEVEL SECURITY;
+-- Comments Table (Nested Replies & Moderation)
+CREATE TABLE public.comments (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  content TEXT NOT NULL,
+  author_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  post_id UUID NOT NULL,
+  post_type TEXT CHECK (post_type IN ('blog', 'product', 'video', 'podcast', 'course', 'lyrics')),
+  parent_comment_id UUID REFERENCES public.comments(id) ON DELETE CASCADE, -- Nested replies
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  is_approved BOOLEAN DEFAULT false
+);
 
--- Create policies for followers
-CREATE POLICY "Anyone can view followers"
-  ON public.followers FOR SELECT
-  TO authenticated
-  USING (true);
+-- Reporting System for Comments
+CREATE TABLE public.comment_reports (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  reported_by UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  comment_id UUID REFERENCES public.comments(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL CHECK (reason IN ('spam', 'abuse', 'hate_speech', 'other')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
 
-CREATE POLICY "Users can follow/unfollow"
-  ON public.followers FOR ALL
-  TO authenticated
-  USING (auth.uid() = follower_id)
-  WITH CHECK (auth.uid() = follower_id);
+-- Notifications Table
+CREATE TABLE public.notifications (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('like', 'comment', 'reply', 'follow', 'report')),
+  reference_id UUID NOT NULL, -- Can point to likes, comments, follows, etc.
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  is_read BOOLEAN DEFAULT false
+);
 
--- Create function to update follower count
-CREATE OR REPLACE FUNCTION public.update_follower_count()
+-- Triggers for Notifications
+CREATE OR REPLACE FUNCTION notify_on_like()
 RETURNS TRIGGER AS $$
 BEGIN
-  IF TG_OP = 'INSERT' THEN
-    UPDATE public.profiles
-    SET follower_count = follower_count + 1
-    WHERE id = NEW.following_id;
-  ELSIF TG_OP = 'DELETE' THEN
-    UPDATE public.profiles
-    SET follower_count = follower_count - 1
-    WHERE id = OLD.following_id;
-  END IF;
-  RETURN NULL;
+  INSERT INTO public.notifications (user_id, type, reference_id, created_at)
+  SELECT f.creator_id, 'like', NEW.post_id, NOW()
+  FROM public.featured_content f
+  WHERE f.id = NEW.post_id;
+  RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql;
 
--- Create triggers for follower count
-CREATE TRIGGER update_follower_count_insert
-  AFTER INSERT ON public.followers
-  FOR EACH ROW EXECUTE FUNCTION public.update_follower_count();
+CREATE TRIGGER like_notification
+AFTER INSERT ON public.likes
+FOR EACH ROW EXECUTE FUNCTION notify_on_like();
 
-CREATE TRIGGER update_follower_count_delete
-  AFTER DELETE ON public.followers
-  FOR EACH ROW EXECUTE FUNCTION public.update_follower_count(); 
+CREATE OR REPLACE FUNCTION notify_on_comment()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.notifications (user_id, type, reference_id, created_at)
+  SELECT f.creator_id, 'comment', NEW.id, NOW()
+  FROM public.featured_content f
+  WHERE f.id = NEW.post_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER comment_notification
+AFTER INSERT ON public.comments
+FOR EACH ROW EXECUTE FUNCTION notify_on_comment();
+
+CREATE OR REPLACE FUNCTION notify_on_reply()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.notifications (user_id, type, reference_id, created_at)
+  SELECT c.author_id, 'reply', NEW.id, NOW()
+  FROM public.comments c
+  WHERE c.id = NEW.parent_comment_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER reply_notification
+AFTER INSERT ON public.comments
+FOR EACH ROW EXECUTE FUNCTION notify_on_reply();
+
+CREATE OR REPLACE FUNCTION notify_on_follow()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.notifications (user_id, type, reference_id, created_at)
+  VALUES (NEW.following_id, 'follow', NEW.follower_id, NOW());
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER follow_notification
+AFTER INSERT ON public.followers
+FOR EACH ROW EXECUTE FUNCTION notify_on_follow();
