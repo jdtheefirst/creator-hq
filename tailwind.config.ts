@@ -50,6 +50,12 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
       },
+      backgroundColor: {
+        DEFAULT: "hsl(var(--background))",
+      },
+      textColor: {
+        DEFAULT: "hsl(var(--foreground))",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -71,7 +77,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [require("@tailwindcss/typography"), require("@tailwindcss/forms")],
 };
 
 export default config;
