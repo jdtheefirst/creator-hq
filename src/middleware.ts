@@ -13,6 +13,49 @@ export async function middleware(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
+  // Handle protected routes
+  const isProtectedRoute = request.nextUrl.pathname.startsWith("/dashboard");
+  const isAuthRoute =
+    request.nextUrl.pathname.startsWith("/login") ||
+    request.nextUrl.pathname.startsWith("/signup") ||
+    request.nextUrl.pathname.startsWith("/auth/callback");
+
+  // If trying to access protected route without session, redirect to login
+  if (isProtectedRoute && !session) {
+    const redirectUrl = new URL("/login", request.url);
+    redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // If trying to access auth routes with session, redirect to dashboard
+  if (isAuthRoute && session) {
+    // Check user role for proper redirection
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", session.user.id)
+      .maybeSingle()
+      .throwOnError();
+
+    const redirectPath = userData?.role === "creator" ? "/dashboard" : "/";
+    return NextResponse.redirect(new URL(redirectPath, request.url));
+  }
+
+  // If accessing protected route, verify user role
+  if (isProtectedRoute && session) {
+    const { data: userData } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", session.user.id)
+      .maybeSingle()
+      .throwOnError();
+
+    // If user is not a creator and trying to access dashboard, redirect to home
+    if (userData?.role !== "creator") {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
+
   // Parse user agent
   const parser = new UAParser(request.headers.get("user-agent") || "");
   const userAgent = parser.getResult();

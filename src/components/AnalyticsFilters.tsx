@@ -1,3 +1,5 @@
+"use client";
+
 import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { DayPicker } from "react-day-picker";
