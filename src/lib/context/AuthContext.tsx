@@ -2,8 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
-import { supabase, User as CustomUser } from "../supabase/client";
-import { isAdmin } from "@/config/admin";
+import { createBrowserClient, User as CustomUser } from "../supabase/client";
 import { redirect, usePathname } from "next/navigation";
 
 interface AuthContextType {
@@ -24,19 +23,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
+  const supabase = createBrowserClient();
 
   useEffect(() => {
+    let mounted = true;
+
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+
       if (session?.user) {
         fetchUserRole(session.user);
       } else {
         setUser(null);
         setLoading(false);
-
-        if (pathname.startsWith("/dashboard")) {
-          redirect("/login");
-        }
       }
     });
 
@@ -44,45 +44,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+
       console.log("Auth state changed:", event, session?.user?.email);
       if (session?.user) {
         await fetchUserRole(session.user);
       } else {
         setUser(null);
         setLoading(false);
-
-        if (pathname.startsWith("/dashboard")) {
-          redirect("/login");
-        }
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [pathname]);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   async function fetchUserRole(supabaseUser: User) {
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", supabaseUser.id)
-      .maybeSingle()
-      .throwOnError();
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", supabaseUser.id)
+        .maybeSingle()
+        .throwOnError();
 
-    if (error) {
-      console.error("Error fetching user role:", error);
-      return;
-    }
-
-    setUser(data);
-    setLoading(false);
-
-    setTimeout(() => {
-      if (data.role === "creator") {
-        redirect("/dashboard");
-      } else {
-        redirect("/");
+      if (error) {
+        console.error("Error fetching user role:", error);
+        return;
       }
-    }, 100);
+
+      setUser(data);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error in fetchUserRole:", error);
+      setLoading(false);
+    }
   }
 
   const signIn = async (email: string, password: string) => {
@@ -104,47 +102,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
-    try {
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        console.error("Session error:", sessionError);
-      } else {
-        console.log("Session data:", session);
-      }
-
-      if (session) {
-        console.log("Session exists, redirecting...");
-        const redirectUrl = isAdmin(session.user.email!) ? "/dashboard" : "/";
-        window.location.href = redirectUrl;
-        return;
-      }
-
-      console.log("No session, initiating Google sign-in...");
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
-        },
-      });
-
-      if (error) {
-        console.error("Google sign-in error:", error);
-        throw error;
-      }
-
-      console.log("OAuth response data:", data);
-    } catch (error) {
-      console.error("Error in signInWithGoogle:", error);
-    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) throw error;
   };
 
   const signInWithTwitter = async () => {

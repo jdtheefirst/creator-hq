@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createBrowserClient } from "@/lib/supabase/client";
 
 interface ProductFormProps {
   product?: {
@@ -19,7 +19,7 @@ interface ProductFormProps {
 
 export default function ProductForm({ product }: ProductFormProps) {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

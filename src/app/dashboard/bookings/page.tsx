@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 import { format } from "date-fns";
 import BookingFilters from "@/components/BookingFilters";
 
@@ -31,7 +30,7 @@ interface BookingsPageProps {
 export default async function BookingsPage({
   searchParams,
 }: BookingsPageProps) {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await createClient();
 
   // Build query based on filters
   let query = supabase

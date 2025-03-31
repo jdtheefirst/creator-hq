@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
-import { supabase } from "@/lib/supabase/client";
+import { createBrowserClient } from "@/lib/supabase/client";
 import Notification from "@/components/Notification";
 
 interface Profile {
@@ -65,6 +65,7 @@ export default function CreatorProfilePage() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0);
+  const supabase = createBrowserClient();
 
   useEffect(() => {
     async function fetchProfileData() {
@@ -496,7 +497,10 @@ export default function CreatorProfilePage() {
               </div>
               <div className="ml-4">
                 <h3 className="text-lg font-medium text-gray-900">Blog</h3>
-                <p className="text-sm text-gray-500">Read my latest articles</p>
+                <p className="text-sm text-gray-500">
+                  Read my latest articles, fitness, lifestyle, art, writing, and
+                  more
+                </p>
               </div>
             </div>
           </Link>
@@ -523,7 +527,9 @@ export default function CreatorProfilePage() {
               </div>
               <div className="ml-4">
                 <h3 className="text-lg font-medium text-gray-900">Videos</h3>
-                <p className="text-sm text-gray-500">Watch my latest videos</p>
+                <p className="text-sm text-gray-500">
+                  Watch my latest videos, comedy, gaming, and more
+                </p>
               </div>
             </div>
           </Link>
@@ -663,7 +669,7 @@ export default function CreatorProfilePage() {
                 </svg>
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Lyrics</h3>
+                <h3 className="text-lg font-medium text-gray-900">Music</h3>
                 <p className="text-sm text-gray-500">Read song lyrics</p>
               </div>
             </div>

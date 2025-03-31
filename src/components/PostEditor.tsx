@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createBrowserClient } from "@/lib/supabase/client";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 
@@ -27,7 +27,7 @@ interface PostEditorProps {
 
 export default function PostEditor({ post }: PostEditorProps) {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<Post>(
     post || {

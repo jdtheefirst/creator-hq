@@ -1,5 +1,4 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import ProductForm from "@/components/ProductForm";
 
@@ -12,7 +11,7 @@ interface EditProductPageProps {
 export default async function EditProductPage({
   params,
 }: EditProductPageProps) {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await createClient();
 
   const { data: product, error } = await supabase
     .from("products")

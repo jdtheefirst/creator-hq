@@ -1,27 +1,43 @@
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { UAParser } from "ua-parser-js";
 import { getGeolocation } from "@/lib/geolocation";
+import { createClient } from "@/lib/supabase/server";
 
 export async function middleware(request: NextRequest) {
+  console.log("Middleware processing request for:", request.nextUrl.pathname);
+
+  // Skip middleware for auth-related routes
+  if (
+    request.nextUrl.pathname.startsWith("/auth") ||
+    request.nextUrl.pathname.startsWith("/_next") ||
+    request.nextUrl.pathname.startsWith("/api/auth") ||
+    request.nextUrl.pathname === "/auth/callback"
+  ) {
+    console.log("Skipping middleware for:", request.nextUrl.pathname);
+    return NextResponse.next();
+  }
+
   const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req: request, res });
+  const supabase = await createClient();
 
   // Get the user's session
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
+  console.log(
+    "Session status:",
+    session ? "Authenticated" : "Not authenticated"
+  );
+
   // Handle protected routes
   const isProtectedRoute = request.nextUrl.pathname.startsWith("/dashboard");
-  const isAuthRoute =
-    request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/signup") ||
-    request.nextUrl.pathname.startsWith("/auth/callback");
+  const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
 
   // If trying to access protected route without session, redirect to login
   if (isProtectedRoute && !session) {
+    console.log("Redirecting to login - no session for protected route");
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname);
     return NextResponse.redirect(redirectUrl);
@@ -29,6 +45,7 @@ export async function middleware(request: NextRequest) {
 
   // If trying to access auth routes with session, redirect to dashboard
   if (isAuthRoute && session) {
+    console.log("Redirecting to dashboard - session exists for auth route");
     // Check user role for proper redirection
     const { data: userData } = await supabase
       .from("users")
@@ -52,6 +69,7 @@ export async function middleware(request: NextRequest) {
 
     // If user is not a creator and trying to access dashboard, redirect to home
     if (userData?.role !== "creator") {
+      console.log("Redirecting to home - user is not a creator");
       return NextResponse.redirect(new URL("/", request.url));
     }
   }

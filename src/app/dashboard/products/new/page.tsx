@@ -1,9 +1,8 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 import ProductForm from "@/components/ProductForm";
 
 export default async function NewProductPage() {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await createClient();
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">

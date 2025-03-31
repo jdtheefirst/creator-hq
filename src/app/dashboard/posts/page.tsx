@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 import { format } from "date-fns";
 
 interface BlogPost {
@@ -15,10 +14,7 @@ interface BlogPost {
 }
 
 export default async function PostsPage() {
-  const clientCookies = await cookies();
-  const supabase = createServerComponentClient({
-    cookies: () => clientCookies,
-  });
+  const supabase = await createClient();
 
   // Fetch all blog posts
   const { data: posts, error } = await supabase

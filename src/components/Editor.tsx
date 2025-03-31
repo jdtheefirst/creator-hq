@@ -2,28 +2,37 @@
 
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
 import { useState } from "react";
 
 interface EditorProps {
   value: string;
-  onChange: (content: string) => void;
+  onChange: (value: string) => void;
+  className?: string;
 }
 
-export default function Editor({ value, onChange }: EditorProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+export default function Editor({
+  value,
+  onChange,
+  className = "",
+}: EditorProps) {
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
 
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Image,
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
           rel: "noopener noreferrer",
-          class: "text-blue-500 hover:text-blue-700",
-          immediatelyRender: false,
+          class: "text-blue-500 hover:text-blue-700 underline",
+        },
+      }),
+      Image.configure({
+        HTMLAttributes: {
+          class: "rounded-lg max-w-full",
         },
       }),
     ],
@@ -37,53 +46,116 @@ export default function Editor({ value, onChange }: EditorProps) {
     return null;
   }
 
+  const addLink = () => {
+    if (linkUrl) {
+      editor.chain().focus().setLink({ href: linkUrl }).run();
+      setLinkUrl("");
+      setIsLinkModalOpen(false);
+    }
+  };
+
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className={`border rounded-lg ${className}`}>
       {/* Toolbar */}
-      <div className="border-b bg-gray-50 p-2 flex flex-wrap gap-2">
+      <div className="border-b p-2 flex flex-wrap gap-2">
         <button
           onClick={() => editor.chain().focus().toggleBold().run()}
           className={`p-2 rounded ${
-            editor.isActive("bold") ? "bg-gray-200" : "hover:bg-gray-200"
+            editor.isActive("bold") ? "bg-gray-200" : "hover:bg-gray-100"
           }`}
-          title="Bold"
         >
           <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
+            className="w-5 h-5"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            viewBox="0 0 24 24"
           >
-            <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
-            <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 10V3L4 14h7v7l9-11h-7z"
+            />
           </svg>
         </button>
         <button
           onClick={() => editor.chain().focus().toggleItalic().run()}
           className={`p-2 rounded ${
-            editor.isActive("italic") ? "bg-gray-200" : "hover:bg-gray-200"
+            editor.isActive("italic") ? "bg-gray-200" : "hover:bg-gray-100"
           }`}
-          title="Italic"
         >
           <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
+            className="w-5 h-5"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            viewBox="0 0 24 24"
           >
-            <line x1="19" y1="4" x2="10" y2="4" />
-            <line x1="14" y1="20" x2="5" y2="20" />
-            <line x1="15" y1="4" x2="9" y2="20" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+            />
+          </svg>
+        </button>
+        <button
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          className={`p-2 rounded ${
+            editor.isActive("bulletList") ? "bg-gray-200" : "hover:bg-gray-100"
+          }`}
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </button>
+        <button
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          className={`p-2 rounded ${
+            editor.isActive("orderedList") ? "bg-gray-200" : "hover:bg-gray-100"
+          }`}
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 20h14M7 12h14M7 4h14"
+            />
+          </svg>
+        </button>
+        <button
+          onClick={() => setIsLinkModalOpen(true)}
+          className={`p-2 rounded ${
+            editor.isActive("link") ? "bg-gray-200" : "hover:bg-gray-100"
+          }`}
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+            />
           </svg>
         </button>
         <button
@@ -93,9 +165,8 @@ export default function Editor({ value, onChange }: EditorProps) {
           className={`p-2 rounded ${
             editor.isActive("heading", { level: 1 })
               ? "bg-gray-200"
-              : "hover:bg-gray-200"
+              : "hover:bg-gray-100"
           }`}
-          title="Heading 1"
         >
           H1
         </button>
@@ -106,145 +177,59 @@ export default function Editor({ value, onChange }: EditorProps) {
           className={`p-2 rounded ${
             editor.isActive("heading", { level: 2 })
               ? "bg-gray-200"
-              : "hover:bg-gray-200"
+              : "hover:bg-gray-100"
           }`}
-          title="Heading 2"
         >
           H2
         </button>
         <button
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          onClick={() =>
+            editor.chain().focus().toggleHeading({ level: 3 }).run()
+          }
           className={`p-2 rounded ${
-            editor.isActive("bulletList") ? "bg-gray-200" : "hover:bg-gray-200"
+            editor.isActive("heading", { level: 3 })
+              ? "bg-gray-200"
+              : "hover:bg-gray-100"
           }`}
-          title="Bullet List"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="8" y1="6" x2="21" y2="6" />
-            <line x1="8" y1="12" x2="21" y2="12" />
-            <line x1="8" y1="18" x2="21" y2="18" />
-            <line x1="3" y1="6" x2="3.01" y2="6" />
-            <line x1="3" y1="12" x2="3.01" y2="12" />
-            <line x1="3" y1="18" x2="3.01" y2="18" />
-          </svg>
-        </button>
-        <button
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={`p-2 rounded ${
-            editor.isActive("orderedList") ? "bg-gray-200" : "hover:bg-gray-200"
-          }`}
-          title="Numbered List"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="10" y1="6" x2="21" y2="6" />
-            <line x1="10" y1="12" x2="21" y2="12" />
-            <line x1="10" y1="18" x2="21" y2="18" />
-            <path d="M4 6h1v4" />
-            <path d="M4 10h2" />
-            <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" />
-          </svg>
-        </button>
-        <button
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          className={`p-2 rounded ${
-            editor.isActive("blockquote") ? "bg-gray-200" : "hover:bg-gray-200"
-          }`}
-          title="Quote"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z" />
-            <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z" />
-          </svg>
-        </button>
-        <button
-          onClick={() => {
-            const url = window.prompt("Enter the URL");
-            if (url) {
-              editor.chain().focus().setLink({ href: url }).run();
-            }
-          }}
-          className={`p-2 rounded ${
-            editor.isActive("link") ? "bg-gray-200" : "hover:bg-gray-200"
-          }`}
-          title="Add Link"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-          </svg>
-        </button>
-        <button
-          onClick={() => {
-            const url = window.prompt("Enter the image URL");
-            if (url) {
-              editor.chain().focus().setImage({ src: url }).run();
-            }
-          }}
-          className="p-2 rounded hover:bg-gray-200"
-          title="Add Image"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <polyline points="21 15 16 10 5 21" />
-          </svg>
+          H3
         </button>
       </div>
 
       {/* Editor Content */}
-      <div className="p-4 min-h-[300px] prose max-w-none">
-        <EditorContent editor={editor} />
+      <div className="p-4">
+        <EditorContent editor={editor} className="prose max-w-none" />
       </div>
+
+      {/* Link Modal */}
+      {isLinkModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl">
+            <h3 className="text-lg font-medium mb-4">Add Link</h3>
+            <input
+              type="url"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              placeholder="Enter URL"
+              className="w-full p-2 border rounded mb-4"
+            />
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setIsLinkModalOpen(false)}
+                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addLink}
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Add Link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createBrowserClient } from "@/lib/supabase/client";
 
 interface UseAnalyticsProps {
   pagePath: string;
 }
 
 export function useAnalytics({ pagePath }: UseAnalyticsProps) {
-  const supabase = createClientComponentClient();
-  const scrollTimeoutRef = useRef<NodeJS.Timeout>();
+  const supabase = createBrowserClient();
+  const scrollTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
   const lastScrollPositionRef = useRef(0);
 
   useEffect(() => {
@@ -34,11 +34,11 @@ export function useAnalytics({ pagePath }: UseAnalyticsProps) {
       );
 
       if (scrollDelta > 100) {
-        if (scrollTimeoutRef.current) {
-          clearTimeout(scrollTimeoutRef.current);
+        if (scrollTimeout.current) {
+          clearTimeout(scrollTimeout.current);
         }
 
-        scrollTimeoutRef.current = setTimeout(async () => {
+        scrollTimeout.current = setTimeout(async () => {
           const {
             data: { session },
           } = await supabase.auth.getSession();
@@ -126,8 +126,8 @@ export function useAnalytics({ pagePath }: UseAnalyticsProps) {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("click", handleClick);
       window.removeEventListener("mouseover", handleHover);
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
+      if (scrollTimeout.current) {
+        clearTimeout(scrollTimeout.current);
       }
       trackTimeSpent();
     };

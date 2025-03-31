@@ -11,16 +11,7 @@ ADD COLUMN IF NOT EXISTS branding_colors JSONB DEFAULT '{"primary": "#000000", "
 
 -- Create enum for content focus types
 CREATE TYPE content_focus_type AS ENUM (
-  'music',
-  'podcast',
-  'comedy',
-  'fitness',
-  'gaming',
-  'education',
-  'art',
-  'photography',
-  'writing',
-  'other'
+  'blog', 'product', 'video', 'vip', 'podcast', 'course', 'lyrics'
 );
 
 -- Add constraint for content_focus

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createBrowserClient } from "@/lib/supabase/client";
 import { format } from "date-fns";
 
 interface BookingFormProps {
@@ -23,7 +23,7 @@ interface BookingFormProps {
 
 export default function BookingForm({ booking }: BookingFormProps) {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

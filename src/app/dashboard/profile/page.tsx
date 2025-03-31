@@ -1,10 +1,9 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 import ProfileForm from "@/components/ProfileForm";
 import { redirect } from "next/navigation";
 
 export default async function ProfilePage() {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await createClient();
 
   try {
     // Fetch user data
