@@ -66,6 +66,7 @@ interface CreatorProfileData extends BaseProfileData {
   monetization_links: Record<string, string>;
   booking_enabled: boolean;
   featured_content: FeaturedContent[];
+  follower_count: Record<string, number>;
   branding_colors: {
     primary: string;
     secondary: string;
@@ -161,26 +162,54 @@ export default function ProfileForm({
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [more, setMore] = useState(false);
   const [socialLinks, setSocialLinks] = useState(
     initialData.social_links || {}
   );
+  const MONETIZATION_PLATFORMS = [
+    { name: "Patreon", key: "patreon", icon: "❤️" },
+    { name: "Ko-Fi", key: "kofi", icon: "☕" },
+    { name: "Buy Me a Coffee", key: "buymeacoffee", icon: "🍵" },
+    { name: "PayPal", key: "paypal", icon: "💰" },
+    { name: "Gumroad", key: "gumroad", icon: "📦" },
+    { name: "OnlyFans", key: "onlyfans", icon: "🔞" },
+    { name: "Fansly", key: "fansly", icon: "🦊" },
+    { name: "Venmo", key: "venmo", icon: "💸" },
+    { name: "Cash App", key: "cashapp", icon: "💵" },
+    { name: "Stripe", key: "stripe", icon: "🏦" },
+  ];
+
+  const [monetizationLinks, setMonetizationLinks] = useState<
+    Record<string, string>
+  >({
+    ...Object.fromEntries(MONETIZATION_PLATFORMS.map(({ key }) => [key, ""])),
+    ...(initialData.monetization_links || {}),
+  });
+
+  const defaultValues = {
+    twitter: 100,
+    instagram: 100,
+    youtube: 100,
+    tiktok: 100,
+    twitch: 100,
+    discord: 100,
+    patreon: 100,
+    facebook: 100,
+    linkedin: 100,
+    pinterest: 100,
+    snapchat: 100,
+    telegram: 100,
+    vimeo: 100,
+  };
+
   const [followerCounts, setFollowerCounts] = useState<
     Record<SocialPlatform, number>
-  >({
-    twitter: 0,
-    instagram: 0,
-    youtube: 0,
-    tiktok: 0,
-    twitch: 0,
-    discord: 0,
-    patreon: 0,
-    facebook: 0,
-    linkedin: 0,
-    pinterest: 0,
-    snapchat: 0,
-    telegram: 0,
-    vimeo: 0,
-  });
+  >(
+    initialData.follower_count
+      ? { ...defaultValues, ...initialData.follower_count } // Merge defaults & existing data
+      : defaultValues
+  );
+
   const totalFollowerCount = Object.values(followerCounts).reduce(
     (acc, count) => acc + count,
     0
@@ -211,10 +240,32 @@ export default function ProfileForm({
         formData.cover_image = coverData.path;
       }
 
-      // Update profile
+      // Ensure follower counts updates are merged instead of replaced
+      const updatedFollowerCounts = {
+        ...(initialData.follower_count || {}), // Preserve existing counts
+        ...followerCounts, // Merge new updates
+      };
+
+      // Ensure social_links updates are merged instead of replaced
+      const updatedSocialLinks = {
+        ...initialData.social_links, // Preserve existing links
+        ...socialLinks, // Merge new updates
+      };
+
+      // Build the final update payload
+      const updateData = {
+        ...formData,
+        social_links: updatedSocialLinks,
+        follower_count: updatedFollowerCounts, // Each social platform has its own follower count
+        social_following_count: totalFollowerCount,
+        monetization_links: monetizationLinks,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Update profile in Supabase
       const { error } = await supabase
         .from("profiles")
-        .update(formData)
+        .update(updateData)
         .eq("id", userId);
 
       if (error) throw error;
@@ -502,7 +553,7 @@ export default function ProfileForm({
                             onChange={(e) =>
                               setFollowerCounts({
                                 ...followerCounts,
-                                [key]: Number(e.target.value),
+                                [key]: Math.max(0, Number(e.target.value)),
                               })
                             }
                             className="border rounded p-2 w-full"
@@ -529,30 +580,41 @@ export default function ProfileForm({
                   <label className="block text-sm font-medium text-gray-700">
                     Monetization Links
                   </label>
-                  {Object.entries(formData.monetization_links || {}).map(
-                    ([platform, url]) => (
-                      <div key={platform}>
-                        <label className="block text-sm font-medium text-gray-700 capitalize">
-                          {platform}
-                        </label>
-                        <input
-                          type="url"
-                          name={`monetization_links.${platform}`}
-                          value={url}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              monetization_links: {
-                                ...prev.monetization_links,
-                                [platform]: e.target.value,
-                              },
-                            }))
-                          }
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
-                        />
-                      </div>
-                    )
-                  )}
+
+                  <div className="flex flex-col space-y-2">
+                    {MONETIZATION_PLATFORMS.slice(0, more ? undefined : 3).map(
+                      ({ name, key, icon }) => (
+                        <div key={key} className="flex flex-col space-y-1">
+                          <label className="flex items-center space-x-2 font-medium">
+                            <span>{icon}</span>
+                            <span>{name}:</span>
+                          </label>
+                          <input
+                            type="url"
+                            placeholder={`Enter your ${name} link`}
+                            value={monetizationLinks[key] || ""}
+                            onChange={(e) =>
+                              setMonetizationLinks({
+                                ...monetizationLinks,
+                                [key]: e.target.value,
+                              })
+                            }
+                            className="border rounded p-2 w-full"
+                          />
+                        </div>
+                      )
+                    )}
+
+                    {/* Show More / Show Less Button */}
+                    {MONETIZATION_PLATFORMS.length > 3 && (
+                      <button
+                        onClick={() => setMore(!more)}
+                        className="mt-2 text-blue-600 text-sm font-medium underline"
+                      >
+                        {more ? "Show Less" : "Show More"}
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Featured Content */}

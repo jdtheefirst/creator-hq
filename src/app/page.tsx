@@ -13,7 +13,8 @@ interface Profile {
   bio: string;
   avatar_url: string;
   cover_url: string;
-  follower_count: number;
+  follower_count: Record<string, number>;
+  social_following_count: number;
   social_links: {
     twitter?: string;
     instagram?: string;
@@ -76,7 +77,8 @@ export default function CreatorProfilePage() {
           bio: "Welcome to my creator profile! This is a demo account showcasing the features of Creator HQ.",
           avatar_url: "/profile.png",
           cover_url: "",
-          follower_count: 1234,
+          follower_count: {},
+          social_following_count: 1234,
           social_links: {
             twitter: "https://twitter.com/demo",
             instagram: "https://instagram.com/demo",
@@ -290,7 +292,8 @@ export default function CreatorProfilePage() {
                     />
                   </svg>
                   <span className="text-xs w-full">
-                    {formatFollowers(profile.follower_count)} Followers Across
+                    {formatFollowers(profile.social_following_count || 200000)}{" "}
+                    Followers Across
                   </span>
                 </div>
               </div>
