@@ -14,7 +14,6 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/api/auth") ||
     request.nextUrl.pathname === "/auth/callback"
   ) {
-    console.log("Skipping middleware for:", request.nextUrl.pathname);
     return NextResponse.next();
   }
 
@@ -26,27 +25,33 @@ export async function middleware(request: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  console.log(
-    "Session status:",
-    session ? "Authenticated" : "Not authenticated"
-  );
-
-  // Handle protected routes
   const isProtectedRoute = request.nextUrl.pathname.startsWith("/dashboard");
   const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
+  const toProfile = request.nextUrl.pathname.startsWith("/dashboard/profile");
 
-  // If trying to access protected route without session, redirect to login
-  if (isProtectedRoute && !session) {
-    console.log("Redirecting to login - no session for protected route");
-    const redirectUrl = new URL("/login", request.url);
-    redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname);
-    return NextResponse.redirect(redirectUrl);
+  // Prevent infinite redirect loop for profile page
+  if (toProfile && session) {
+    if (
+      request.nextUrl.searchParams.get("redirectedFrom") ===
+      "/dashboard/profile"
+    ) {
+      return NextResponse.next(); // Allow access to the page
+    }
   }
 
-  // If trying to access auth routes with session, redirect to dashboard
+  // Redirect unauthenticated users from protected routes
+  if (isProtectedRoute && !session) {
+    const redirectedFrom = request.nextUrl.searchParams.get("redirectedFrom");
+    if (redirectedFrom !== "/login") {
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname);
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
+
+  // Redirect authenticated users away from login page
   if (isAuthRoute && session) {
     console.log("Redirecting to dashboard - session exists for auth route");
-    // Check user role for proper redirection
     const { data: userData } = await supabase
       .from("users")
       .select("role")
@@ -58,7 +63,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 
-  // If accessing protected route, verify user role
+  // Restrict non-creators from dashboard access
   if (isProtectedRoute && session) {
     const { data: userData } = await supabase
       .from("users")
@@ -67,9 +72,7 @@ export async function middleware(request: NextRequest) {
       .maybeSingle()
       .throwOnError();
 
-    // If user is not a creator and trying to access dashboard, redirect to home
     if (userData?.role !== "creator") {
-      console.log("Redirecting to home - user is not a creator");
       return NextResponse.redirect(new URL("/", request.url));
     }
   }

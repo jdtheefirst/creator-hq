@@ -59,8 +59,6 @@ export default function CreatorProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [featuredContent, setFeaturedContent] = useState<FeaturedContent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [followLoading, setFollowLoading] = useState(false);
   const [notification, setNotification] = useState<NotificationState | null>(
     null
   );
@@ -70,68 +68,54 @@ export default function CreatorProfilePage() {
 
   useEffect(() => {
     async function fetchProfileData() {
-      if (!user) {
-        setProfile({
-          id: "demo",
-          full_name: "Demo Creator",
-          bio: "Welcome to my creator profile! This is a demo account showcasing the features of Creator HQ.",
-          avatar_url: "/profile.png",
-          cover_url: "",
-          follower_count: {},
-          social_following_count: 1234,
-          social_links: {
-            twitter: "https://twitter.com/demo",
-            instagram: "https://instagram.com/demo",
-            youtube: "https://youtube.com/demo",
-            website: "https://demo.com",
-            tiktok: "https://tiktok.com/demo",
-            twitch: "https://twitch.com/demo",
-            discord: "https://discord.com/demo",
-            patreon: "https://patreon.com/demo",
-            facebook: "https://facebook.com/demo",
-            linkedin: "https://linkedin.com/demo",
-            pinterest: "https://pinterest.com/demo",
-            snapchat: "https://snapchat.com/demo",
-            telegram: "https://telegram.com/demo",
-            vimeo: "https://vimeo.com/demo",
-          },
-        });
-        setLoading(false);
-        return;
-      }
-
       try {
+        // Fetch the creator's profile based on a specific creator ID
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("*")
-          .eq("id", user.id)
+          .select("*, users(role)") // ✅ Fetch role from `users`
+          .eq("users.role", "creator") // ✅ Filter correctly
           .single();
+
+        console.log("User:", profileData);
 
         if (profileData) {
           setProfile(profileData);
+        } else {
+          setProfile({
+            id: "demo",
+            full_name: "Demo Creator",
+            bio: "Welcome to my creator profile! This is a demo account showcasing the features of Creator HQ.",
+            avatar_url: "/profile.png",
+            cover_url: "",
+            follower_count: {},
+            social_following_count: 1234,
+            social_links: {
+              twitter: "https://twitter.com/demo",
+              instagram: "https://instagram.com/demo",
+              youtube: "https://youtube.com/demo",
+              website: "https://demo.com",
+              tiktok: "https://tiktok.com/demo",
+              twitch: "https://twitch.com/demo",
+              discord: "https://discord.com/demo",
+              patreon: "https://patreon.com/demo",
+              facebook: "https://facebook.com/demo",
+              linkedin: "https://linkedin.com/demo",
+              pinterest: "https://pinterest.com/demo",
+              snapchat: "https://snapchat.com/demo",
+              telegram: "https://telegram.com/demo",
+              vimeo: "https://vimeo.com/demo",
+            },
+          });
         }
-
         const { data: contentData } = await supabase
           .from("featured_content")
           .select("*")
-          .eq("creator_id", user.id)
+          .eq("creator_id", profileData?.id) // ✅ Match content to creator
           .order("created_at", { ascending: false })
           .limit(3);
 
         if (contentData) {
           setFeaturedContent(contentData);
-        }
-
-        // Check if current user is following this profile
-        if (user.id !== profileData?.id) {
-          const { data: followData } = await supabase
-            .from("followers")
-            .select("*")
-            .eq("follower_id", user.id)
-            .eq("following_id", profileData?.id)
-            .single();
-
-          setIsFollowing(!!followData);
         }
       } catch (error) {
         console.error("Error fetching profile data:", error);
@@ -139,41 +123,8 @@ export default function CreatorProfilePage() {
         setLoading(false);
       }
     }
-
     fetchProfileData();
-  }, [user]);
-
-  const handleFollow = async () => {
-    if (!user || !profile) return;
-
-    setFollowLoading(true);
-    try {
-      if (isFollowing) {
-        const { error } = await supabase
-          .from("followers")
-          .delete()
-          .eq("follower_id", user.id)
-          .eq("following_id", profile.id);
-
-        if (error) throw error;
-        setIsFollowing(false);
-      } else {
-        const { error } = await supabase.from("followers").insert([
-          {
-            follower_id: user.id,
-            following_id: profile.id,
-          },
-        ]);
-
-        if (error) throw error;
-        setIsFollowing(true);
-      }
-    } catch (error) {
-      console.error("Error following/unfollowing:", error);
-    } finally {
-      setFollowLoading(false);
-    }
-  };
+  }, []);
 
   if (loading && user !== undefined) {
     return (
@@ -203,7 +154,7 @@ export default function CreatorProfilePage() {
       {/* Profile Icon in Top-right */}
       <div className="fixed top-4 right-4 z-50">
         {user ? (
-          <Link href="/dashboard" className="relative">
+          <Link href="/dashboard/profile" className="relative">
             <div className="h-10 w-10 rounded-full bg-white shadow-md overflow-hidden">
               {profile.avatar_url ? (
                 <Image
@@ -298,27 +249,6 @@ export default function CreatorProfilePage() {
                 </div>
               </div>
             </div>
-            {user && user.id !== profile.id && (
-              <div className="mt-4 sm:mt-0">
-                <button
-                  onClick={handleFollow}
-                  disabled={followLoading}
-                  className={`w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
-                    isFollowing
-                      ? "bg-gray-600 hover:bg-gray-700"
-                      : "bg-blue-600 hover:bg-blue-700"
-                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
-                >
-                  {followLoading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                  ) : isFollowing ? (
-                    "Following"
-                  ) : (
-                    "Follow"
-                  )}
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Social Links */}

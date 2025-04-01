@@ -167,7 +167,7 @@ export default function ProfileForm({
     initialData.social_links || {}
   );
   const MONETIZATION_PLATFORMS = [
-    { name: "Patreon", key: "patreon", icon: "❤️" },
+    { name: "Cash App", key: "cashapp", icon: "💵" },
     { name: "Ko-Fi", key: "kofi", icon: "☕" },
     { name: "Buy Me a Coffee", key: "buymeacoffee", icon: "🍵" },
     { name: "PayPal", key: "paypal", icon: "💰" },
@@ -175,7 +175,7 @@ export default function ProfileForm({
     { name: "OnlyFans", key: "onlyfans", icon: "🔞" },
     { name: "Fansly", key: "fansly", icon: "🦊" },
     { name: "Venmo", key: "venmo", icon: "💸" },
-    { name: "Cash App", key: "cashapp", icon: "💵" },
+    { name: "Patreon", key: "patreon", icon: "❤️" },
     { name: "Stripe", key: "stripe", icon: "🏦" },
   ];
 
@@ -285,15 +285,25 @@ export default function ProfileForm({
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
-    const { name, value, type } = e.target;
-    if (type === "checkbox") {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: (e.target as HTMLInputElement).checked,
-      }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
+    const { name, value, type, checked, files } = e.target as HTMLInputElement;
+
+    setFormData((prev) => {
+      if (type === "checkbox") {
+        return { ...prev, [name]: checked };
+      } else if (type === "file" && files) {
+        return { ...prev, [name]: files[0] }; // Store file object
+      } else if (type === "number") {
+        return { ...prev, [name]: Number(value) };
+      } else if (type === "url" || type === "text" || type === "textarea") {
+        return { ...prev, [name]: value };
+      } else {
+        try {
+          return { ...prev, [name]: JSON.parse(value) }; // Handle JSON data
+        } catch {
+          return { ...prev, [name]: value };
+        }
+      }
+    });
   };
 
   const handleImageUpload = (
@@ -606,7 +616,7 @@ export default function ProfileForm({
                     )}
 
                     {/* Show More / Show Less Button */}
-                    {MONETIZATION_PLATFORMS.length > 3 && (
+                    {MONETIZATION_PLATFORMS.length > 2 && (
                       <button
                         onClick={() => setMore(!more)}
                         className="mt-2 text-blue-600 text-sm font-medium underline"

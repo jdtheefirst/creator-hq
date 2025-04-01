@@ -3,7 +3,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { createBrowserClient, User as CustomUser } from "../supabase/client";
-import { redirect, usePathname } from "next/navigation";
 
 interface AuthContextType {
   user: CustomUser | null;
@@ -22,7 +21,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const pathname = usePathname();
   const supabase = createBrowserClient();
 
   useEffect(() => {

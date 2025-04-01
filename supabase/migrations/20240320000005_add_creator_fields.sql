@@ -7,8 +7,9 @@ ADD COLUMN IF NOT EXISTS timezone TEXT,
 ADD COLUMN IF NOT EXISTS languages TEXT[] DEFAULT '{}',
 ADD COLUMN IF NOT EXISTS expertise_areas TEXT[] DEFAULT '{}',
 ADD COLUMN IF NOT EXISTS hourly_rate DECIMAL(10,2),
-ADD COLUMN IF NOT EXISTS availability JSONB DEFAULT '{}'::jsonb;
+ADD COLUMN IF NOT EXISTS availability JSONB DEFAULT '{}'::jsonb,
 ADD COLUMN IF NOT EXISTS follower_counts JSONB DEFAULT '{}'::jsonb,
+ADD COLUMN IF NOT EXISTS monetization_links JSONB DEFAULT '{}'::jsonb,
 ADD COLUMN IF NOT EXISTS total_followers INTEGER DEFAULT 0;
 
 
