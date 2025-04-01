@@ -133,6 +133,21 @@ const QUICK_LINK_ICONS = {
     "M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3",
 };
 
+type SocialPlatform =
+  | "twitter"
+  | "instagram"
+  | "youtube"
+  | "tiktok"
+  | "twitch"
+  | "discord"
+  | "patreon"
+  | "facebook"
+  | "linkedin"
+  | "pinterest"
+  | "snapchat"
+  | "telegram"
+  | "vimeo";
+
 export default function ProfileForm({
   initialData,
   isCreator,
@@ -145,6 +160,31 @@ export default function ProfileForm({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [socialLinks, setSocialLinks] = useState(
+    initialData.social_links || {}
+  );
+  const [followerCounts, setFollowerCounts] = useState<
+    Record<SocialPlatform, number>
+  >({
+    twitter: 0,
+    instagram: 0,
+    youtube: 0,
+    tiktok: 0,
+    twitch: 0,
+    discord: 0,
+    patreon: 0,
+    facebook: 0,
+    linkedin: 0,
+    pinterest: 0,
+    snapchat: 0,
+    telegram: 0,
+    vimeo: 0,
+  });
+  const totalFollowerCount = Object.values(followerCounts).reduce(
+    (acc, count) => acc + count,
+    0
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -205,14 +245,6 @@ export default function ProfileForm({
     }
   };
 
-  const handleArrayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value.split(",").map((item) => item.trim()),
-    }));
-  };
-
   const handleImageUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
     type: "avatar" | "cover"
@@ -237,24 +269,6 @@ export default function ProfileForm({
       featured_content: prev.featured_content.map((item, i) =>
         i === index ? { ...item, [field]: value } : item
       ),
-    }));
-  };
-
-  const addFeaturedContent = () => {
-    setFormData((prev) => ({
-      ...prev,
-      featured_content: [
-        ...prev.featured_content,
-        {
-          id: Date.now().toString(),
-          type: "video",
-          title: "",
-          description: "",
-          thumbnail_url: "",
-          url: "",
-          is_vip: false,
-        },
-      ],
     }));
   };
 
@@ -371,7 +385,7 @@ export default function ProfileForm({
                     name="full_name"
                     value={formData.full_name || ""}
                     onChange={handleChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
                   />
                 </div>
                 <div>
@@ -383,7 +397,7 @@ export default function ProfileForm({
                     value={formData.bio || ""}
                     onChange={handleChange}
                     rows={4}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
                   />
                 </div>
                 <div>
@@ -395,50 +409,9 @@ export default function ProfileForm({
                     name="website"
                     value={formData.website || ""}
                     onChange={handleChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
                   />
                 </div>
-              </div>
-
-              {/* Social Links */}
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold">Social Links</h2>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Total Following Count
-                  </label>
-                  <input
-                    type="number"
-                    name="social_following_count"
-                    value={formData.social_following_count || 0}
-                    onChange={handleChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                  />
-                </div>
-                {Object.entries(formData.social_links || {}).map(
-                  ([platform, url]) => (
-                    <div key={platform}>
-                      <label className="block text-sm font-medium text-gray-700 capitalize">
-                        {platform}
-                      </label>
-                      <input
-                        type="url"
-                        name={`social_links.${platform}`}
-                        value={url}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            social_links: {
-                              ...prev.social_links,
-                              [platform]: e.target.value,
-                            },
-                          }))
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                      />
-                    </div>
-                  )
-                )}
               </div>
             </form>
           </TabPanel>
@@ -458,7 +431,7 @@ export default function ProfileForm({
                       name="tagline"
                       value={formData.tagline || ""}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
                     />
                   </div>
                   <div>
@@ -469,7 +442,7 @@ export default function ProfileForm({
                       name="content_focus"
                       value={formData.content_focus || ""}
                       onChange={handleChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
                     >
                       <option value="">Select a focus area</option>
                       {contentFocusOptions.map((option) => (
@@ -481,9 +454,81 @@ export default function ProfileForm({
                   </div>
                 </div>
 
+                {/* Editable Follower Counts */}
+                <div className="space-y-4">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Edit Follower Counts
+                  </label>
+
+                  <div className="flex flex-col space-y-2">
+                    {[
+                      { name: "X", key: "twitter", icon: "🐦" },
+                      { name: "Instagram", key: "instagram", icon: "📷" },
+                      { name: "YouTube", key: "youtube", icon: "▶️" },
+                      { name: "TikTok", key: "tiktok", icon: "🎵" },
+                      { name: "Twitch", key: "twitch", icon: "🎮" },
+                      { name: "Discord", key: "discord", icon: "💬" },
+                      { name: "Patreon", key: "patreon", icon: "❤️" },
+                      { name: "Facebook", key: "facebook", icon: "📘" },
+                      { name: "LinkedIn", key: "linkedin", icon: "💼" },
+                      { name: "Pinterest", key: "pinterest", icon: "📌" },
+                      { name: "Snapchat", key: "snapchat", icon: "👻" },
+                      { name: "Telegram", key: "telegram", icon: "✉️" },
+                      { name: "Vimeo", key: "vimeo", icon: "🎥" },
+                    ]
+                      .slice(0, expanded ? undefined : 1)
+                      .map(({ name, key, icon }) => (
+                        <div key={key} className="flex flex-col space-y-1">
+                          <label className="flex items-center space-x-2 font-medium">
+                            <span>{icon}</span>
+                            <span>{name}:</span>
+                          </label>
+                          <input
+                            type="url"
+                            placeholder={`Enter your ${name} profile link`}
+                            value={socialLinks[key] || ""}
+                            onChange={(e) =>
+                              setSocialLinks({
+                                ...socialLinks,
+                                [key]: e.target.value,
+                              })
+                            }
+                            className="border rounded p-2 w-full space-x-2"
+                          />
+                          <input
+                            type="number"
+                            placeholder="Follower count"
+                            value={followerCounts[key as SocialPlatform] || ""}
+                            onChange={(e) =>
+                              setFollowerCounts({
+                                ...followerCounts,
+                                [key]: Number(e.target.value),
+                              })
+                            }
+                            className="border rounded p-2 w-full"
+                          />
+                        </div>
+                      ))}
+
+                    {/* Show More / Show Less Button */}
+                    <button
+                      onClick={() => setExpanded(!expanded)}
+                      className="mt-2 text-blue-600 text-sm font-medium underline"
+                    >
+                      {expanded ? "Show Less" : "Show More"}
+                    </button>
+                  </div>
+
+                  <label className="block text-sm font-medium text-gray-700">
+                    Total Follower Count: {totalFollowerCount}
+                  </label>
+                </div>
+
                 {/* Monetization Links */}
                 <div className="space-y-4">
-                  <h2 className="text-lg font-semibold">Monetization Links</h2>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Monetization Links
+                  </label>
                   {Object.entries(formData.monetization_links || {}).map(
                     ([platform, url]) => (
                       <div key={platform}>
@@ -503,7 +548,7 @@ export default function ProfileForm({
                               },
                             }))
                           }
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2"
                         />
                       </div>
                     )
@@ -512,7 +557,9 @@ export default function ProfileForm({
 
                 {/* Featured Content */}
                 <div className="space-y-4">
-                  <h2 className="text-lg font-semibold">Featured Content</h2>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Featured Content
+                  </label>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {formData.featured_content.map((content, index) => (
                       <div
@@ -726,7 +773,9 @@ export default function ProfileForm({
 
                 {/* Branding Colors */}
                 <div className="space-y-4">
-                  <h2 className="text-lg font-semibold">Branding Colors</h2>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Branding Colors
+                  </label>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">
@@ -767,7 +816,9 @@ export default function ProfileForm({
 
                 {/* Booking Settings */}
                 <div className="space-y-4">
-                  <h2 className="text-lg font-semibold">Booking Settings</h2>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Booking Settings
+                  </label>
                   <div className="flex items-center">
                     <input
                       type="checkbox"
@@ -784,7 +835,9 @@ export default function ProfileForm({
 
                 {/* Quick Links Section */}
                 <div className="space-y-4">
-                  <h2 className="text-lg font-semibold">Quick Links</h2>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Quick Links
+                  </label>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {formData.quick_links?.map((link, index) => (
                       <div
@@ -953,272 +1006,6 @@ export default function ProfileForm({
                           Add Quick Link
                         </span>
                       </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Newsletter Section */}
-                <div className="space-y-4">
-                  <h2 className="text-lg font-semibold">
-                    Newsletter Management
-                  </h2>
-
-                  {/* Subscriber Stats */}
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                      <div className="text-sm text-gray-500">
-                        Total Subscribers
-                      </div>
-                      <div className="text-2xl font-semibold text-gray-900">
-                        {formData.newsletter_analytics?.total_subscribers || 0}
-                      </div>
-                    </div>
-                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                      <div className="text-sm text-gray-500">
-                        Active Subscribers
-                      </div>
-                      <div className="text-2xl font-semibold text-gray-900">
-                        {formData.newsletter_analytics?.active_subscribers || 0}
-                      </div>
-                    </div>
-                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                      <div className="text-sm text-gray-500">Open Rate</div>
-                      <div className="text-2xl font-semibold text-gray-900">
-                        {formData.newsletter_analytics?.open_rate || 0}%
-                      </div>
-                    </div>
-                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                      <div className="text-sm text-gray-500">Click Rate</div>
-                      <div className="text-2xl font-semibold text-gray-900">
-                        {formData.newsletter_analytics?.click_rate || 0}%
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Newsletter Preferences */}
-                  <div className="bg-white p-6 rounded-lg shadow-sm space-y-4">
-                    <h3 className="text-md font-medium text-gray-900">
-                      Newsletter Preferences
-                    </h3>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Email Frequency
-                      </label>
-                      <select
-                        value={
-                          formData.newsletter_preferences?.email_frequency ||
-                          "weekly"
-                        }
-                        onChange={(e) => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            newsletter_preferences: {
-                              ...prev.newsletter_preferences,
-                              email_frequency: e.target
-                                .value as NewsletterPreferences["email_frequency"],
-                            },
-                          }));
-                        }}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                      >
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Welcome Email
-                      </label>
-                      <div className="mt-1 flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={
-                            formData.newsletter_preferences?.welcome_email ||
-                            false
-                          }
-                          onChange={(e) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              newsletter_preferences: {
-                                ...prev.newsletter_preferences,
-                                welcome_email: e.target.checked,
-                              },
-                            }));
-                          }}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <label className="ml-2 block text-sm text-gray-700">
-                          Send welcome email to new subscribers
-                        </label>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Subscriber Benefits
-                      </label>
-                      <div className="mt-2 space-y-2">
-                        {formData.newsletter_preferences?.subscriber_benefits?.map(
-                          (benefit, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center space-x-2"
-                            >
-                              <input
-                                type="text"
-                                value={benefit}
-                                onChange={(e) => {
-                                  const newBenefits = [
-                                    ...(formData.newsletter_preferences
-                                      ?.subscriber_benefits || []),
-                                  ];
-                                  newBenefits[index] = e.target.value;
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    newsletter_preferences: {
-                                      ...prev.newsletter_preferences,
-                                      subscriber_benefits: newBenefits,
-                                    },
-                                  }));
-                                }}
-                                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                placeholder="Enter benefit"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newBenefits =
-                                    formData.newsletter_preferences?.subscriber_benefits.filter(
-                                      (_, i) => i !== index
-                                    );
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    newsletter_preferences: {
-                                      ...prev.newsletter_preferences,
-                                      subscriber_benefits: newBenefits,
-                                    },
-                                  }));
-                                }}
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                <svg
-                                  className="h-5 w-5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                  />
-                                </svg>
-                              </button>
-                            </div>
-                          )
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              newsletter_preferences: {
-                                ...prev.newsletter_preferences,
-                                subscriber_benefits: [
-                                  ...(prev.newsletter_preferences
-                                    ?.subscriber_benefits || []),
-                                  "",
-                                ],
-                              },
-                            }));
-                          }}
-                          className="text-sm text-blue-600 hover:text-blue-700"
-                        >
-                          + Add Benefit
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Email Template
-                      </label>
-                      <div className="mt-2 space-y-2">
-                        <input
-                          type="text"
-                          value={
-                            formData.newsletter_preferences?.email_template
-                              ?.subject_line || ""
-                          }
-                          onChange={(e) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              newsletter_preferences: {
-                                ...prev.newsletter_preferences,
-                                email_template: {
-                                  ...prev.newsletter_preferences
-                                    ?.email_template,
-                                  subject_line: e.target.value,
-                                },
-                              },
-                            }));
-                          }}
-                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                          placeholder="Default subject line"
-                        />
-                        <textarea
-                          value={
-                            formData.newsletter_preferences?.email_template
-                              ?.preview_text || ""
-                          }
-                          onChange={(e) => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              newsletter_preferences: {
-                                ...prev.newsletter_preferences,
-                                email_template: {
-                                  ...prev.newsletter_preferences
-                                    ?.email_template,
-                                  preview_text: e.target.value,
-                                },
-                              },
-                            }));
-                          }}
-                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                          placeholder="Preview text"
-                          rows={2}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Export Subscribers */}
-                  <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 className="text-md font-medium text-gray-900 mb-4">
-                      Export Subscribers
-                    </h3>
-                    <button
-                      type="button"
-                      className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      <svg
-                        className="h-5 w-5 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                        />
-                      </svg>
-                      Export CSV
                     </button>
                   </div>
                 </div>
