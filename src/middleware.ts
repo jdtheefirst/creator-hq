@@ -112,7 +112,7 @@ export async function middleware(request: NextRequest) {
     const engagementEvents = [
       {
         creator_id: session.user.id,
-        event_type: "page_view",
+        event_type: "view",
         page_path: request.nextUrl.pathname,
         metadata: {
           referrer: request.headers.get("referer"),

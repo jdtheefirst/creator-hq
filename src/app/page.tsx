@@ -12,7 +12,7 @@ interface Profile {
   full_name: string;
   bio: string;
   avatar_url: string;
-  cover_url: string;
+  cover_image: string;
   follower_count: Record<string, number>;
   social_following_count: number;
   social_links: {
@@ -69,53 +69,28 @@ export default function CreatorProfilePage() {
   useEffect(() => {
     async function fetchProfileData() {
       try {
-        // Fetch the creator's profile based on a specific creator ID
-        const { data: profileData } = await supabase
+        // Fetch profile data
+        const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("*, users(role)") // ✅ Fetch role from `users`
-          .eq("users.role", "creator") // ✅ Filter correctly
+          .select("*, users(role)")
+          .eq("users.role", "creator")
           .single();
 
-        console.log("User:", profileData);
+        if (profileError) throw profileError;
 
         if (profileData) {
           setProfile(profileData);
-        } else {
-          setProfile({
-            id: "demo",
-            full_name: "Demo Creator",
-            bio: "Welcome to my creator profile! This is a demo account showcasing the features of Creator HQ.",
-            avatar_url: "/profile.png",
-            cover_url: "",
-            follower_count: {},
-            social_following_count: 1234,
-            social_links: {
-              twitter: "https://twitter.com/demo",
-              instagram: "https://instagram.com/demo",
-              youtube: "https://youtube.com/demo",
-              website: "https://demo.com",
-              tiktok: "https://tiktok.com/demo",
-              twitch: "https://twitch.com/demo",
-              discord: "https://discord.com/demo",
-              patreon: "https://patreon.com/demo",
-              facebook: "https://facebook.com/demo",
-              linkedin: "https://linkedin.com/demo",
-              pinterest: "https://pinterest.com/demo",
-              snapchat: "https://snapchat.com/demo",
-              telegram: "https://telegram.com/demo",
-              vimeo: "https://vimeo.com/demo",
-            },
-          });
-        }
-        const { data: contentData } = await supabase
-          .from("featured_content")
-          .select("*")
-          .eq("creator_id", profileData?.id) // ✅ Match content to creator
-          .order("created_at", { ascending: false })
-          .limit(3);
 
-        if (contentData) {
-          setFeaturedContent(contentData);
+          // Fetch content only if profile exists
+          const { data: contentData, error: contentError } = await supabase
+            .from("featured_content")
+            .select("*")
+            .eq("creator_id", profileData.id)
+            .order("created_at", { ascending: false })
+            .limit(3);
+
+          if (contentError) throw contentError;
+          if (contentData) setFeaturedContent(contentData);
         }
       } catch (error) {
         console.error("Error fetching profile data:", error);
@@ -123,10 +98,11 @@ export default function CreatorProfilePage() {
         setLoading(false);
       }
     }
-    fetchProfileData();
-  }, []);
 
-  if (loading && user !== undefined) {
+    fetchProfileData();
+  }, []); // Empty dependency array for initial load only
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -148,6 +124,8 @@ export default function CreatorProfilePage() {
       </div>
     );
   }
+  const coverUrl = `https://eofyzzhfsqwfskxstczu.supabase.co/storage/v1/object/public/covers/${profile.cover_image}`;
+  const avatarUrl = `https://eofyzzhfsqwfskxstczu.supabase.co/storage/v1/object/public/avatars/${profile.avatar_url}`;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -158,7 +136,7 @@ export default function CreatorProfilePage() {
             <div className="h-10 w-10 rounded-full bg-white shadow-md overflow-hidden">
               {profile.avatar_url ? (
                 <Image
-                  src={profile.avatar_url}
+                  src={avatarUrl}
                   alt="Profile"
                   sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
                   fill
@@ -186,9 +164,9 @@ export default function CreatorProfilePage() {
 
       {/* Cover Banner */}
       <div className="relative h-48 bg-gradient-to-r from-blue-500 to-purple-600">
-        {profile.cover_url && (
+        {profile.cover_image && (
           <Image
-            src={profile.cover_url}
+            src={coverUrl}
             alt="Cover"
             sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
             fill
@@ -206,7 +184,7 @@ export default function CreatorProfilePage() {
               <div className="relative h-32 w-32 sm:h-40 sm:w-40 rounded-full border-4 border-white overflow-hidden flex-shrink-0">
                 {profile.avatar_url ? (
                   <Image
-                    src={profile.avatar_url}
+                    src={avatarUrl}
                     alt={profile.full_name}
                     sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
                     priority

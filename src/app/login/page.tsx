@@ -1,16 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { isAdmin } from "@/config/admin";
 import SignUpPage from "../signup/page";
 
 export default function LoginPage() {
   const { signIn, signInWithGoogle, signInWithTwitter } = useAuth();
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
