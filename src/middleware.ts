@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function middleware(request: NextRequest) {
   console.log("Middleware processing request for:", request.nextUrl.pathname);
 
-  // Skip middleware for auth-related routes
+  // Skip middleware for certain routes
   if (
     request.nextUrl.pathname.startsWith("/auth") ||
     request.nextUrl.pathname.startsWith("/_next") ||
@@ -20,116 +20,132 @@ export async function middleware(request: NextRequest) {
   const res = NextResponse.next();
   const supabase = await createClient();
 
-  // Get the user's session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  try {
+    // Get the user's session
+    let {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  const isProtectedRoute = request.nextUrl.pathname.startsWith("/dashboard");
-  const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
-  const toProfile = request.nextUrl.pathname.startsWith("/dashboard/profile");
-
-  // Prevent infinite redirect loop for profile page
-  if (toProfile && session) {
-    if (
-      request.nextUrl.searchParams.get("redirectedFrom") ===
-      "/dashboard/profile"
-    ) {
-      return NextResponse.next(); // Allow access to the page
+    // Refresh session if expired
+    if (!session) {
+      console.log("Session expired, attempting refresh...");
+      const { data: refreshedSession, error } =
+        await supabase.auth.refreshSession();
+      if (error) console.error("Session refresh failed:", error);
+      session = refreshedSession?.session || null;
     }
-  }
 
-  // Redirect unauthenticated users from protected routes
-  if (isProtectedRoute && !session) {
-    const redirectedFrom = request.nextUrl.searchParams.get("redirectedFrom");
-    if (redirectedFrom !== "/login") {
-      const redirectUrl = new URL("/login", request.url);
-      redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname);
-      return NextResponse.redirect(redirectUrl);
+    const isProtectedRoute = request.nextUrl.pathname.startsWith("/dashboard");
+    const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
+    const toProfile = request.nextUrl.pathname.startsWith("/dashboard/profile");
+
+    // Prevent infinite redirect loop for profile page
+    if (toProfile && session) {
+      if (
+        request.nextUrl.searchParams.get("redirectedFrom") ===
+        "/dashboard/profile"
+      ) {
+        return NextResponse.next();
+      }
     }
-  }
 
-  // Redirect authenticated users away from login page
-  if (isAuthRoute && session) {
-    console.log("Redirecting to dashboard - session exists for auth route");
-    const { data: userData } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", session.user.id)
-      .maybeSingle()
-      .throwOnError();
-
-    const redirectPath = userData?.role === "creator" ? "/dashboard" : "/";
-    return NextResponse.redirect(new URL(redirectPath, request.url));
-  }
-
-  // Restrict non-creators from dashboard access
-  if (isProtectedRoute && session) {
-    const { data: userData } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", session.user.id)
-      .maybeSingle()
-      .throwOnError();
-
-    if (userData?.role !== "creator") {
-      return NextResponse.redirect(new URL("/", request.url));
+    // Redirect unauthenticated users from protected routes
+    if (isProtectedRoute && !session) {
+      const redirectedFrom = request.nextUrl.searchParams.get("redirectedFrom");
+      if (redirectedFrom !== "/login") {
+        const redirectUrl = new URL("/login", request.url);
+        redirectUrl.searchParams.set(
+          "redirectedFrom",
+          request.nextUrl.pathname
+        );
+        return NextResponse.redirect(redirectUrl);
+      }
     }
-  }
 
-  // Parse user agent
-  const parser = new UAParser(request.headers.get("user-agent") || "");
-  const userAgent = parser.getResult();
+    // Redirect authenticated users away from login page
+    if (isAuthRoute && session) {
+      console.log("Redirecting to dashboard - session exists for auth route");
 
-  // Get IP address and geolocation
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
-  const geoData = await getGeolocation(ip);
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
 
-  // Track page view for all users (authenticated and guests)
-  const pageView = {
-    creator_id: session?.user?.id || null,
-    page_path: request.nextUrl.pathname,
-    user_agent: request.headers.get("user-agent"),
-    referrer: request.headers.get("referer"),
-    ip_address: ip,
-    country: geoData?.country || "Unknown",
-    country_code: geoData?.countryCode || "XX",
-    region: geoData?.region || "Unknown",
-    city: geoData?.city || "Unknown",
-    timezone: geoData?.timezone || "Unknown",
-    latitude: geoData?.lat || null,
-    longitude: geoData?.lon || null,
-    device_type: userAgent.device.type || "desktop",
-    browser: userAgent.browser.name || "unknown",
-    os: userAgent.os.name || "unknown",
-    session_id: request.cookies.get("session_id")?.value,
-  };
+      const redirectPath = userData?.role === "creator" ? "/dashboard" : "/";
+      return NextResponse.redirect(new URL(redirectPath, request.url));
+    }
 
-  await supabase.from("page_views").insert(pageView);
+    // Restrict non-creators from dashboard access
+    if (isProtectedRoute && session) {
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
 
-  // Track additional engagement events for authenticated users
-  if (session) {
-    const engagementEvents = [
-      {
-        creator_id: session.user.id,
-        event_type: "view",
-        page_path: request.nextUrl.pathname,
-        metadata: {
-          referrer: request.headers.get("referer"),
-          ip: ip,
-          country: geoData?.country || "Unknown",
-          country_code: geoData?.countryCode || "XX",
-          region: geoData?.region || "Unknown",
-          city: geoData?.city || "Unknown",
-          timezone: geoData?.timezone || "Unknown",
-          device: userAgent.device,
-          browser: userAgent.browser,
-          os: userAgent.os,
+      if (userData?.role !== "creator") {
+        return NextResponse.redirect(new URL("/", request.url));
+      }
+    }
+
+    // Parse user agent
+    const parser = new UAParser(request.headers.get("user-agent") || "");
+    const userAgent = parser.getResult();
+
+    // Get IP address and geolocation
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
+    const geoData = await getGeolocation(ip);
+
+    // Track page view for all users (authenticated and guests)
+    const pageView = {
+      creator_id: session?.user?.id || null,
+      page_path: request.nextUrl.pathname,
+      user_agent: request.headers.get("user-agent"),
+      referrer: request.headers.get("referer"),
+      ip_address: ip,
+      country: geoData?.country || "Unknown",
+      country_code: geoData?.countryCode || "XX",
+      region: geoData?.region || "Unknown",
+      city: geoData?.city || "Unknown",
+      timezone: geoData?.timezone || "Unknown",
+      latitude: geoData?.lat || null,
+      longitude: geoData?.lon || null,
+      device_type: userAgent.device.type || "desktop",
+      browser: userAgent.browser.name || "unknown",
+      os: userAgent.os.name || "unknown",
+      session_id: request.cookies.get("session_id")?.value,
+    };
+
+    await supabase.from("page_views").insert(pageView);
+
+    // Track additional engagement events for authenticated users
+    if (session) {
+      const engagementEvents = [
+        {
+          creator_id: session.user.id,
+          event_type: "view",
+          page_path: request.nextUrl.pathname,
+          metadata: {
+            referrer: request.headers.get("referer"),
+            ip: ip,
+            country: geoData?.country || "Unknown",
+            country_code: geoData?.countryCode || "XX",
+            region: geoData?.region || "Unknown",
+            city: geoData?.city || "Unknown",
+            timezone: geoData?.timezone || "Unknown",
+            device: userAgent.device,
+            browser: userAgent.browser,
+            os: userAgent.os,
+          },
         },
-      },
-    ];
+      ];
 
-    await supabase.from("user_engagement").insert(engagementEvents);
+      await supabase.from("user_engagement").insert(engagementEvents);
+    }
+  } catch (error) {
+    console.error("Middleware error:", error);
   }
 
   return res;

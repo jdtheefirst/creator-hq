@@ -2,15 +2,12 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const router = useRouter();
   const { signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {

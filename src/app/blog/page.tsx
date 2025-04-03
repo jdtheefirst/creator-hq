@@ -1,29 +1,15 @@
 import Link from "next/link";
 import { format } from "date-fns";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
 import Image from "next/image";
+import { createClient } from "@/lib/supabase/server";
 
-interface BlogPost {
-  id: string;
-  title: string;
-  excerpt: string;
-  created_at: string;
-  category: string;
-  slug: string;
-  cover_image: string | null;
-  ads_enabled: boolean;
-}
-
-interface BlogPageProps {
-  searchParams: {
-    category?: string;
-  };
-}
-
-export default async function BlogPage({ searchParams }: BlogPageProps) {
-  const supabase = createServerComponentClient({ cookies });
-  const category = searchParams.category;
+export default async function BlogPage({
+  searchParams,
+}: {
+  searchParams: { category?: string };
+}) {
+  const supabase = await createClient();
+  const { category } = searchParams;
 
   // Fetch blog posts
   let query = supabase
