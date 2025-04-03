@@ -7,6 +7,7 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { create } from "domain";
 import { createBrowserClient } from "@/lib/supabase/client";
+import SignOutButton from "./SignOutButton";
 
 interface BaseProfileData {
   id: string;
@@ -401,7 +402,27 @@ export default function ProfileForm({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center mb-4">
+        {isCreator ? (
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard")}
+            className="px-4 py-2 text-sm rounded-lg transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200
+          "
+          >
+            Dashboard
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="px-4 py-2 text-sm rounded-lg transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300
+              "
+          >
+            Home
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => setPreviewMode(!previewMode)}
@@ -1278,6 +1299,7 @@ export default function ProfileForm({
                 <div className="space-y-4">
                   <h2 className="text-lg font-semibold">Account Actions</h2>
                   <div className="space-y-2">
+                    <SignOutButton />
                     <button
                       type="button"
                       className="w-full px-4 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100"

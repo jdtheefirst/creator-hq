@@ -1,24 +1,61 @@
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-  try {
-    const { email } = await request.json();
+  const supabase = await createClient();
 
-    if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+  try {
+    const { email, creator_id } = await request.json();
+
+    // Validate email
+    if (!email || !creator_id) {
+      return NextResponse.json(
+        { error: "Email and creator_id are required" },
+        { status: 400 }
+      );
     }
 
-    // TODO: Add email validation
-    // TODO: Integrate with email service (e.g., Mailchimp, SendGrid)
+    // Add subscriber
+    const { data, error } = await supabase
+      .from("newsletter_subscribers")
+      .insert([
+        {
+          email,
+          creator_id,
+          is_active: true,
+        },
+      ])
+      .select()
+      .single();
+    if (error) {
+      if (error.code === "23505") {
+        // Unique violation
+        return NextResponse.json(
+          { error: "Already subscribed" },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
-    // For now, just return success
-    return NextResponse.json(
-      { message: "Successfully subscribed to newsletter" },
-      { status: 200 }
-    );
+    // Track subscription event
+    await supabase.from("user_engagement").insert([
+      {
+        creator_id,
+        event_type: "conversion",
+        page_path: "/newsletter/subscribe",
+        metadata: {
+          subscription_id: data.id,
+          email: email,
+        },
+      },
+    ]);
+
+    return NextResponse.json({ success: true, data });
   } catch (error) {
+    console.error("Newsletter subscription error:", error);
     return NextResponse.json(
-      { error: "Failed to subscribe to newsletter" },
+      { error: "Failed to process subscription" },
       { status: 500 }
     );
   }

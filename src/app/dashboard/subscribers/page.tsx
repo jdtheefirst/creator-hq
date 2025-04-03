@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { isAdmin } from "@/config/admin";
-
 interface Subscriber {
   id: string;
   email: string;
@@ -41,7 +39,7 @@ export default function SubscribersPage() {
   const supabase = createBrowserClient();
 
   useEffect(() => {
-    if (!user || !isAdmin(user.email)) {
+    if (!user) {
       router.push("/dashboard");
       return;
     }
@@ -55,6 +53,7 @@ export default function SubscribersPage() {
       const { data, error } = await supabase
         .from("newsletter_subscribers")
         .select("*")
+        .eq("creator_id", user?.id)
         .order("subscribed_at", { ascending: false });
 
       if (error) throw error;
@@ -87,7 +86,8 @@ export default function SubscribersPage() {
       const { error } = await supabase
         .from("newsletter_subscribers")
         .update({ is_active: !currentStatus })
-        .eq("id", id);
+        .eq("id", id)
+        .eq("creator_id", user?.id);
 
       if (error) throw error;
       fetchSubscribers();

@@ -40,6 +40,7 @@ export default function Editor({
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
+    immediatelyRender: false,
   });
 
   if (!editor) {

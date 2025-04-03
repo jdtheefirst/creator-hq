@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ContentManagementLinks from "@/components/dashboard/ContentManagementLinks";
 
 // Temporary dashboard data
 const stats = [
@@ -38,20 +39,6 @@ export default function DashboardPage() {
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">Dashboard</h1>
-          <div className="flex gap-4">
-            <Link
-              href="/dashboard/posts/new"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              New Post
-            </Link>
-            <Link
-              href="/dashboard/products/new"
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-            >
-              Add Product
-            </Link>
-          </div>
         </div>
 
         {/* Stats Grid */}
@@ -124,21 +111,9 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h3 className="text-lg font-semibold mb-4">Content Management</h3>
-            <div className="space-y-2">
-              <Link
-                href="/dashboard/posts"
-                className="block text-blue-600 hover:text-blue-700"
-              >
-                Manage Blog Posts
-              </Link>
-              <Link
-                href="/dashboard/products"
-                className="block text-blue-600 hover:text-blue-700"
-              >
-                Manage Products
-              </Link>
-            </div>
+            <ContentManagementLinks />
           </div>
+
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h3 className="text-lg font-semibold mb-4">Analytics</h3>
             <div className="space-y-2">
@@ -156,6 +131,7 @@ export default function DashboardPage() {
               </Link>
             </div>
           </div>
+
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h3 className="text-lg font-semibold mb-4">Settings</h3>
             <div className="space-y-2">
