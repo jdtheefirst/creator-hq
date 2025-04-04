@@ -1,5 +1,3 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
 import { format, subDays } from "date-fns";
 import AnalyticsFilters from "@/components/AnalyticsFilters";
 import RevenueChart from "@/components/analytics/RevenueChart";
@@ -8,6 +6,8 @@ import UserEngagementChart from "@/components/analytics/UserEngagementChart";
 import TopPages from "@/components/analytics/TopPages";
 import UserDemographics from "@/components/analytics/UserDemographics";
 import RealTimeAnalytics from "@/components/analytics/RealTimeAnalytics";
+import NewsletterAnalytics from "@/components/analytics/NewsletterAnalytics";
+import { createClient } from "@/lib/supabase/server";
 
 interface AnalyticsPageProps {
   searchParams: {
@@ -51,6 +51,16 @@ interface EngagementData {
   total_events: number;
 }
 
+interface RevenueMetrics {
+  date: string;
+  total_revenue: number;
+  bookings_revenue: number;
+  products_revenue: number;
+  total_bookings: number;
+  total_products_sold: number;
+  average_order_value: number;
+}
+
 type RPCResponse<T> = {
   data: T | null;
   error: Error | null;
@@ -59,7 +69,7 @@ type RPCResponse<T> = {
 export default async function AnalyticsPage({
   searchParams,
 }: AnalyticsPageProps) {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await createClient();
 
   // Default to last 30 days if no date range is specified
   const endDate = searchParams.end_date
@@ -84,6 +94,14 @@ export default async function AnalyticsPage({
       start_date: format(startDate, "yyyy-MM-dd"),
       end_date: format(endDate, "yyyy-MM-dd"),
     });
+
+  // Fetch revenue metrics
+  const { data: revenueData }: RPCResponse<RevenueMetrics[]> = await supabase
+    .from("revenue_metrics")
+    .select("*")
+    .gte("date", format(startDate, "yyyy-MM-dd"))
+    .lte("date", format(endDate, "yyyy-MM-dd"))
+    .order("date", { ascending: true });
 
   const metrics = metricsData || [];
   const rawEngagement = rawEngagementData || [];
@@ -191,6 +209,21 @@ export default async function AnalyticsPage({
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-lg font-semibold mb-4">User Demographics</h2>
           <UserDemographics data={pageViewData} />
+        </div>
+      </div>
+
+      {/* Newsletter & Revenue Analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold mb-4">Revenue Analytics</h2>
+          <RevenueChart data={revenueData || []} />
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold mb-4">Newsletter Performance</h2>
+          <NewsletterAnalytics
+            startDate={format(startDate, "yyyy-MM-dd")}
+            endDate={format(endDate, "yyyy-MM-dd")}
+          />
         </div>
       </div>
     </div>

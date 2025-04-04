@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/context/AuthContext";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
 
 interface BookingFormProps {
   booking?: {
@@ -21,122 +25,145 @@ interface BookingFormProps {
   };
 }
 
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+);
+
 export default function BookingForm({ booking }: BookingFormProps) {
+  const { user } = useAuth();
   const router = useRouter();
   const supabase = createBrowserClient();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const [formData, setFormData] = useState({
     client_name: booking?.client_name || "",
     client_email: booking?.client_email || "",
     service_type: booking?.service_type || "consultation",
-    booking_date: booking
+    booking_date: booking?.booking_date
       ? format(new Date(booking.booking_date), "yyyy-MM-dd'T'HH:mm")
-      : "",
+      : format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     duration_minutes: booking?.duration_minutes || 60,
-    status: booking?.status || "pending",
     price: booking?.price || 0,
-    payment_status: booking?.payment_status || "pending",
-    meeting_link: booking?.meeting_link || "",
     notes: booking?.notes || "",
+    meeting_link: booking?.meeting_link || "",
+    status: booking?.status || "pending",
+    payment_status: booking?.payment_status || "pending",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
-
     try {
+      const bookingData = {
+        ...formData,
+        creator_id: user?.id,
+        booking_date: new Date(formData.booking_date).toISOString(),
+      };
+
       if (booking) {
         // Update existing booking
         const { error } = await supabase
           .from("bookings")
-          .update(formData)
-          .eq("id", booking.id);
+          .update(bookingData)
+          .eq("id", booking.id)
+          .eq("creator_id", user?.id);
 
         if (error) throw error;
+        toast.success("Booking updated successfully");
       } else {
         // Create new booking
-        const { error } = await supabase.from("bookings").insert([formData]);
+        const { error } = await supabase.from("bookings").insert([bookingData]);
 
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes("booking conflicts")) {
+            toast.error("This time slot is already booked");
+            return;
+          }
+          throw error;
+        }
+        toast.success("Booking created successfully");
       }
 
       router.push("/dashboard/bookings");
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to save booking");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-md">{error}</div>
-      )}
+  const handlePayment = async (bookingId: string) => {
+    try {
+      const response = await fetch("/api/bookings/payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId,
+          creator_id: user?.id,
+        }),
+      });
 
+      const { sessionId } = await response.json();
+      const stripe = await stripePromise;
+
+      if (!stripe) throw new Error("Stripe not loaded");
+
+      const { error } = await stripe.redirectToCheckout({ sessionId });
+      if (error) throw error;
+    } catch (err) {
+      console.error("Payment error:", err);
+      toast.error("Failed to process payment");
+    }
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-6 bg-white p-6 rounded-lg shadow"
+    >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Client Information */}
         <div>
-          <label
-            htmlFor="client_name"
-            className="block text-sm font-medium text-gray-700"
-          >
+          <label className="block text-sm font-medium text-gray-700">
             Client Name
           </label>
           <input
             type="text"
-            id="client_name"
             value={formData.client_name}
             onChange={(e) =>
-              setFormData((prev) => ({ ...prev, client_name: e.target.value }))
+              setFormData({ ...formData, client_name: e.target.value })
             }
-            required
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
           />
         </div>
 
         <div>
-          <label
-            htmlFor="client_email"
-            className="block text-sm font-medium text-gray-700"
-          >
+          <label className="block text-sm font-medium text-gray-700">
             Client Email
           </label>
           <input
             type="email"
-            id="client_email"
             value={formData.client_email}
             onChange={(e) =>
-              setFormData((prev) => ({ ...prev, client_email: e.target.value }))
+              setFormData({ ...formData, client_email: e.target.value })
             }
-            required
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
           />
         </div>
 
-        {/* Service Information */}
         <div>
-          <label
-            htmlFor="service_type"
-            className="block text-sm font-medium text-gray-700"
-          >
+          <label className="block text-sm font-medium text-gray-700">
             Service Type
           </label>
           <select
-            id="service_type"
             value={formData.service_type}
             onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                service_type: e.target.value as typeof formData.service_type,
-              }))
+              setFormData({ ...formData, service_type: e.target.value as any })
             }
-            required
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
           >
             <option value="consultation">Consultation</option>
             <option value="workshop">Workshop</option>
@@ -144,180 +171,156 @@ export default function BookingForm({ booking }: BookingFormProps) {
             <option value="other">Other</option>
           </select>
         </div>
-
         <div>
-          <label
-            htmlFor="price"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Price
-          </label>
-          <input
-            type="number"
-            id="price"
-            value={formData.price}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                price: parseFloat(e.target.value),
-              }))
-            }
-            required
-            min="0"
-            step="0.01"
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Booking Details */}
-        <div>
-          <label
-            htmlFor="booking_date"
-            className="block text-sm font-medium text-gray-700"
-          >
+          <label className="block text-sm font-medium text-gray-700">
             Date & Time
           </label>
           <input
             type="datetime-local"
-            id="booking_date"
             value={formData.booking_date}
             onChange={(e) =>
-              setFormData((prev) => ({ ...prev, booking_date: e.target.value }))
+              setFormData({ ...formData, booking_date: e.target.value })
             }
-            required
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
           />
         </div>
 
         <div>
-          <label
-            htmlFor="duration_minutes"
-            className="block text-sm font-medium text-gray-700"
-          >
+          <label className="block text-sm font-medium text-gray-700">
             Duration (minutes)
           </label>
           <input
             type="number"
-            id="duration_minutes"
             value={formData.duration_minutes}
             onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
+              setFormData({
+                ...formData,
                 duration_minutes: parseInt(e.target.value),
-              }))
+              })
             }
-            required
             min="15"
             step="15"
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
           />
         </div>
-
-        {/* Status and Payment */}
         <div>
-          <label
-            htmlFor="status"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Status
-          </label>
-          <select
-            id="status"
-            value={formData.status}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                status: e.target.value as typeof formData.status,
-              }))
-            }
-            required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value="pending">Pending</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        </div>
-
-        <div>
-          <label
-            htmlFor="payment_status"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Payment Status
-          </label>
-          <select
-            id="payment_status"
-            value={formData.payment_status}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                payment_status: e.target
-                  .value as typeof formData.payment_status,
-              }))
-            }
-            required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value="pending">Pending</option>
-            <option value="paid">Paid</option>
-            <option value="refunded">Refunded</option>
-          </select>
-        </div>
-
-        {/* Meeting Link */}
-        <div>
-          <label
-            htmlFor="meeting_link"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Meeting Link
+          <label className="block text-sm font-medium text-gray-700">
+            Price ($)
           </label>
           <input
-            type="url"
-            id="meeting_link"
-            value={formData.meeting_link}
+            type="number"
+            value={formData.price}
             onChange={(e) =>
-              setFormData((prev) => ({ ...prev, meeting_link: e.target.value }))
+              setFormData({ ...formData, price: parseFloat(e.target.value) })
             }
+            min="0"
+            step="0.01"
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            required
           />
         </div>
+
+        {booking && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Status
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) =>
+                  setFormData({ ...formData, status: e.target.value as any })
+                }
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Payment Status
+              </label>
+              <select
+                value={formData.payment_status}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    payment_status: e.target.value as any,
+                  })
+                }
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="pending">Pending</option>
+                <option value="paid">Paid</option>
+                <option value="refunded">Refunded</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Meeting Link
+              </label>
+              <input
+                type="url"
+                value={formData.meeting_link}
+                onChange={(e) =>
+                  setFormData({ ...formData, meeting_link: e.target.value })
+                }
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Notes */}
       <div>
-        <label
-          htmlFor="notes"
-          className="block text-sm font-medium text-gray-700"
-        >
-          Notes
-        </label>
+        <label className="block text-sm font-medium text-gray-700">Notes</label>
         <textarea
-          id="notes"
           value={formData.notes}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, notes: e.target.value }))
-          }
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
           rows={4}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
         />
       </div>
 
-      {/* Submit Button */}
-      <div className="flex justify-end">
+      <div className="flex justify-end space-x-4">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+        >
+          Cancel
+        </button>
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
         >
-          {loading
-            ? "Saving..."
-            : booking
-            ? "Update Booking"
-            : "Create Booking"}
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin inline" />
+              Saving...
+            </>
+          ) : booking ? (
+            "Update Booking"
+          ) : (
+            "Create Booking"
+          )}
         </button>
+        {booking?.payment_status === "pending" && (
+          <button
+            type="button"
+            onClick={() => handlePayment(booking.id)}
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
+          >
+            Process Payment
+          </button>
+        )}
       </div>
     </form>
   );

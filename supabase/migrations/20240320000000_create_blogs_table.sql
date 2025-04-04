@@ -25,7 +25,7 @@ create index blogs_author_id_idx on blogs(author_id);
 
 -- Create function to update updated_at timestamp
 create or replace function update_updated_at_column()
-returns trigger as $$
+returns trigger as $$ 
 begin
   new.updated_at = now();
   return new;
@@ -62,26 +62,87 @@ create policy "Authors can delete their own blogs"
   on blogs for delete
   using (auth.uid() = author_id);
 
--- Create function to generate slug from title
-create or replace function generate_slug(title text)
-returns text as $$
-begin
-  return lower(regexp_replace(title, '[^a-zA-Z0-9]+', '-', 'g'));
-end;
-$$ language plpgsql;
+-- Improve slug generation function
+CREATE OR REPLACE FUNCTION generate_slug(title text)
+RETURNS text AS $$
+DECLARE
+  slug text;
+  counter integer := 0;
+  base_slug text;
+BEGIN
+  -- Convert to lowercase and replace special characters with hyphens
+  base_slug := lower(regexp_replace(title, '[^a-zA-Z0-9]+', '-', 'g'));
+  -- Remove leading/trailing hyphens
+  base_slug := trim(both '-' from base_slug);
+  
+  -- Initial slug attempt
+  slug := base_slug;
+  
+  -- Check for existing slugs and append counter if needed
+  WHILE EXISTS (
+    SELECT 1 FROM blogs WHERE slug = slug AND 
+    CASE 
+      WHEN TG_OP = 'UPDATE' THEN id != NEW.id
+      ELSE true
+    END
+  ) LOOP
+    counter := counter + 1;
+    slug := base_slug || '-' || counter;
+  END LOOP;
+  
+  RETURN slug;
+END;
+$$ LANGUAGE plpgsql;
 
--- Create trigger to automatically generate slug
-create or replace function generate_slug_trigger()
-returns trigger as $$
-begin
-  if new.slug is null then
-    new.slug := generate_slug(new.title);
-  end if;
-  return new;
-end;
-$$ language plpgsql;
+-- Update the trigger to handle both inserts and updates
+CREATE OR REPLACE FUNCTION handle_blog_slug()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Only generate slug if it's not provided or title has changed
+  IF NEW.slug IS NULL OR 
+     (TG_OP = 'UPDATE' AND OLD.title != NEW.title AND NEW.slug = OLD.slug) THEN
+    NEW.slug := generate_slug(NEW.title);
+  END IF;
+  
+  -- Ensure the slug is unique even if provided manually
+  IF EXISTS (
+    SELECT 1 FROM blogs 
+    WHERE slug = NEW.slug AND id != NEW.id
+  ) THEN
+    NEW.slug := generate_slug(NEW.title);
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-create trigger generate_slug_trigger
-  before insert or update of title on blogs
-  for each row
-  execute function generate_slug_trigger(); 
+-- Drop existing trigger if exists
+DROP TRIGGER IF EXISTS generate_slug_trigger ON blogs;
+
+-- Create new trigger
+CREATE TRIGGER handle_blog_slug_trigger
+  BEFORE INSERT OR UPDATE OF title, slug ON blogs
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_blog_slug();
+
+-- Add function to validate slug format
+CREATE OR REPLACE FUNCTION validate_slug()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Check if slug matches required format
+  IF NEW.slug !~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' THEN
+    RAISE EXCEPTION 'Invalid slug format. Use only lowercase letters, numbers, and hyphens.';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Add validation trigger
+CREATE TRIGGER validate_slug_trigger
+  BEFORE INSERT OR UPDATE OF slug ON blogs
+  FOR EACH ROW
+  EXECUTE FUNCTION validate_slug();
+
+-- Add indexes for slug-related queries
+CREATE INDEX IF NOT EXISTS idx_blogs_slug_status ON blogs(slug, status);
+CREATE INDEX IF NOT EXISTS idx_blogs_created_at ON blogs(created_at DESC);

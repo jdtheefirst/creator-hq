@@ -1,227 +1,299 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { createBrowserClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/context/AuthContext";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
 import { format } from "date-fns";
-import BookingFilters from "@/components/BookingFilters";
+import { toast } from "sonner";
 
 interface Booking {
   id: string;
   client_name: string;
   client_email: string;
-  service_type: "consultation" | "workshop" | "mentoring" | "other";
+  service_type: string;
   booking_date: string;
   duration_minutes: number;
   status: "pending" | "confirmed" | "completed" | "cancelled";
   price: number;
   payment_status: "pending" | "paid" | "refunded";
-  meeting_link?: string;
-  notes?: string;
 }
 
-interface BookingsPageProps {
-  searchParams: {
-    search?: string;
-    status?: string;
-    service_type?: string;
-    date_from?: string;
-    date_to?: string;
+export default function BookingsPage() {
+  const { user } = useAuth();
+  const supabase = createBrowserClient();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchBookings();
+    }
+  }, [user]);
+
+  const fetchBookings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("creator_id", user?.id)
+        .order("booking_date", { ascending: false });
+
+      if (error) throw error;
+      setBookings(data || []);
+    } catch (error) {
+      toast.error("Failed to fetch bookings");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
-}
 
-export default async function BookingsPage({
-  searchParams,
-}: BookingsPageProps) {
-  const supabase = await createClient();
+  const updateBookingStatus = async (id: string, status: Booking["status"]) => {
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({ status })
+        .eq("id", id)
+        .eq("creator_id", user?.id);
 
-  // Build query based on filters
-  let query = supabase
-    .from("bookings")
-    .select("*")
-    .order("booking_date", { ascending: false });
+      if (error) throw error;
 
-  if (searchParams.search) {
-    query = query.or(
-      `client_name.ilike.%${searchParams.search}%,client_email.ilike.%${searchParams.search}%`
-    );
+      toast.success("Booking status updated");
+      fetchBookings();
+    } catch (error) {
+      toast.error("Failed to update booking status");
+      console.error(error);
+    }
+  };
+
+  const getStatusColor = (status: Booking["status"]) => {
+    switch (status) {
+      case "confirmed":
+        return "bg-green-100 text-green-800";
+      case "completed":
+        return "bg-blue-100 text-blue-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-yellow-100 text-yellow-800";
+    }
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
   }
-
-  if (searchParams.status && searchParams.status !== "All") {
-    query = query.eq("status", searchParams.status);
-  }
-
-  if (searchParams.service_type && searchParams.service_type !== "All") {
-    query = query.eq("service_type", searchParams.service_type);
-  }
-
-  if (searchParams.date_from) {
-    query = query.gte("booking_date", searchParams.date_from);
-  }
-
-  if (searchParams.date_to) {
-    query = query.lte("booking_date", searchParams.date_to);
-  }
-
-  const { data: bookings, error } = await query;
-
-  if (error) {
-    console.error("Error fetching bookings:", error);
-    return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="container mx-auto px-4">
-          <h1 className="text-4xl font-bold mb-8">Bookings</h1>
-          <p className="text-red-600">
-            Error loading bookings. Please try again later.
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="sm:flex sm:items-center">
+        <div className="sm:flex-auto">
+          <h1 className="text-2xl font-semibold text-gray-900">Bookings</h1>
+          <p className="mt-2 text-sm text-gray-700">
+            Manage your bookings and appointments
           </p>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Bookings</h1>
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
           <Link
             href="/dashboard/bookings/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
           >
-            New Booking
+            Add Booking
           </Link>
         </div>
+      </div>
 
-        {/* Filters */}
-        <BookingFilters
-          currentStatus={searchParams.status}
-          currentServiceType={searchParams.service_type}
-          currentSearch={searchParams.search}
-          currentDateFrom={searchParams.date_from}
-          currentDateTo={searchParams.date_to}
-        />
-
-        {/* Bookings Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden mt-8">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Client
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Service
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date & Time
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Duration
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Price
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Payment
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {bookings?.map((booking) => (
-                  <tr key={booking.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {booking.client_name}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {booking.client_email}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {booking.service_type}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {format(
-                          new Date(booking.booking_date),
-                          "MMM d, yyyy h:mm a"
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {booking.duration_minutes} min
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        ${booking.price.toFixed(2)}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          booking.status === "confirmed"
-                            ? "bg-green-100 text-green-800"
-                            : booking.status === "pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : booking.status === "cancelled"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {booking.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          booking.payment_status === "paid"
-                            ? "bg-green-100 text-green-800"
-                            : booking.payment_status === "pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {booking.payment_status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-4">
-                        <Link
-                          href={`/dashboard/bookings/${booking.id}`}
-                          className="text-blue-600 hover:text-blue-900"
+      <div className="mt-8 flex flex-col">
+        <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+          <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
+            <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+              <table className="min-w-full divide-y divide-gray-300">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                    >
+                      Client
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                    >
+                      Service
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                    >
+                      Date
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                    >
+                      Status
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                    >
+                      Payment
+                    </th>
+                    <th
+                      scope="col"
+                      className="relative py-3.5 pl-3 pr-4 sm:pr-6"
+                    >
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {bookings.map((booking) => (
+                    <tr key={booking.id}>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        <div className="font-medium text-gray-900">
+                          {booking.client_name}
+                        </div>
+                        <div className="text-gray-500">
+                          {booking.client_email}
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        <div className="font-medium text-gray-900">
+                          {booking.service_type}
+                        </div>
+                        <div className="text-gray-500">
+                          {booking.duration_minutes} minutes
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        {format(new Date(booking.booking_date), "PPp")}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        <span
+                          className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(booking.status)}`}
                         >
-                          View
-                        </Link>
+                          {booking.status}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        <span
+                          className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                            booking.payment_status === "paid"
+                              ? "bg-green-100 text-green-800"
+                              : booking.payment_status === "refunded"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {booking.payment_status}
+                        </span>
+                      </td>
+                      <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                        <select
+                          value={booking.status}
+                          onChange={(e) =>
+                            updateBookingStatus(
+                              booking.id,
+                              e.target.value as Booking["status"]
+                            )
+                          }
+                          className="rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="confirmed">Confirmed</option>
+                          <option value="completed">Completed</option>
+                          <option value="cancelled">Cancelled</option>
+                        </select>
                         <Link
                           href={`/dashboard/bookings/${booking.id}/edit`}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-600 hover:text-blue-900 ml-4"
                         >
                           Edit
                         </Link>
-                        <button
-                          onClick={() => {
-                            // Handle delete
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {bookings.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No bookings found</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <dt className="text-sm font-medium text-gray-500 truncate">
+              Total Bookings
+            </dt>
+            <dd className="mt-1 text-3xl font-semibold text-gray-900">
+              {bookings.length}
+            </dd>
+          </div>
+        </div>
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <dt className="text-sm font-medium text-gray-500 truncate">
+              Pending Bookings
+            </dt>
+            <dd className="mt-1 text-3xl font-semibold text-gray-900">
+              {bookings.filter((b) => b.status === "pending").length}
+            </dd>
+          </div>
+        </div>
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <dt className="text-sm font-medium text-gray-500 truncate">
+              Completed Bookings
+            </dt>
+            <dd className="mt-1 text-3xl font-semibold text-gray-900">
+              {bookings.filter((b) => b.status === "completed").length}
+            </dd>
+          </div>
+        </div>
+        <div className="bg-white overflow-hidden shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <dt className="text-sm font-medium text-gray-500 truncate">
+              Total Revenue
+            </dt>
+            <dd className="mt-1 text-3xl font-semibold text-gray-900">
+              $
+              {bookings
+                .filter((b) => b.payment_status === "paid")
+                .reduce((sum, booking) => sum + booking.price, 0)
+                .toFixed(2)}
+            </dd>
+          </div>
+        </div>
+      </div>
+
+      {/* Export/Filter Options */}
+      <div className="mt-8 flex justify-end space-x-4">
+        <button
+          onClick={() => {
+            // TODO: Implement export functionality
+            toast.info("Export functionality coming soon");
+          }}
+          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+        >
+          Export
+        </button>
+        <button
+          onClick={() => {
+            // TODO: Implement filter functionality
+            toast.info("Filter functionality coming soon");
+          }}
+          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+        >
+          Filter
+        </button>
       </div>
     </div>
   );

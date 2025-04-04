@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useRouter } from "next/navigation";
+
 interface Subscriber {
   id: string;
   email: string;
@@ -71,6 +72,7 @@ export default function SubscribersPage() {
       const { data, error } = await supabase
         .from("newsletter_campaigns")
         .select("*")
+        .eq("creator_id", user?.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -120,6 +122,7 @@ export default function SubscribersPage() {
         .from("newsletter_campaigns")
         .insert([
           {
+            creator_id: user?.id,
             title: "New Campaign",
             subject: "",
             content: "",
@@ -151,6 +154,51 @@ export default function SubscribersPage() {
       setCampaigns((prev) => prev.filter((campaign) => campaign.id !== id));
     } catch (err) {
       setError("Failed to delete campaign");
+      console.error(err);
+    }
+  };
+
+  const previewCampaign = async (id: string) => {
+    router.push(`/dashboard/subscribers/campaigns/${id}/preview`);
+  };
+
+  const scheduleCampaign = async (id: string) => {
+    try {
+      const scheduledDate = prompt("Enter scheduled date (YYYY-MM-DD HH:mm):");
+      if (!scheduledDate) return;
+
+      const { error } = await supabase
+        .from("newsletter_campaigns")
+        .update({
+          status: "scheduled",
+          scheduled_for: new Date(scheduledDate).toISOString(),
+        })
+        .eq("id", id)
+        .eq("creator_id", user?.id);
+
+      if (error) throw error;
+      fetchCampaigns();
+    } catch (err) {
+      setError("Failed to schedule campaign");
+      console.error(err);
+    }
+  };
+
+  const cancelSchedule = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("newsletter_campaigns")
+        .update({
+          status: "draft",
+          scheduled_for: null,
+        })
+        .eq("id", id)
+        .eq("creator_id", user?.id);
+
+      if (error) throw error;
+      fetchCampaigns();
+    } catch (err) {
+      setError("Failed to cancel schedule");
       console.error(err);
     }
   };
@@ -380,30 +428,24 @@ export default function SubscribersPage() {
                     Edit
                   </button>
                   {campaign.status === "draft" && (
-                    <button
-                      onClick={() => {
-                        // TODO: Implement preview functionality
-                      }}
-                      className="text-gray-600 hover:text-gray-900"
-                    >
-                      Preview
-                    </button>
-                  )}
-                  {campaign.status === "draft" && (
-                    <button
-                      onClick={() => {
-                        // TODO: Implement schedule functionality
-                      }}
-                      className="text-green-600 hover:text-green-900"
-                    >
-                      Schedule
-                    </button>
+                    <>
+                      <button
+                        onClick={() => previewCampaign(campaign.id)}
+                        className="text-gray-600 hover:text-gray-900"
+                      >
+                        Preview
+                      </button>
+                      <button
+                        onClick={() => scheduleCampaign(campaign.id)}
+                        className="text-green-600 hover:text-green-900"
+                      >
+                        Schedule
+                      </button>
+                    </>
                   )}
                   {campaign.status === "scheduled" && (
                     <button
-                      onClick={() => {
-                        // TODO: Implement cancel schedule functionality
-                      }}
+                      onClick={() => cancelSchedule(campaign.id)}
                       className="text-red-600 hover:text-red-900"
                     >
                       Cancel Schedule

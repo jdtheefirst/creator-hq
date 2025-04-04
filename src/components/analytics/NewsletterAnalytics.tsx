@@ -2,128 +2,174 @@
 
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@/lib/supabase/client";
-import { Line } from "react-chartjs-2";
+import { useAuth } from "@/lib/context/AuthContext";
+import { Line, Pie } from "react-chartjs-2";
+import { format, subDays } from "date-fns";
+import { Loader2 } from "lucide-react";
 
-interface NewsletterStats {
+interface NewsletterMetrics {
   total_subscribers: number;
   active_subscribers: number;
-  campaigns_sent: number;
-  average_open_rate: number;
-  average_click_rate: number;
+  new_subscribers: number;
+  emails_sent: number;
+  email_opens: number;
+  email_clicks: number;
+  bounce_rate: number;
+  date: string;
+}
+
+interface NewsletterAnalyticsProps {
+  startDate: string;
+  endDate: string;
 }
 
 export default function NewsletterAnalytics({
-  creator_id,
-}: {
-  creator_id: string;
-}) {
-  const [stats, setStats] = useState<NewsletterStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  startDate,
+  endDate,
+}: NewsletterAnalyticsProps) {
+  const { user } = useAuth();
   const supabase = createBrowserClient();
+  const [metrics, setMetrics] = useState<NewsletterMetrics[]>([]);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState(30); // days
 
   useEffect(() => {
-    fetchStats();
-  }, [creator_id]);
+    if (user) {
+      fetchMetrics();
+    }
+  }, [user, dateRange]);
 
-  const fetchStats = async () => {
+  const fetchMetrics = async () => {
     try {
-      // Fetch subscriber counts
-      const { data: subscribers, error: subError } = await supabase
-        .from("newsletter_subscribers")
-        .select("is_active")
-        .eq("creator_id", creator_id);
+      const { data: metrics, error: metricsError } = await supabase
+        .from("newsletter_metrics")
+        .select("*")
+        .gte("date", startDate)
+        .lte("date", endDate)
+        .order("date", { ascending: true });
 
-      if (subError) throw subError;
-
-      // Fetch campaign stats
-      const { data: campaigns, error: campError } = await supabase
+      const { data: campaigns, error: campaignsError } = await supabase
         .from("newsletter_campaigns")
-        .select("stats")
-        .eq("creator_id", creator_id)
-        .eq("status", "sent");
+        .select("*")
+        .gte("created_at", startDate)
+        .lte("created_at", endDate)
+        .order("created_at", { ascending: false });
 
-      if (campError) throw campError;
-
-      // Calculate statistics
-      const totalSubs = subscribers.length;
-      const activeSubs = subscribers.filter((s) => s.is_active).length;
-      const campaignsSent = campaigns.length;
-
-      const openRates = campaigns.map(
-        (c) => (c.stats.opened / c.stats.sent) * 100
-      );
-      const clickRates = campaigns.map(
-        (c) => (c.stats.clicked / c.stats.sent) * 100
-      );
-
-      setStats({
-        total_subscribers: totalSubs,
-        active_subscribers: activeSubs,
-        campaigns_sent: campaignsSent,
-        average_open_rate: openRates.length
-          ? openRates.reduce((a, b) => a + b, 0) / openRates.length
-          : 0,
-        average_click_rate: clickRates.length
-          ? clickRates.reduce((a, b) => a + b, 0) / clickRates.length
-          : 0,
-      });
+      if (metricsError || campaignsError) throw metricsError || campaignsError;
+      setMetrics(metrics || []);
+      setCampaigns(campaigns || []);
     } catch (error) {
-      console.error("Error fetching newsletter stats:", error);
+      console.error("Error fetching newsletter metrics:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (!stats) return <div>No data available</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const latestMetrics = metrics[metrics.length - 1] || {
+    total_subscribers: 0,
+    active_subscribers: 0,
+    emails_sent: 0,
+    email_opens: 0,
+    email_clicks: 0,
+  };
+
+  const subscriberData = {
+    labels: metrics.map((m) => format(new Date(m.date), "MMM d")),
+    datasets: [
+      {
+        label: "Total Subscribers",
+        data: metrics.map((m) => m.total_subscribers),
+        borderColor: "rgb(59, 130, 246)",
+        tension: 0.1,
+      },
+      {
+        label: "New Subscribers",
+        data: metrics.map((m) => m.new_subscribers),
+        borderColor: "rgb(34, 197, 94)",
+        tension: 0.1,
+      },
+    ],
+  };
+
+  const engagementData = {
+    labels: ["Opens", "Clicks", "No Interaction"],
+    datasets: [
+      {
+        data: [
+          latestMetrics.email_opens,
+          latestMetrics.email_clicks,
+          latestMetrics.emails_sent - latestMetrics.email_opens,
+        ],
+        backgroundColor: [
+          "rgb(59, 130, 246)",
+          "rgb(34, 197, 94)",
+          "rgb(229, 231, 235)",
+        ],
+      },
+    ],
+  };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
-      <h2 className="text-lg font-semibold mb-4">Newsletter Performance</h2>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-        <div className="p-4 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-500">Total Subscribers</div>
-          <div className="text-2xl font-semibold">
-            {stats.total_subscribers}
-          </div>
+    <div className="space-y-6">
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-sm font-medium text-gray-500">
+            Total Subscribers
+          </h3>
+          <p className="mt-2 text-3xl font-semibold">
+            {latestMetrics.total_subscribers}
+          </p>
         </div>
-        <div className="p-4 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-500">Active Subscribers</div>
-          <div className="text-2xl font-semibold">
-            {stats.active_subscribers}
-          </div>
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-sm font-medium text-gray-500">
+            Active Subscribers
+          </h3>
+          <p className="mt-2 text-3xl font-semibold">
+            {latestMetrics.active_subscribers}
+          </p>
         </div>
-        <div className="p-4 bg-gray-50 rounded-lg">
-          <div className="text-sm text-gray-500">Campaigns Sent</div>
-          <div className="text-2xl font-semibold">{stats.campaigns_sent}</div>
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-sm font-medium text-gray-500">Open Rate</h3>
+          <p className="mt-2 text-3xl font-semibold">
+            {latestMetrics.emails_sent
+              ? `${((latestMetrics.email_opens / latestMetrics.emails_sent) * 100).toFixed(1)}%`
+              : "0%"}
+          </p>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-sm font-medium text-gray-500">Click Rate</h3>
+          <p className="mt-2 text-3xl font-semibold">
+            {latestMetrics.emails_sent
+              ? `${((latestMetrics.email_clicks / latestMetrics.emails_sent) * 100).toFixed(1)}%`
+              : "0%"}
+          </p>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <div>
-          <div className="text-sm text-gray-500">Average Open Rate</div>
-          <div className="h-2 bg-gray-200 rounded-full mt-2">
-            <div
-              className="h-2 bg-blue-600 rounded-full"
-              style={{ width: `${stats.average_open_rate}%` }}
-            />
-          </div>
-          <div className="text-sm mt-1">
-            {stats.average_open_rate.toFixed(1)}%
-          </div>
-        </div>
-        <div>
-          <div className="text-sm text-gray-500">Average Click Rate</div>
-          <div className="h-2 bg-gray-200 rounded-full mt-2">
-            <div
-              className="h-2 bg-green-600 rounded-full"
-              style={{ width: `${stats.average_click_rate}%` }}
-            />
-          </div>
-          <div className="text-sm mt-1">
-            {stats.average_click_rate.toFixed(1)}%
-          </div>
+      {/* Growth Chart */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-medium mb-4">Subscriber Growth</h3>
+        <Line data={subscriberData} options={{ responsive: true }} />
+      </div>
+
+      {/* Engagement Chart */}
+      <div className="bg-white p-6 rounded-lg shadow">
+        <h3 className="text-lg font-medium mb-4">Email Engagement</h3>
+        <div className="h-64">
+          <Pie
+            data={engagementData}
+            options={{ responsive: true, maintainAspectRatio: false }}
+          />
         </div>
       </div>
     </div>

@@ -25,29 +25,40 @@ create policy "Creators can delete their subscribers"
   on newsletter_subscribers for delete
   using (auth.uid() = creator_id);
 
--- Add campaigns table
+-- Add campaigns table with RLS policies
 create table newsletter_campaigns (
   id uuid default uuid_generate_v4() primary key,
   creator_id uuid references auth.users(id) on delete cascade not null,
   title text not null,
-  subject text not null,
-  content text not null,
-  status text not null default 'draft' check (status in ('draft', 'scheduled', 'sending', 'sent', 'failed')),
+  subject text,
+  content text,
+  status text default 'draft' check (status in ('draft', 'scheduled', 'sending', 'sent', 'failed')),
   scheduled_for timestamp with time zone,
   sent_at timestamp with time zone,
+  stats jsonb default '{"sent": 0, "opened": 0, "clicked": 0}'::jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  stats jsonb default '{"sent": 0, "opened": 0, "clicked": 0}'::jsonb
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- Enable RLS
 alter table newsletter_campaigns enable row level security;
 
 -- Create policies for campaigns
-create policy "Creators can manage their campaigns"
-  on newsletter_campaigns for all
-  using (auth.uid() = creator_id)
+create policy "Creators can view their own campaigns"
+  on newsletter_campaigns for select
+  using (auth.uid() = creator_id);
+
+create policy "Creators can create their own campaigns"
+  on newsletter_campaigns for insert
   with check (auth.uid() = creator_id);
+
+create policy "Creators can update their own campaigns"
+  on newsletter_campaigns for update
+  using (auth.uid() = creator_id);
+
+create policy "Creators can delete their own campaigns"
+  on newsletter_campaigns for delete
+  using (auth.uid() = creator_id);
 
 -- Add campaign_logs table for tracking
 create table newsletter_campaign_logs (

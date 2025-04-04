@@ -40,6 +40,24 @@ create table revenue_metrics (
   unique(creator_id, date)
 );
 
+-- Create newsletter metrics table
+CREATE TABLE newsletter_metrics (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  creator_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  date DATE NOT NULL,
+  total_subscribers INTEGER DEFAULT 0,
+  active_subscribers INTEGER DEFAULT 0,
+  new_subscribers INTEGER DEFAULT 0,
+  unsubscribed INTEGER DEFAULT 0,
+  emails_sent INTEGER DEFAULT 0,
+  email_opens INTEGER DEFAULT 0,
+  email_clicks INTEGER DEFAULT 0,
+  bounce_rate DECIMAL(5,2) DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(creator_id, date)
+);
+
 -- Create indexes for faster queries
 create index page_views_creator_id_idx on page_views(creator_id);
 create index page_views_view_date_idx on page_views(view_date);
@@ -47,6 +65,8 @@ create index user_engagement_creator_id_idx on user_engagement(creator_id);
 create index user_engagement_event_date_idx on user_engagement(event_date);
 create index revenue_metrics_creator_id_idx on revenue_metrics(creator_id);
 create index revenue_metrics_date_idx on revenue_metrics(date);
+create index newsletter_metrics_creator_id_idx on newsletter_metrics(creator_id);
+create index newsletter_metrics_date_idx on newsletter_metrics(date);
 
 -- Create function to update updated_at timestamp
 create trigger update_revenue_metrics_updated_at
@@ -58,6 +78,7 @@ create trigger update_revenue_metrics_updated_at
 alter table page_views enable row level security;
 alter table user_engagement enable row level security;
 alter table revenue_metrics enable row level security;
+alter table newsletter_metrics enable row level security;
 
 -- Create policies for page_views
 create policy "Creators can view their own page views"
@@ -90,9 +111,14 @@ create policy "Creators can update their own revenue metrics"
   on revenue_metrics for update
   using (auth.uid() = creator_id);
 
+-- Create policies for newsletter_metrics
+create policy "Creators can view their own newsletter metrics"
+  on newsletter_metrics for select
+  using (auth.uid() = creator_id);
+
 -- Create function to aggregate daily revenue metrics
 create or replace function aggregate_daily_revenue_metrics()
-returns trigger as $$
+returns trigger as $$ 
 begin
   insert into revenue_metrics (
     creator_id,
@@ -135,3 +161,52 @@ create trigger update_revenue_metrics_trigger
   after insert or update on bookings
   for each row
   execute function aggregate_daily_revenue_metrics(); 
+
+-- Create function to update newsletter metrics
+CREATE OR REPLACE FUNCTION update_newsletter_metrics()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO newsletter_metrics (
+    creator_id,
+    date,
+    total_subscribers,
+    active_subscribers,
+    new_subscribers,
+    emails_sent,
+    email_opens,
+    email_clicks
+  )
+  SELECT
+    NEW.creator_id,
+    CURRENT_DATE,
+    (SELECT COUNT(*) FROM newsletter_subscribers WHERE creator_id = NEW.creator_id),
+    (SELECT COUNT(*) FROM newsletter_subscribers WHERE creator_id = NEW.creator_id AND is_active = true),
+    (SELECT COUNT(*) FROM newsletter_subscribers WHERE creator_id = NEW.creator_id AND DATE(subscribed_at) = CURRENT_DATE),
+    COALESCE((SELECT SUM(CAST(stats->>'sent' AS INTEGER)) FROM newsletter_campaigns 
+      WHERE creator_id = NEW.creator_id AND DATE(created_at) = CURRENT_DATE), 0),
+    COALESCE((SELECT SUM(CAST(stats->>'opened' AS INTEGER)) FROM newsletter_campaigns 
+      WHERE creator_id = NEW.creator_id AND DATE(created_at) = CURRENT_DATE), 0),
+    COALESCE((SELECT SUM(CAST(stats->>'clicked' AS INTEGER)) FROM newsletter_campaigns 
+      WHERE creator_id = NEW.creator_id AND DATE(created_at) = CURRENT_DATE), 0)
+  ON CONFLICT (creator_id, date) 
+  DO UPDATE SET
+    total_subscribers = EXCLUDED.total_subscribers,
+    active_subscribers = EXCLUDED.active_subscribers,
+    new_subscribers = EXCLUDED.new_subscribers,
+    emails_sent = EXCLUDED.emails_sent,
+    email_opens = EXCLUDED.email_opens,
+    email_clicks = EXCLUDED.email_clicks,
+    updated_at = now();
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create triggers for newsletter metrics
+CREATE TRIGGER update_newsletter_metrics_on_subscriber
+  AFTER INSERT OR UPDATE OR DELETE ON newsletter_subscribers
+  FOR EACH ROW EXECUTE FUNCTION update_newsletter_metrics();
+
+CREATE TRIGGER update_newsletter_metrics_on_campaign
+  AFTER INSERT OR UPDATE ON newsletter_campaigns
+  FOR EACH ROW EXECUTE FUNCTION update_newsletter_metrics();
