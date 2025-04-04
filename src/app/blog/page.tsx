@@ -3,69 +3,33 @@ import { format } from "date-fns";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function BlogPage({
-  searchParams,
-}: {
-  searchParams: { category?: string };
-}) {
+export default async function BlogPage() {
   const supabase = await createClient();
-  const { category } = searchParams;
 
-  // Fetch blog posts
-  let query = supabase
+  // Only fetch published posts
+  const { data: posts } = await supabase
     .from("blogs")
-    .select(
-      "id, title, slug, excerpt, category, created_at, cover_image, ads_enabled"
-    )
+    .select("*")
     .eq("status", "published")
     .order("created_at", { ascending: false });
-
-  if (category && category !== "All") {
-    query = query.eq("category", category);
-  }
-
-  const { data: posts, error } = await query;
-
-  if (error) {
-    console.error("Error fetching blog posts:", error);
-    return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="container mx-auto px-4">
-          <h1 className="text-4xl font-bold text-center mb-12">Blog</h1>
-          <p className="text-center text-red-600">
-            Error loading blog posts. Please try again later.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Get unique categories
-  const categories = [
-    "All",
-    ...new Set(posts?.map((post) => post.category) || []),
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="container mx-auto px-4">
         <h1 className="text-4xl font-bold text-center mb-12">Blog</h1>
-
         {/* Categories */}
         <div className="flex justify-center gap-4 mb-8 flex-wrap">
-          {categories.map((cat) => (
-            <Link
-              key={cat}
-              href={`/blog${cat === "All" ? "" : `?category=${cat}`}`}
-              className={`px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-shadow ${
-                (cat === "All" && !category) || cat === category
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-700"
-              }`}
-            >
-              {cat}
-            </Link>
-          ))}
+          <Link
+            key="All"
+            href="/blog"
+            className={`px-4 py-2 rounded-full shadow-sm hover:shadow-md transition-shadow ${
+              !posts || posts.length === 0
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-700"
+            }`}
+          >
+            All
+          </Link>
         </div>
 
         {/* Blog Posts Grid */}

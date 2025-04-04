@@ -43,10 +43,10 @@ export default function DashboardLayout({
                   <Home className="w-4 h-4 mr-2" /> Home
                 </Link>
                 <Link
-                  href="/settings"
+                  href="/profile"
                   className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100"
                 >
-                  <User className="w-4 h-4 mr-2" /> Account Settings
+                  <User className="w-4 h-4 mr-2" /> Account
                 </Link>
                 <div className="border-t border-gray-200" />
                 <div className="flex items-center px-4 py-2 text-red-600 hover:bg-gray-100 cursor-pointer">

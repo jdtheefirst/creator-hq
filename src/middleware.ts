@@ -21,74 +21,46 @@ export async function middleware(request: NextRequest) {
   const supabase = await createClient();
 
   try {
-    // Get the user's session
-    let {
-      data: { session },
-    } = await supabase.auth.getSession();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-    // Refresh session if expired
-    if (!session) {
-      console.log("Session expired, attempting refresh...");
-      const { data: refreshedSession, error } =
-        await supabase.auth.refreshSession();
-      if (error) console.error("Session refresh failed:", error);
-      session = refreshedSession?.session || null;
-    }
-
+    const isProfileRoute = request.nextUrl.pathname.startsWith("/profile");
     const isProtectedRoute = request.nextUrl.pathname.startsWith("/dashboard");
     const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
-    const toProfile = request.nextUrl.pathname.startsWith("/dashboard/profile");
-
-    // Prevent infinite redirect loop for profile page
-    if (toProfile && session) {
-      if (
-        request.nextUrl.searchParams.get("redirectedFrom") ===
-        "/dashboard/profile"
-      ) {
-        return NextResponse.next();
-      }
-    }
 
     // Redirect unauthenticated users from protected routes
-    if (isProtectedRoute && !session) {
-      const redirectedFrom = request.nextUrl.searchParams.get("redirectedFrom");
-      if (redirectedFrom !== "/login") {
-        const redirectUrl = new URL("/login", request.url);
-        redirectUrl.searchParams.set(
-          "redirectedFrom",
-          request.nextUrl.pathname
-        );
-        return NextResponse.redirect(redirectUrl);
-      }
+    if ((isProtectedRoute || isProfileRoute) && !user) {
+      const redirectUrl = new URL("/login", request.url);
+      redirectUrl.searchParams.set("redirectedFrom", request.nextUrl.pathname);
+      return NextResponse.redirect(redirectUrl);
     }
 
     // Redirect authenticated users away from login page
-    if (isAuthRoute && session) {
-      console.log("Redirecting to dashboard - session exists for auth route");
-
+    if (isAuthRoute && user) {
       const { data: userData } = await supabase
         .from("users")
         .select("role")
-        .eq("id", session.user.id)
+        .eq("id", user.id)
         .maybeSingle();
 
       const redirectPath = userData?.role === "creator" ? "/dashboard" : "/";
       return NextResponse.redirect(new URL(redirectPath, request.url));
     }
 
-    // Restrict non-creators from dashboard access
-    if (isProtectedRoute && session) {
+    // Restrict non-creators from accessing dashboard
+    if (isProtectedRoute && user) {
       const { data: userData } = await supabase
         .from("users")
         .select("role")
-        .eq("id", session.user.id)
+        .eq("id", user.id)
         .maybeSingle();
 
       if (userData?.role !== "creator") {
         return NextResponse.redirect(new URL("/", request.url));
       }
     }
-
     // Parse user agent
     const parser = new UAParser(request.headers.get("user-agent") || "");
     const userAgent = parser.getResult();
@@ -100,7 +72,7 @@ export async function middleware(request: NextRequest) {
 
     // Track page view for all users (authenticated and guests)
     const pageView = {
-      creator_id: session?.user?.id || null,
+      creator_id: user?.id || null,
       page_path: request.nextUrl.pathname,
       user_agent: request.headers.get("user-agent"),
       referrer: request.headers.get("referer"),
@@ -121,10 +93,10 @@ export async function middleware(request: NextRequest) {
     await supabase.from("page_views").insert(pageView);
 
     // Track additional engagement events for authenticated users
-    if (session) {
+    if (user) {
       const engagementEvents = [
         {
-          creator_id: session.user.id,
+          creator_id: user.id,
           event_type: "view",
           page_path: request.nextUrl.pathname,
           metadata: {

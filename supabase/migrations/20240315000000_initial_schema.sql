@@ -28,11 +28,12 @@ CREATE TABLE public.profiles (
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
--- Users can read all profiles
-CREATE POLICY "Users can read all profiles"
-  ON public.profiles FOR SELECT
-  TO authenticated
-  USING (true);
+CREATE POLICY "Everyone can read all profiles"
+ ON public.profiles
+ FOR SELECT
+ TO public
+ USING (true);
+
 
 -- Users can update their own profile
 CREATE POLICY "Users can update own profile"

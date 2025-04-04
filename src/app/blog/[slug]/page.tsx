@@ -1,21 +1,7 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 import { format } from "date-fns";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-
-interface BlogPost {
-  id: string;
-  title: string;
-  content: string;
-  created_at: string;
-  category: string;
-  cover_image: string | null;
-  ads_enabled: boolean;
-  author: {
-    email: string;
-  } | null;
-}
 
 interface BlogPostPageProps {
   params: {
@@ -24,31 +10,18 @@ interface BlogPostPageProps {
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await createClient();
 
-  // Fetch blog post
-  const { data: post, error } = await supabase
+  // Fetch published post by slug
+  const { data: post } = await supabase
     .from("blogs")
-    .select(
-      `
-      id,
-      title,
-      content,
-      created_at,
-      category,
-      cover_image,
-      ads_enabled,
-      author:author_id (
-        email
-      )
-    `
-    )
+    .select("*")
     .eq("slug", params.slug)
     .eq("status", "published")
     .single();
 
-  if (error || !post) {
-    console.error("Error fetching blog post:", error);
+  if (!post) {
+    console.error("Error fetching blog post");
     notFound();
   }
 

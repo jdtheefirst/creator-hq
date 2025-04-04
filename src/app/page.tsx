@@ -72,9 +72,9 @@ export default function CreatorProfilePage() {
         // Fetch profile data
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
-          .select("*, users(role)")
-          .eq("users.role", "creator")
-          .single();
+          .select("*") // Get everything from profiles
+          .eq("id", process.env.NEXT_PUBLIC_CREATOR_UID)
+          .maybeSingle();
 
         if (profileError) throw profileError;
 
