@@ -1,0 +1,223 @@
+import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
+import { format } from "date-fns";
+import Link from "next/link";
+import { Play } from "lucide-react";
+import VideoPlayer from "@/components/VideoPlayer";
+import VideoEngagement from "@/components/VideoEngagement";
+import Comments from "@/components/Comments";
+
+interface VideoData {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  thumbnail_url: string;
+  source: "youtube" | "upload";
+  video_id?: string;
+  status: "published";
+  views: number;
+  likes: number;
+  creator_id: string;
+  created_at: string;
+  slug: string;
+  profiles: {
+    id: string;
+    full_name: string;
+    avatar_url: string | null;
+    bio: string | null;
+  };
+  comments: { count: number }[];
+}
+
+export default async function VideoPage({
+  params,
+}: {
+  params: { slug: string };
+}) {
+  const supabase = await createClient();
+
+  // Fetch video with creator details and comment count
+  const { data: video, error } = await supabase
+    .from("videos")
+    .select(
+      `
+      *,
+      profiles:creator_id (
+        id,
+        full_name,
+        avatar_url,
+        bio
+      ),
+      comments:id (
+        count
+      )
+    `
+    )
+    .eq("slug", params.slug)
+    .eq("status", "published")
+    .single();
+
+  if (error || !video) {
+    notFound();
+  }
+
+  // Fetch related videos by the same creator
+  const { data: relatedVideos } = await supabase
+    .from("videos")
+    .select(
+      `
+      id,
+      title,
+      thumbnail_url,
+      views,
+      created_at,
+      slug,
+      profiles:creator_id (
+        full_name,
+        avatar_url
+      )
+    `
+    )
+    .eq("creator_id", video.creator_id)
+    .eq("status", "published")
+    .neq("id", video.id)
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  // Check if current user has liked the video
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const { data: userLike } = session
+    ? await supabase
+        .from("likes")
+        .select("id")
+        .eq("post_id", video.id)
+        .eq("post_type", "video")
+        .eq("user_id", session.user.id)
+        .single()
+    : { data: null };
+
+  // Increment view count
+  await supabase.rpc("increment_video_views", { video_id: video.id });
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container mx-auto px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            {/* Video Player */}
+            <div className="bg-black rounded-lg overflow-hidden">
+              <VideoPlayer
+                url={video.url}
+                source={video.source}
+                videoId={video.video_id}
+                thumbnailUrl={video.thumbnail_url}
+              />
+            </div>
+
+            {/* Video Info */}
+            <div className="mt-4">
+              <h1 className="text-2xl font-bold">{video.title}</h1>
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center space-x-4">
+                  <Link
+                    href={`/creators/${video.profiles.id}`}
+                    className="flex items-center space-x-2"
+                  >
+                    {video.profiles.avatar_url ? (
+                      <img
+                        src={video.profiles.avatar_url}
+                        alt={video.profiles.full_name}
+                        className="w-10 h-10 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                        <span className="text-lg text-gray-500">
+                          {video.profiles.full_name[0]}
+                        </span>
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium">{video.profiles.full_name}</p>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(video.created_at), "MMM d, yyyy")}
+                      </p>
+                    </div>
+                  </Link>
+                </div>
+                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <span>{video.views.toLocaleString()} views</span>
+                  <span>{video.likes.toLocaleString()} likes</span>
+                </div>
+              </div>
+
+              {/* Engagement */}
+              <div className="mt-4">
+                <VideoEngagement
+                  videoId={video.id}
+                  initialLikes={video.likes}
+                  initialComments={video.comments[0]?.count || 0}
+                  isLiked={!!userLike}
+                />
+              </div>
+
+              {/* Description */}
+              <div className="mt-6 bg-white rounded-lg p-4">
+                <p className="whitespace-pre-wrap">{video.description}</p>
+              </div>
+
+              {/* Comments Section */}
+              <div className="mt-8">
+                <h2 className="text-xl font-semibold mb-4">Comments</h2>
+                <Comments
+                  postId={video.id}
+                  postType="video"
+                  creatorId={video.creator_id}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar - Related Videos */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">
+              More from {video.profiles.full_name}
+            </h2>
+            {relatedVideos?.map((relatedVideo) => (
+              <Link
+                key={relatedVideo.id}
+                href={`/videos/${relatedVideo.slug}`}
+                className="flex space-x-3 group"
+              >
+                <div className="relative w-40 aspect-video">
+                  <img
+                    src={relatedVideo.thumbnail_url}
+                    alt={relatedVideo.title}
+                    className="rounded-lg object-cover w-full h-full"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                    <Play className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-medium line-clamp-2 group-hover:text-blue-600">
+                    {relatedVideo.title}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {relatedVideo.views.toLocaleString()} views
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {format(new Date(relatedVideo.created_at), "MMM d, yyyy")}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

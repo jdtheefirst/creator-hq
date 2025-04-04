@@ -23,6 +23,7 @@
     "@tiptap/starter-kit": "^2.11.7",
     "@types/stripe": "^8.0.416",
     "@uploadthing/react": "^7.3.0",
+    "axios": "^1.8.4",
     "chart.js": "^4.4.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

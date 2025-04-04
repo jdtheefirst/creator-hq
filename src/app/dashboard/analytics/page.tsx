@@ -7,6 +7,7 @@ import TopPages from "@/components/analytics/TopPages";
 import UserDemographics from "@/components/analytics/UserDemographics";
 import RealTimeAnalytics from "@/components/analytics/RealTimeAnalytics";
 import NewsletterAnalytics from "@/components/analytics/NewsletterAnalytics";
+import VideoAnalytics from "@/components/analytics/VideoAnalytics";
 import { createClient } from "@/lib/supabase/server";
 
 interface AnalyticsPageProps {
@@ -61,6 +62,14 @@ interface RevenueMetrics {
   average_order_value: number;
 }
 
+interface VideoMetrics {
+  date: string;
+  total_views: number;
+  total_likes: number;
+  total_comments: number;
+  watch_time_minutes: number;
+}
+
 type RPCResponse<T> = {
   data: T | null;
   error: Error | null;
@@ -98,6 +107,14 @@ export default async function AnalyticsPage({
   // Fetch revenue metrics
   const { data: revenueData }: RPCResponse<RevenueMetrics[]> = await supabase
     .from("revenue_metrics")
+    .select("*")
+    .gte("date", format(startDate, "yyyy-MM-dd"))
+    .lte("date", format(endDate, "yyyy-MM-dd"))
+    .order("date", { ascending: true });
+
+  // Fetch video metrics
+  const { data: videoMetrics }: RPCResponse<VideoMetrics[]> = await supabase
+    .from("video_metrics")
     .select("*")
     .gte("date", format(startDate, "yyyy-MM-dd"))
     .lte("date", format(endDate, "yyyy-MM-dd"))
@@ -225,6 +242,12 @@ export default async function AnalyticsPage({
             endDate={format(endDate, "yyyy-MM-dd")}
           />
         </div>
+      </div>
+
+      {/* Video Analytics Section */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-lg font-semibold mb-4">Video Performance</h2>
+        <VideoAnalytics data={videoMetrics || []} />
       </div>
     </div>
   );
