@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { createBrowserClient } from "@/lib/supabase/client";
 import Notification from "@/components/Notification";
+import { LayoutDashboard, UserRoundPen } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -132,8 +133,8 @@ export default function CreatorProfilePage() {
       {/* Profile Icon in Top-right */}
       <div className="fixed top-4 right-4 z-50">
         {user ? (
-          <Link href="/dashboard/profile" className="relative">
-            <div className="h-10 w-10 rounded-full bg-white shadow-md overflow-hidden">
+          <details className="relative group">
+            <summary className="list-none cursor-pointer h-10 w-10 rounded-full bg-white shadow-md overflow-hidden p-0 m-0">
               {profile.avatar_url ? (
                 <Image
                   src={avatarUrl}
@@ -150,8 +151,23 @@ export default function CreatorProfilePage() {
                   </span>
                 </div>
               )}
+            </summary>
+
+            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-2 z-50">
+              <Link
+                href="/profile"
+                className="flex px-4 py-2 text-gray-700 hover:bg-gray-100"
+              >
+                <UserRoundPen /> &nbsp; Profile
+              </Link>
+              <Link
+                href="/dashboard"
+                className="flex px-4 py-2 text-gray-700 hover:bg-gray-100"
+              >
+                <LayoutDashboard /> &nbsp; Dashboard
+              </Link>
             </div>
-          </Link>
+          </details>
         ) : (
           <Link
             href="/login"

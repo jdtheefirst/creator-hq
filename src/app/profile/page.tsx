@@ -8,10 +8,10 @@ export default async function ProfilePage() {
   try {
     // Fetch user data
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!session?.user) {
+    if (!user) {
       redirect("/login");
     }
 
@@ -19,7 +19,7 @@ export default async function ProfilePage() {
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("role")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (userError) {
@@ -31,7 +31,7 @@ export default async function ProfilePage() {
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (profileError) {
@@ -50,7 +50,7 @@ export default async function ProfilePage() {
               <ProfileForm
                 initialData={profile}
                 isCreator={isCreator}
-                userId={session.user.id}
+                userId={user.id}
               />
             </div>
           </div>
