@@ -1,6 +1,6 @@
-export type ProductType = 'physical' | 'digital' | 'affiliate';
-export type ProductStatus = 'draft' | 'published' | 'archived';
-export type OrderStatus = 'pending' | 'paid' | 'fulfilled' | 'cancelled';
+export type ProductType = "physical" | "digital" | "affiliate";
+export type ProductStatus = "draft" | "published" | "archived";
+export type OrderStatus = "pending" | "paid" | "fulfilled" | "cancelled";
 
 export interface Product {
   id: string;
@@ -8,6 +8,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  currency: string;
   type: ProductType;
   status: ProductStatus;
   slug: string;
@@ -25,6 +26,7 @@ export interface ProductVariant {
   product_id: string;
   name: string;
   price: number;
+  currency: string;
   sku: string | null;
   stock_quantity: number | null;
   created_at: string;
@@ -36,6 +38,7 @@ export interface Order {
   creator_id: string;
   status: OrderStatus;
   total_amount: number;
+  currency: string;
   stripe_session_id: string | null;
   shipping_address: ShippingAddress | null;
   created_at: string;
@@ -50,6 +53,7 @@ export interface OrderItem {
   variant_id: string | null;
   quantity: number;
   unit_price: number;
+  currency: string;
   created_at: string;
 }
 

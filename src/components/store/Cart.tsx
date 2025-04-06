@@ -52,7 +52,8 @@ export function Cart() {
                     )}
                     <p className="text-primary font-medium">
                       {formatCurrency(
-                        item.variant?.price || item.product.price
+                        item.variant?.price || item.product.price,
+                        item.variant?.currency || item.product.currency
                       )}
                     </p>
                   </div>

@@ -5,6 +5,7 @@ CREATE TABLE products (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     price DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
     type VARCHAR(20) NOT NULL CHECK (type IN ('physical', 'digital', 'affiliate')),
     status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
     slug VARCHAR(255) UNIQUE NOT NULL,
@@ -22,6 +23,7 @@ CREATE TABLE product_variants (
     product_id UUID REFERENCES products(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     price DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(3) NOT NULL DEFAULT 'USD',
     sku VARCHAR(100),
     stock_quantity INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -35,6 +37,7 @@ CREATE TABLE orders (
     status VARCHAR(20) NOT NULL DEFAULT 'pending' 
         CHECK (status IN ('pending', 'paid', 'fulfilled', 'cancelled')),
     total_amount DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(3) NOT NULL DEFAULT 'USD',
     stripe_session_id VARCHAR(255),
     shipping_address JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -49,6 +52,7 @@ CREATE TABLE order_items (
     variant_id UUID REFERENCES product_variants(id),
     quantity INTEGER NOT NULL,
     unit_price DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(3) NOT NULL DEFAULT 'USD',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

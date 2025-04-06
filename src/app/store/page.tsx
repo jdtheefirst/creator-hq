@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import { ProductGrid } from "@/components/store/ProductGrid";
 import { Cart } from "@/components/store/Cart";
-import { createServerClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function StorePage() {
-  const supabase = createServerClient();
+  const supabase = await createClient();
 
   const { data: products } = await supabase
     .from("products")

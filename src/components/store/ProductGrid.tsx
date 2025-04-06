@@ -40,7 +40,7 @@ export function ProductGrid({ products }: ProductGridProps) {
             </p>
             <div className="mt-4 flex items-center justify-between">
               <span className="text-lg font-bold">
-                {formatCurrency(product.price)}
+                {formatCurrency(product.price, product.currency)}
               </span>
               {product.type === "affiliate" ? (
                 <a

@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Product, ProductType } from "@/types/store";
+import { getCurrencyOptions } from "@/lib/utils";
 
 const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().min(1, "Description is required"),
   price: z.number().min(0, "Price must be positive"),
+  currency: z.string().min(1, "Currency is required"),
   type: z.enum(["physical", "digital", "affiliate"]),
   status: z.enum(["draft", "published", "archived"]),
   stock_quantity: z.number().optional(),
@@ -27,6 +29,7 @@ export function ProductForm({ initialData, onSubmit }: ProductFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [digitalFile, setDigitalFile] = useState<File | null>(null);
+  const currencyOptions = getCurrencyOptions();
 
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
@@ -39,6 +42,7 @@ export function ProductForm({ initialData, onSubmit }: ProductFormProps) {
           name: "",
           description: "",
           price: 0,
+          currency: "USD",
           type: "physical" as ProductType,
           status: "draft",
           stock_quantity: undefined,
@@ -100,6 +104,25 @@ export function ProductForm({ initialData, onSubmit }: ProductFormProps) {
           {form.formState.errors.price && (
             <p className="text-red-500 text-sm mt-1">
               {form.formState.errors.price.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Currency</label>
+          <select
+            {...form.register("currency", { valueAsNumber: true })}
+            className="w-full border rounded-md p-2"
+          >
+            {currencyOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {form.formState.errors.currency && (
+            <p className="text-red-500 text-sm mt-1">
+              {form.formState.errors.currency.message}
             </p>
           )}
         </div>
