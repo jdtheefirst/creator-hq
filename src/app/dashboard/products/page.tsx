@@ -1,22 +1,6 @@
 import Link from "next/link";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
-import { format } from "date-fns";
 import ProductFilters from "@/components/ProductFilters";
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  stock: number;
-  status: "draft" | "active" | "out_of_stock" | "archived";
-  category: string;
-  created_at: string;
-  updated_at: string;
-  sales_count: number;
-  rating: number;
-  review_count: number;
-}
+import { createClient } from "@/lib/supabase/server";
 
 interface ProductsPageProps {
   searchParams: {
@@ -29,7 +13,7 @@ interface ProductsPageProps {
 export default async function ProductsPage({
   searchParams,
 }: ProductsPageProps) {
-  const supabase = createServerComponentClient({ cookies });
+  const supabase = await createClient();
 
   // Build query based on filters
   let query = supabase
@@ -148,10 +132,10 @@ export default async function ProductsPage({
                           product.status === "active"
                             ? "bg-green-100 text-green-800"
                             : product.status === "out_of_stock"
-                            ? "bg-red-100 text-red-800"
-                            : product.status === "draft"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-gray-100 text-gray-800"
+                              ? "bg-red-100 text-red-800"
+                              : product.status === "draft"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         {product.status.replace("_", " ")}

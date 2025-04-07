@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { ProductForm } from "@/components/store/ProductForm";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrencyOptions } from "@/lib/utils";
 
 interface EditProductPageProps {
   params: {
@@ -12,6 +13,7 @@ export default async function EditProductPage({
   params,
 }: EditProductPageProps) {
   const supabase = await createClient();
+  const currencyOptions = getCurrencyOptions();
 
   const { data: product, error } = await supabase
     .from("products")
@@ -30,6 +32,7 @@ export default async function EditProductPage({
         <ProductForm
           initialData={product}
           onSubmit={{ update: true, id: params.id }}
+          currencyOptions={currencyOptions}
         />
       </div>
     </div>

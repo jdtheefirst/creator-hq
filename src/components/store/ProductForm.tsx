@@ -7,9 +7,13 @@ import * as z from "zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Select } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 import { Product, ProductType } from "@/types/store";
-import { getCurrencyOptions } from "@/lib/utils";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
@@ -21,7 +25,10 @@ const productSchema = z.object({
   currency: z.string().min(1, "Currency is required"),
   type: z.enum(["physical", "digital", "affiliate"]),
   status: z.enum(["draft", "published", "archived"]),
-  stock_quantity: z.number().optional(),
+  stock_quantity: z
+    .number()
+    .positive("Stock quantity must be a positive number")
+    .optional(),
   affiliate_url: z.string().url().optional().nullable(),
   thumbnail_url: z.string().url().optional().nullable(),
   digital_file_url: z.string().url().optional().nullable(),
@@ -30,9 +37,14 @@ const productSchema = z.object({
 interface ProductFormProps {
   initialData?: Product;
   onSubmit: { update: boolean; id: string | undefined };
+  currencyOptions: { value: string; label: string }[];
 }
 // onSubmit: (data: z.infer<typeof productSchema>) => Promise<void>;
-export function ProductForm({ initialData, onSubmit }: ProductFormProps) {
+export function ProductForm({
+  initialData,
+  onSubmit,
+  currencyOptions,
+}: ProductFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [digitalFile, setDigitalFile] = useState<File | null>(null);
@@ -43,7 +55,6 @@ export function ProductForm({ initialData, onSubmit }: ProductFormProps) {
     initialData?.digital_file_url ?? null
   );
   const supabase = createBrowserClient();
-  const currencyOptions = getCurrencyOptions();
 
   useEffect(() => {
     let url: string | null = null;
@@ -199,6 +210,11 @@ export function ProductForm({ initialData, onSubmit }: ProductFormProps) {
             {...form.register("category")}
             className="w-full"
           />
+          {form.formState.errors.category && (
+            <p className="text-red-500 text-sm mt-1">
+              {form.formState.errors.category.message}
+            </p>
+          )}
         </div>
 
         {/* Price */}
@@ -225,11 +241,20 @@ export function ProductForm({ initialData, onSubmit }: ProductFormProps) {
             {...form.register("currency")}
             defaultValue={initialData?.currency || "USD"}
           >
-            {currencyOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            <SelectTrigger>
+              {/* This is the visible part of the select dropdown */}
+              <div>{initialData?.currency || "USD"}</div>
+            </SelectTrigger>
+
+            <SelectContent>
+              {/* Wrap SelectItems within SelectContent */}
+              {currencyOptions &&
+                currencyOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+            </SelectContent>
           </Select>
           {form.formState.errors.currency && (
             <p className="text-red-500 text-sm mt-1">
@@ -239,104 +264,122 @@ export function ProductForm({ initialData, onSubmit }: ProductFormProps) {
         </div>
 
         {/* Type */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Product Type</label>
-          <Select
-            {...form.register("type")}
-            defaultValue={initialData?.type || "physical"}
-          >
-            <option value="physical">Physical Product</option>
-            <option value="digital">Digital Product</option>
-            <option value="affiliate">Affiliate Product</option>
-          </Select>
-        </div>
-
-        {/* Stock */}
-        {form.watch("type") === "physical" && (
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Stock Quantity
-            </label>
-            <Input
-              type="number"
-              {...form.register("stock_quantity", { valueAsNumber: true })}
-              placeholder="Enter stock quantity"
-              className="w-full"
-            />
-          </div>
+        <label className="block text-sm font-medium mb-1">Product Type</label>
+        <Select
+          {...form.register("type")}
+          defaultValue={initialData?.type || "physical"}
+        >
+          <SelectTrigger>
+            <div>{initialData?.type || "physical"}</div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="physical">Physical Product</SelectItem>
+            <SelectItem value="digital">Digital Product</SelectItem>
+            <SelectItem value="affiliate">Affiliate Product</SelectItem>
+          </SelectContent>
+        </Select>
+        {form.formState.errors.type && (
+          <p className="text-red-500 text-sm mt-1">
+            {form.formState.errors.type.message}
+          </p>
         )}
+      </div>
 
-        {/* Affiliate URL */}
-        {form.watch("type") === "affiliate" && (
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Affiliate URL
-            </label>
-            <Input
-              {...form.register("affiliate_url")}
-              placeholder="Enter affiliate URL"
-              className="w-full"
-            />
-          </div>
-        )}
-
-        {/* Thumbnail Upload */}
+      {/* Stock */}
+      {form.watch("type") === "physical" && (
         <div>
           <label className="block text-sm font-medium mb-1">
-            Thumbnail Image
+            Stock Quantity
           </label>
           <Input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
+            type="number"
+            {...form.register("stock_quantity", { valueAsNumber: true })}
+            defaultValue={initialData?.stock_quantity || 1}
+            placeholder="Enter stock quantity"
+            className="w-full"
+            min={1}
+          />
+        </div>
+      )}
+
+      {/* Affiliate URL */}
+      {form.watch("type") === "affiliate" && (
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Affiliate URL
+          </label>
+          <Input
+            {...form.register("affiliate_url")}
+            placeholder="Enter affiliate URL"
             className="w-full"
           />
-          {thumbnailPreview && (
-            <img
-              src={thumbnailPreview}
-              alt="Thumbnail Preview"
-              className="mt-2 max-w-xs border rounded"
-            />
+        </div>
+      )}
+
+      {/* Thumbnail Upload */}
+      <div>
+        <label className="block text-sm font-medium mb-1">
+          Thumbnail Image
+        </label>
+        <Input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setThumbnailFile(e.target.files?.[0] || null)}
+          className="w-full"
+        />
+        {thumbnailPreview && (
+          <img
+            src={thumbnailPreview}
+            alt="Thumbnail Preview"
+            className="mt-2 max-w-xs border rounded"
+          />
+        )}
+      </div>
+
+      {/* Digital File Upload */}
+      {form.watch("type") === "digital" && (
+        <div>
+          <label className="block text-sm font-medium mb-1">Digital File</label>
+          <Input
+            type="file"
+            onChange={(e) => setDigitalFile(e.target.files?.[0] || null)}
+            className="w-full"
+          />
+
+          {digitalFilePreview && (
+            <a
+              href={digitalFilePreview}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 text-sm text-blue-600 underline block"
+            >
+              {digitalFile?.name ?? digitalFilePreview.split("/").pop()}
+            </a>
           )}
         </div>
+      )}
 
-        {/* Digital File Upload */}
-        {form.watch("type") === "digital" && (
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              Digital File
-            </label>
-            <Input
-              type="file"
-              onChange={(e) => setDigitalFile(e.target.files?.[0] || null)}
-              className="w-full"
-            />
-
-            {digitalFilePreview && (
-              <a
-                href={digitalFilePreview}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 text-sm text-blue-600 underline block"
-              >
-                {digitalFile?.name ?? digitalFilePreview.split("/").pop()}
-              </a>
-            )}
-          </div>
+      {/* Status */}
+      <div>
+        <label className="block text-sm font-medium mb-1">Status</label>
+        <Select
+          {...form.register("status")}
+          defaultValue={initialData?.status || "draft"}
+        >
+          <SelectTrigger>
+            <div>{initialData?.status || "draft"}</div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="published">Published</SelectItem>
+            <SelectItem value="archived">Archived</SelectItem>
+          </SelectContent>
+        </Select>
+        {form.formState.errors.status && (
+          <p className="text-red-500 text-sm mt-1">
+            {form.formState.errors.status.message}
+          </p>
         )}
-
-        {/* Status */}
-        <div>
-          <label className="block text-sm font-medium mb-1">Status</label>
-          <Select
-            {...form.register("status")}
-            defaultValue={initialData?.status || "draft"}
-          >
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
-            <option value="archived">Archived</option>
-          </Select>
-        </div>
       </div>
 
       <Button type="submit" disabled={isLoading} className="w-full">
