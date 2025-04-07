@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { Line, Bar } from "react-chartjs-2";
 import { format } from "date-fns";
 

@@ -4,6 +4,7 @@ CREATE TABLE products (
     creator_id UUID REFERENCES profiles(id) NOT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    category text not null,
     price DECIMAL(10,2) NOT NULL,
     currency VARCHAR(3) NOT NULL,
     type VARCHAR(20) NOT NULL CHECK (type IN ('physical', 'digital', 'affiliate')),
@@ -58,6 +59,37 @@ CREATE TABLE order_items (
     currency VARCHAR(3) NOT NULL DEFAULT 'USD',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Create function to update updated_at timestamp
+create or replace function update_updated_at_column()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+-- Create index for faster queries
+-- Products
+create index products_slug_idx on products(slug);
+create index products_type_idx on products(type);
+create index products_created_at_idx on products(created_at);
+create index products_creator_id_idx on products(creator_id);
+create index products_status_idx on products(status);
+create index products_category_idx on products(category);
+
+-- Orders
+create index orders_user_id_idx on orders(user_id);
+create index orders_creator_id_idx on orders(creator_id);
+create index orders_status_idx on orders(status);
+create index orders_created_at_idx on orders(created_at);
+
+-- Order items
+create index order_items_product_id_idx on order_items(product_id);
+create index order_items_variant_id_idx on order_items(variant_id);
+
+-- Product variants
+create index product_variants_product_id_idx on product_variants(product_id);
 
 -- RLS Policies
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;

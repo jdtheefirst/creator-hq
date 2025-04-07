@@ -58,6 +58,20 @@ CREATE TABLE newsletter_metrics (
   UNIQUE(creator_id, date)
 );
 
+-- Add video metrics table
+CREATE TABLE video_metrics (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  creator_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  date DATE NOT NULL,
+  total_views INTEGER DEFAULT 0,
+  total_likes INTEGER DEFAULT 0,
+  total_comments INTEGER DEFAULT 0,
+  watch_time_minutes INTEGER DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(creator_id, date)
+);
+
 -- Create indexes for faster queries
 create index page_views_creator_id_idx on page_views(creator_id);
 create index page_views_view_date_idx on page_views(view_date);
@@ -67,6 +81,8 @@ create index revenue_metrics_creator_id_idx on revenue_metrics(creator_id);
 create index revenue_metrics_date_idx on revenue_metrics(date);
 create index newsletter_metrics_creator_id_idx on newsletter_metrics(creator_id);
 create index newsletter_metrics_date_idx on newsletter_metrics(date);
+create index video_metrics_creator_id_idx on video_metrics(creator_id);
+create index video_metrics_date_idx on video_metrics(date);
 
 -- Create function to update updated_at timestamp
 create trigger update_revenue_metrics_updated_at
@@ -79,6 +95,7 @@ alter table page_views enable row level security;
 alter table user_engagement enable row level security;
 alter table revenue_metrics enable row level security;
 alter table newsletter_metrics enable row level security;
+ALTER TABLE video_metrics ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for page_views
 create policy "Creators can view their own page views"
@@ -115,6 +132,49 @@ create policy "Creators can update their own revenue metrics"
 create policy "Creators can view their own newsletter metrics"
   on newsletter_metrics for select
   using (auth.uid() = creator_id);
+
+-- Create policies for video_metrics
+CREATE POLICY "Creators can view their own video metrics"
+  ON video_metrics FOR SELECT
+  USING (auth.uid() = creator_id);
+
+-- Create function to update video metrics
+CREATE OR REPLACE FUNCTION update_video_metrics()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO video_metrics (
+    creator_id,
+    date,
+    total_views,
+    total_likes,
+    total_comments
+  )
+  SELECT
+    creator_id,
+    CURRENT_DATE,
+    SUM(views),
+    SUM(likes),
+    COUNT(DISTINCT c.id)
+  FROM videos v
+  LEFT JOIN comments c ON c.post_id = v.id AND c.post_type = 'video'
+  WHERE v.creator_id = NEW.creator_id
+  GROUP BY creator_id
+  ON CONFLICT (creator_id, date) 
+  DO UPDATE SET
+    total_views = EXCLUDED.total_views,
+    total_likes = EXCLUDED.total_likes,
+    total_comments = EXCLUDED.total_comments,
+    updated_at = NOW();
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for video metrics
+CREATE TRIGGER update_video_metrics_trigger
+  AFTER INSERT OR UPDATE ON videos
+  FOR EACH ROW
+  EXECUTE FUNCTION update_video_metrics();
 
 -- Create function to aggregate daily revenue metrics
 create or replace function aggregate_daily_revenue_metrics()
