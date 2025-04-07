@@ -125,3 +125,13 @@ export function useStore() {
   }
   return context;
 }
+
+// Custom hook for cart
+export function useCart() {
+  const { state, dispatch } = useStore();
+
+  const cartItems = state.cart;
+  const clearCart = () => dispatch({ type: "CLEAR_CART" });
+
+  return { cartItems, clearCart };
+}

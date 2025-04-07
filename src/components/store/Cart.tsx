@@ -1,8 +1,16 @@
-import { useStore } from "@/lib/context/StoreContext";
+import { useCart, useStore } from "@/lib/context/StoreContext";
 import { formatCurrency } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 export function Cart() {
   const { state, dispatch } = useStore();
+  const { clearCart } = useCart();
+
+  const router = useRouter();
+
+  const handleCheckout = () => {
+    router.push("/checkout");
+  };
 
   const updateQuantity = (
     productId: string,
@@ -94,12 +102,16 @@ export function Cart() {
               <span>{formatCurrency(state.total)}</span>
             </div>
             <button
-              onClick={() => {
-                /* Implement checkout */
-              }}
+              onClick={handleCheckout}
               className="w-full mt-4 bg-primary text-white py-2 rounded hover:bg-primary/90"
             >
               Proceed to Checkout
+            </button>
+            <button
+              onClick={clearCart}
+              className="w-full mt-4 bg-destructive text-white py-2 rounded hover:bg-primary/90"
+            >
+              Clear Cart
             </button>
           </div>
         </>
