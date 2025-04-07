@@ -13,6 +13,9 @@ CREATE TABLE products (
     affiliate_url TEXT,
     digital_file_url TEXT,
     stock_quantity INTEGER,
+    sales_count integer default 0,
+    rating decimal(3,2) default 0,
+    review_count integer default 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

@@ -7,6 +7,7 @@ export interface Product {
   creator_id: string;
   name: string;
   description: string;
+  category: string;
   price: number;
   currency: string;
   type: ProductType;
@@ -16,9 +17,26 @@ export interface Product {
   affiliate_url: string | null;
   digital_file_url: string | null;
   stock_quantity: number | null;
+  sales_count: number | null;
+  rating: number | null;
+  review_count: number | null;
   created_at: string;
   updated_at: string;
   variants?: ProductVariant[];
+}
+
+export interface ProductFormData {
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  currency: string;
+  type: ProductType;
+  status: ProductStatus;
+  stock_quantity?: number;
+  affiliate_url?: string | null;
+  thumbnail_url?: string | null;
+  digital_file_url?: string | null;
 }
 
 export interface ProductVariant {

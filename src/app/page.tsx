@@ -66,15 +66,22 @@ export default function CreatorProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0);
   const supabase = createBrowserClient();
+  const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
 
   useEffect(() => {
     async function fetchProfileData() {
       try {
+        if (!creatorId) {
+          console.error("Missing env var: NEXT_PUBLIC_CREATOR_UID");
+          setLoading(false);
+          return;
+        }
+
         // Fetch profile data
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*") // Get everything from profiles
-          .eq("id", process.env.NEXT_PUBLIC_CREATOR_UID)
+          .eq("id", creatorId)
           .maybeSingle();
 
         if (profileError) throw profileError;
@@ -101,9 +108,10 @@ export default function CreatorProfilePage() {
     }
 
     fetchProfileData();
-  }, []); // Empty dependency array for initial load only
+  }, [creatorId]); // Empty dependency array for initial load only
 
   if (loading) {
+    console.log("Is loading:");
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
