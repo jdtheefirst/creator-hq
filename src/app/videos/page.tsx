@@ -31,7 +31,7 @@ export default async function VideosPage() {
           {videos?.map((video) => (
             <Link
               key={video.id}
-              href={`/videos/${video.slug}`}
+              href={`/videos/${video.id}`}
               className="group bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
             >
               {/* Thumbnail with Play Button */}

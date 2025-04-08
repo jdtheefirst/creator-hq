@@ -60,7 +60,7 @@ export default async function BlogPage() {
                 </div>
                 <h2 className="text-xl font-semibold mb-2">
                   <Link
-                    href={`/blog/${post.slug}`}
+                    href={`/blog/${post.id}`}
                     className="hover:text-blue-600"
                   >
                     {post.title}

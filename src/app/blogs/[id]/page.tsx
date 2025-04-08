@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 
 interface BlogPostPageProps {
   params: {
-    slug: string;
+    id: string;
   };
 }
 
@@ -16,7 +16,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { data: post } = await supabase
     .from("blogs")
     .select("*")
-    .eq("slug", params.slug)
+    .eq("slug", params.id)
     .eq("status", "published")
     .single();
 
