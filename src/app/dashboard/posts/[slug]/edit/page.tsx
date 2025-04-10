@@ -1,30 +1,47 @@
+import BlogForm from "@/components/BlogForm";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import PostEditor from "@/components/PostEditor";
 
-interface PostEditPageProps {
+interface EditBlogPostProps {
   params: {
-    slug: string;
+    id: string;
   };
 }
 
-export default async function PostEditPage({ params }: PostEditPageProps) {
+export default async function EditBlogPost({ params }: EditBlogPostProps) {
   const supabase = await createClient();
 
-  // Fetch post by slug
-  const { data: post, error } = await supabase
-    .from("blogs")
-    .select("*")
-    .eq("slug", params.slug)
-    .single();
+  let initialData = null;
 
-  if (error || !post) {
-    notFound();
+  try {
+    const { data, error } = await supabase
+      .from("blogs")
+      .select("*")
+      .eq("id", params.id)
+      .single();
+
+    if (error) throw error;
+
+    initialData = data;
+
+    if (!initialData) {
+      throw new Error("Blog post not found");
+    }
+  } catch (error) {
+    console.error("Error fetching blog post data:", error);
+    initialData = null; // Set to null if there's an error or no data found
   }
+
+  if (!initialData) {
+    notFound(); // Redirect to 404 if the post is not found
+  }
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-8">Edit Post</h1>
-      <PostEditor post={post} />
+    <div className="p-4 max-w-3xl mx-auto">
+      <h1 className="text-3xl font-bold mb-6">Edit Blog Post</h1>
+      {initialData && (
+        <BlogForm mode="edit" initialData={initialData} postId={params.id} />
+      )}
     </div>
   );
 }

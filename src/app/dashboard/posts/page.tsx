@@ -26,7 +26,7 @@ export default async function PostsPage() {
           </Link>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white rounded-lg shadow-md overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 border-b">
