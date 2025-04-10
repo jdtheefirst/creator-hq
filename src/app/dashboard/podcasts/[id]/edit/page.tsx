@@ -1,0 +1,23 @@
+// 2. /dashboard/podcasts/[id]/edit/page.tsx
+import { createClient } from "@/lib/supabase/server";
+import PodcastForm from "@/components/PodcastForm";
+
+export default async function EditPodcastPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const supabase = await createClient();
+  const { data: podcast } = await supabase
+    .from("podcasts")
+    .select("*")
+    .eq("id", params.id)
+    .single();
+
+  return (
+    <div className="max-w-3xl mx-auto py-10">
+      <h1 className="text-3xl font-bold mb-6">Edit Podcast</h1>
+      <PodcastForm initialData={podcast} mode="edit" />
+    </div>
+  );
+}

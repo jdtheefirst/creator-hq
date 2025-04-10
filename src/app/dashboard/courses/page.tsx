@@ -13,9 +13,11 @@ interface Course {
 
 export default async function CoursesPage() {
   const supabase = await createClient();
+  const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
   const { data: courses, error } = await supabase
     .from("courses")
     .select("*")
+    .eq("creator_id", creatorId)
     .order("created_at", { ascending: false });
 
   if (error) {

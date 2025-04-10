@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { ColorPicker } from "@/components/ui/ColorPicker";
-import { create } from "domain";
 import { createBrowserClient } from "@/lib/supabase/client";
 import SignOutButton from "./SignOutButton";
 

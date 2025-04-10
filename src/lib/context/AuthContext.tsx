@@ -27,11 +27,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (!mounted) return;
 
-      if (session?.user) {
-        fetchUserRole(session.user);
+      if (user) {
+        fetchUserRole(user);
       } else {
         setUser(null);
         setLoading(false);

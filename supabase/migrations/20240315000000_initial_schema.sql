@@ -102,3 +102,12 @@ CREATE TRIGGER handle_users_updated_at
 CREATE TRIGGER handle_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+  -- Index on profiles.id (already covered by primary key, but worth verifying)
+CREATE INDEX IF NOT EXISTS idx_profiles_id ON public.profiles(id);
+
+-- Index on featured_content.creator_id for faster lookups
+CREATE INDEX IF NOT EXISTS idx_featured_content_creator_id ON public.featured_content(creator_id);
+
+-- Index on featured_content.created_at for faster ordering
+CREATE INDEX IF NOT EXISTS idx_featured_content_created_at ON public.featured_content(created_at DESC);

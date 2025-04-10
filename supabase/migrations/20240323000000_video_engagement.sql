@@ -17,7 +17,7 @@ BEGIN
   SELECT 
     creator_id,
     'view',
-    '/videos/' || slug,
+    '/videos/' || id,
     jsonb_build_object('video_id', id, 'title', title)
   FROM videos
   WHERE id = video_id;

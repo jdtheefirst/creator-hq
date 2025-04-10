@@ -34,6 +34,18 @@ CREATE TABLE podcasts (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE podcasts
+ADD COLUMN youtube_url TEXT,
+ADD COLUMN transcript TEXT,
+ADD COLUMN guest_name TEXT,
+ADD COLUMN tags TEXT[],
+ADD COLUMN is_published BOOLEAN DEFAULT true,
+ADD COLUMN downloadable BOOLEAN DEFAULT true,
+ADD COLUMN likes INTEGER DEFAULT 0,
+ADD COLUMN views INTEGER DEFAULT 0;
+ADD COLUMN ratings NUMERIC(2,1) DEFAULT 0.0,
+ADD COLUMN rating_count INTEGER DEFAULT 0;
+
 -- Courses table
 CREATE TABLE courses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -67,46 +79,65 @@ CREATE INDEX idx_podcasts_creator_id ON podcasts(creator_id);
 CREATE INDEX idx_courses_creator_id ON courses(creator_id);
 CREATE INDEX idx_lyrics_creator_id ON lyrics(creator_id);
 
--- Create function to generate video slugs
-CREATE OR REPLACE FUNCTION generate_video_slug()
-RETURNS TRIGGER AS $$
-DECLARE
-  slug text;
-  counter integer := 0;
-  base_slug text;
+CREATE OR REPLACE FUNCTION increment_podcast_views(podcast_id UUID)
+RETURNS void AS $$
 BEGIN
-  -- Convert to lowercase and replace special characters with hyphens
-  base_slug := lower(regexp_replace(NEW.title, '[^a-zA-Z0-9]+', '-', 'g'));
-  -- Remove leading/trailing hyphens
-  base_slug := trim(both '-' from base_slug);
+  UPDATE podcasts 
+  SET views = views + 1,
+      updated_at = NOW()
+  WHERE id = podcast_id;
   
-  -- Initial slug attempt
-  slug := base_slug;
-  
-  -- Check for existing slugs and append counter if needed
-  WHILE EXISTS (
-    SELECT 1 FROM videos WHERE slug = slug AND 
-    CASE 
-      WHEN TG_OP = 'UPDATE' THEN id != NEW.id
-      ELSE true
-    END
-  ) LOOP
-    counter := counter + 1;
-    slug := base_slug || '-' || counter;
-  END LOOP;
-  
-  -- Assign the generated slug to the NEW row
-  NEW.slug := slug;
-  
-  RETURN NEW;
+  INSERT INTO user_engagement (
+    creator_id,
+    event_type,
+    page_path,
+    metadata
+  )
+  SELECT 
+    creator_id,
+    'listen',
+    '/podcasts/' || id,
+    jsonb_build_object('podcast_id', id, 'title', title)
+  FROM podcasts
+  WHERE id = podcast_id;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create trigger for slug generation
-CREATE TRIGGER generate_video_slug_trigger
-  BEFORE INSERT OR UPDATE OF title ON videos
-  FOR EACH ROW
-  EXECUTE FUNCTION generate_video_slug();
+CREATE OR REPLACE FUNCTION toggle_podcast_like(podcast_id UUID, user_id UUID)
+RETURNS jsonb AS $$
+DECLARE
+  like_exists BOOLEAN;
+  current_likes INTEGER;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM likes 
+    WHERE post_id = podcast_id 
+    AND user_id = user_id 
+    AND post_type = 'podcast'
+  ) INTO like_exists;
+
+  IF like_exists THEN
+    DELETE FROM likes 
+    WHERE post_id = podcast_id 
+    AND user_id = user_id 
+    AND post_type = 'podcast';
+    
+    UPDATE podcasts SET likes = likes - 1 WHERE id = podcast_id;
+  ELSE
+    INSERT INTO likes (user_id, post_id, post_type)
+    VALUES (user_id, podcast_id, 'podcast');
+    
+    UPDATE podcasts SET likes = likes + 1 WHERE id = podcast_id;
+  END IF;
+
+  SELECT likes INTO current_likes FROM podcasts WHERE id = podcast_id;
+
+  RETURN jsonb_build_object(
+    'likes', current_likes,
+    'liked', NOT like_exists
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Enable RLS
 ALTER TABLE videos ENABLE ROW LEVEL SECURITY;

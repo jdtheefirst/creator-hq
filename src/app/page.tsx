@@ -56,7 +56,7 @@ export function formatFollowers(count: number): string {
 }
 
 export default function CreatorProfilePage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [featuredContent, setFeaturedContent] = useState<FeaturedContent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +72,6 @@ export default function CreatorProfilePage() {
     async function fetchProfileData() {
       try {
         if (!creatorId) {
-          console.error("Missing env var: NEXT_PUBLIC_CREATOR_UID");
           setLoading(false);
           return;
         }
@@ -82,7 +81,7 @@ export default function CreatorProfilePage() {
           .from("profiles")
           .select("*") // Get everything from profiles
           .eq("id", creatorId)
-          .maybeSingle();
+          .single();
 
         if (profileError) throw profileError;
 
@@ -107,11 +106,12 @@ export default function CreatorProfilePage() {
       }
     }
 
-    fetchProfileData();
-  }, [creatorId]); // Empty dependency array for initial load only
+    if (!authLoading) {
+      fetchProfileData();
+    }
+  }, [creatorId, authLoading]); // Empty dependency array for initial load only
 
   if (loading) {
-    console.log("Is loading:");
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
