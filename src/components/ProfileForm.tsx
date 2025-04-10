@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { ColorPicker } from "@/components/ui/ColorPicker";
-import { createBrowserClient } from "@/lib/supabase/client";
 import SignOutButton from "./SignOutButton";
+import { useAuth } from "@/lib/context/AuthContext";
 
 interface BaseProfileData {
   id: string;
@@ -156,7 +156,7 @@ export default function ProfileForm({
   userId,
 }: ProfileFormProps) {
   const router = useRouter();
-  const supabase = createBrowserClient();
+  const { supabase } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState(initialData);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);

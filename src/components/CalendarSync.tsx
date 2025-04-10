@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
 import { Calendar, CheckCircle, XCircle } from "lucide-react";
 
 export default function CalendarSync() {
-  const { user } = useAuth();
-  const supabase = createBrowserClient();
+  const { user, supabase } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(true);
 

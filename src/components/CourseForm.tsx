@@ -6,8 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { getSupabaseClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/context/AuthContext";
 
 const courseSchema = z.object({
   id: z.string().optional(),
@@ -40,7 +41,7 @@ export default function CourseForm({
 
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
-  const supabase = createBrowserClient();
+  const { supabase } = useAuth();
 
   const onSubmit = async (data: CourseFormData) => {
     setSubmitting(true);

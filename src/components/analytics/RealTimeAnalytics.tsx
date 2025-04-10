@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import { useAuth } from "@/lib/context/AuthContext";
 
 interface RealTimeStats {
   active_users: number;
@@ -16,7 +16,7 @@ export default function RealTimeAnalytics() {
     page_views: 0,
     current_pages: {},
   });
-  const supabase = createBrowserClient();
+  const { supabase } = useAuth();
 
   useEffect(() => {
     let channel: RealtimeChannel;
@@ -32,7 +32,7 @@ export default function RealTimeAnalytics() {
             schema: "public",
             table: "user_engagement",
           },
-          (payload) => {
+          (payload: any) => {
             console.log("New user activity:", payload);
             // Update stats based on the new activity
             setStats((prev) => ({
@@ -55,14 +55,22 @@ export default function RealTimeAnalytics() {
         .gte("created_at", new Date(Date.now() - 5 * 60 * 1000).toISOString());
 
       if (initialStats) {
-        const currentPages = initialStats.reduce((acc, stat) => {
-          acc[stat.page_path] = (acc[stat.page_path] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
+        const currentPages = initialStats.reduce(
+          (acc: Record<string, number>, stat: { page_path: string }) => {
+            acc[stat.page_path] = (acc[stat.page_path] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>
+        );
+
+        interface InitialStat {
+          page_path: string;
+        }
 
         setStats({
-          active_users: new Set(initialStats.map((stat) => stat.page_path))
-            .size,
+          active_users: new Set(
+            initialStats.map((stat: InitialStat) => stat.page_path)
+          ).size,
           page_views: initialStats.length,
           current_pages: currentPages,
         });

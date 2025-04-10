@@ -1,12 +1,13 @@
+"use client";
+import { useAuth } from "@/lib/context/AuthContext";
 import { useEffect, useRef } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 
 interface UseAnalyticsProps {
   pagePath: string;
 }
 
 export function useAnalytics({ pagePath }: UseAnalyticsProps) {
-  const supabase = createBrowserClient();
+  const { supabase } = useAuth();
   const scrollTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
   const lastScrollPositionRef = useRef(0);
 
@@ -102,16 +103,24 @@ export function useAnalytics({ pagePath }: UseAnalyticsProps) {
     const trackTimeSpent = () => {
       const timeSpent = Math.floor((Date.now() - startTime) / 1000);
       if (timeSpent > 0) {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session) {
-            supabase.from("user_engagement").insert({
-              creator_id: session.user.id,
-              event_type: "time_spent",
-              page_path: pagePath,
-              duration_seconds: timeSpent,
-            });
-          }
-        });
+        supabase.auth
+          .getSession()
+          .then(
+            ({
+              data: { session },
+            }: {
+              data: { session: { user: { id: string } } | null };
+            }) => {
+              if (session) {
+                supabase.from("user_engagement").insert({
+                  creator_id: session.user.id,
+                  event_type: "time_spent",
+                  page_path: pagePath,
+                  duration_seconds: timeSpent,
+                });
+              }
+            }
+          );
       }
     };
 

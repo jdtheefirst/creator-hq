@@ -31,18 +31,28 @@ interface PageViewsChartProps {
 
 export default function PageViewsChart({ data }: PageViewsChartProps) {
   // Group data by date and device type
-  const groupedData = data.reduce((acc, item) => {
-    const date = format(new Date(item.view_date), "MMM d");
-    if (!acc[date]) {
-      acc[date] = {
-        desktop: 0,
-        mobile: 0,
-        tablet: 0,
-      };
-    }
-    acc[date][item.device_type.toLowerCase()]++;
-    return acc;
-  }, {} as Record<string, { desktop: number; mobile: number; tablet: number }>);
+  const groupedData = data.reduce(
+    (acc, item) => {
+      const date = format(new Date(item.view_date), "MMM d");
+      if (!acc[date]) {
+        acc[date] = {
+          desktop: 0,
+          mobile: 0,
+          tablet: 0,
+        };
+      }
+      const deviceType = item.device_type.toLowerCase();
+      if (
+        deviceType === "desktop" ||
+        deviceType === "mobile" ||
+        deviceType === "tablet"
+      ) {
+        acc[date][deviceType]++;
+      }
+      return acc;
+    },
+    {} as Record<string, { desktop: number; mobile: number; tablet: number }>
+  );
 
   const chartData = {
     labels: Object.keys(groupedData),

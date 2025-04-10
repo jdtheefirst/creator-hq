@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase/client";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { useAuth } from "@/lib/context/AuthContext";
 
 // Dynamically import the rich text editor to avoid SSR issues
 const Editor = dynamic(() => import("@/components/Editor"), { ssr: false });
@@ -27,7 +27,7 @@ interface PostEditorProps {
 
 export default function PostEditor({ post }: PostEditorProps) {
   const router = useRouter();
-  const supabase = createBrowserClient();
+  const { supabase } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<Post>(
     post || {

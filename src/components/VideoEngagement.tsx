@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
+import { useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { Heart, Share2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -20,7 +19,7 @@ export default function VideoEngagement({
   isLiked: initialIsLiked,
 }: VideoEngagementProps) {
   const { user } = useAuth();
-  const supabase = createBrowserClient();
+  const { supabase } = useAuth();
   const [likes, setLikes] = useState(initialLikes);
   const [isLiked, setIsLiked] = useState(initialIsLiked);
   const [showComments, setShowComments] = useState(false);

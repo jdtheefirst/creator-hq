@@ -1,12 +1,10 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { createBrowserClient } from "@/lib/supabase/client";
-import { useSearchParams } from "next/navigation";
+import { useAuth } from "@/lib/context/AuthContext";
 
 export default function SignOutButton() {
-  const searchParams = useSearchParams();
-  const supabase = createBrowserClient();
+  const { supabase } = useAuth();
 
   const handleSignOut = async () => {
     console.log("Signing out");

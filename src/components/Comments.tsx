@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -19,7 +18,7 @@ export default function Comments({
   creatorId,
 }: CommentsProps) {
   const { user } = useAuth();
-  const supabase = createBrowserClient();
+  const { supabase } = useAuth();
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);

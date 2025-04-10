@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
 import { Upload, X, Youtube } from "lucide-react";
@@ -16,8 +15,7 @@ export default function VideoUploader({
   onUploadComplete,
   onYouTubeAdd,
 }: VideoUploaderProps) {
-  const { user } = useAuth();
-  const supabase = createBrowserClient();
+  const { user, supabase } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [uploadType, setUploadType] = useState<"upload" | "youtube" | null>(

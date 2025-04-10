@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
-import { createBrowserClient } from "@/lib/supabase/client";
 import Notification from "@/components/Notification";
 import { LayoutDashboard, UserRoundPen } from "lucide-react";
 
@@ -56,7 +55,7 @@ export function formatFollowers(count: number): string {
 }
 
 export default function CreatorProfilePage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, supabase } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [featuredContent, setFeaturedContent] = useState<FeaturedContent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +64,6 @@ export default function CreatorProfilePage() {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0);
-  const supabase = createBrowserClient();
   const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
 
   useEffect(() => {
@@ -106,10 +104,12 @@ export default function CreatorProfilePage() {
       }
     }
 
-    if (!authLoading) {
+    fetchProfileData();
+
+    return () => {
       fetchProfileData();
-    }
-  }, [creatorId, authLoading]); // Empty dependency array for initial load only
+    };
+  }, [creatorId, supabase]); // Empty dependency array for initial load only
 
   if (loading) {
     return (

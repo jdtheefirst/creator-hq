@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { createBrowserClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/context/AuthContext";
 
 const lyricsSchema = z.object({
   id: z.string().optional(),
@@ -38,7 +38,7 @@ export default function LyricsForm({
   });
 
   const [uploading, setUploading] = useState(false);
-  const supabase = createBrowserClient();
+  const { supabase } = useAuth(); // Assuming you have a useAuth hook to get supabase client
 
   const handleFormSubmit = async (data: LyricsFormData) => {
     setUploading(true);

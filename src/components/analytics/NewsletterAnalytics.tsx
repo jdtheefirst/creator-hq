@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import { Line, Pie } from "react-chartjs-2";
-import { format, subDays } from "date-fns";
+import { format } from "date-fns";
 import { Loader2 } from "lucide-react";
 
 interface NewsletterMetrics {
@@ -27,8 +26,7 @@ export default function NewsletterAnalytics({
   startDate,
   endDate,
 }: NewsletterAnalyticsProps) {
-  const { user } = useAuth();
-  const supabase = createBrowserClient();
+  const { user, supabase } = useAuth();
   const [metrics, setMetrics] = useState<NewsletterMetrics[]>([]);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -30,9 +29,8 @@ const stripePromise = loadStripe(
 );
 
 export default function BookingForm({ booking }: BookingFormProps) {
-  const { user } = useAuth();
+  const { user, supabase } = useAuth();
   const router = useRouter();
-  const supabase = createBrowserClient();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     client_name: booking?.client_name || "",

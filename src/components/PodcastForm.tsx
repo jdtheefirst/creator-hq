@@ -7,7 +7,7 @@ import { z } from "zod";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { v4 as uuidv4 } from "uuid";
-import { createBrowserClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/context/AuthContext";
 
 const podcastSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -46,7 +46,7 @@ export default function PodcastForm({
 
   const [uploading, setUploading] = useState(false);
   const audioFile = watch("audio_file");
-  const supabase = createBrowserClient();
+  const { supabase } = useAuth();
 
   const handleFormSubmit = async (data: PodcastFormData) => {
     const file = data.audio_file?.[0];

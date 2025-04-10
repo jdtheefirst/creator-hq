@@ -14,8 +14,8 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { Product, ProductType } from "@/types/store";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/context/AuthContext";
 
 const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -54,7 +54,7 @@ export function ProductForm({
   const [digitalFilePreview, setDigitalFilePreview] = useState<string | null>(
     initialData?.digital_file_url ?? null
   );
-  const supabase = createBrowserClient();
+  const { supabase } = useAuth();
 
   useEffect(() => {
     let url: string | null = null;

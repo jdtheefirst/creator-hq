@@ -5,7 +5,6 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
@@ -37,9 +36,8 @@ export default function BlogForm({
   initialData?: Partial<BlogPostFormData>;
   postId?: string;
 }) {
-  const { user } = useAuth();
+  const { user, supabase } = useAuth();
   const router = useRouter();
-  const supabase = createBrowserClient();
 
   const {
     register,
