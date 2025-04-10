@@ -30,15 +30,17 @@ export default async function VipPublicPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/login");
+  let isVip: boolean;
 
-  const { data: userProfile } = await supabase
-    .from("users")
-    .select("vip")
-    .eq("id", user.id)
-    .single();
+  if (user) {
+    const { data: userProfile } = await supabase
+      .from("users")
+      .select("vip")
+      .eq("id", user.id)
+      .single();
 
-  const isVip = userProfile?.vip;
+    isVip = userProfile?.vip || false;
+  }
 
   const contentTypes = ["videos", "music", "courses", "podcasts", "blogs"];
   const vipContent: { type: string; items: any[] }[] = [];
@@ -47,7 +49,7 @@ export default async function VipPublicPage() {
   for (const type of contentTypes) {
     const { data } = await supabase
       .from(type)
-      .select("id, title, slug, thumbnail")
+      .select("id, title, thumbnail")
       .eq("vip", true)
       .eq("creator_id", creatorId);
 

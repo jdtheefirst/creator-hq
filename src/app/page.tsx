@@ -411,7 +411,7 @@ export default function CreatorProfilePage() {
         {/* Quick Links */}
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link
-            href="/blog"
+            href="/blogs"
             className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
           >
             <div className="flex items-center">
@@ -528,7 +528,7 @@ export default function CreatorProfilePage() {
           </Link>
 
           <Link
-            href="/podcast"
+            href="/podcasts"
             className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
           >
             <div className="flex items-center">

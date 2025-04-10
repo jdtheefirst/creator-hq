@@ -1,3 +1,5 @@
+"use client";
+
 import { Product } from "@/types/store";
 import { useStore } from "@/lib/context/StoreContext";
 import { formatCurrency } from "@/lib/utils";

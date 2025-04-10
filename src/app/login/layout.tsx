@@ -29,15 +29,6 @@ export default function LoginLayout({
 }) {
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-xl font-semibold text-gray-900">
-              Joe Doe’s Creator HQ
-            </h1>
-          </div>
-        </div>
-      </nav>
       <main>{children}</main>
     </div>
   );
