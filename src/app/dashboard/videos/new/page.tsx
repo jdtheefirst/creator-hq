@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
 import VideoUploader from "@/components/VideoUploader";
@@ -18,9 +17,8 @@ interface VideoForm {
 }
 
 export default function NewVideoPage() {
-  const { user } = useAuth();
+  const { user, supabase } = useAuth();
   const router = useRouter();
-  const supabase = createBrowserClient();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<VideoForm>({
     title: "",

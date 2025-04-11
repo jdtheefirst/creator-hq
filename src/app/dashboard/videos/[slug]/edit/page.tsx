@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -18,9 +17,8 @@ export default function EditVideoPage({
 }: {
   params: { slug: string };
 }) {
-  const { user } = useAuth();
+  const { user, supabase } = useAuth();
   const router = useRouter();
-  const supabase = createBrowserClient();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [video, setVideo] = useState<any>(null);

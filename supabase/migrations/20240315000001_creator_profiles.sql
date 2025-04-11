@@ -30,12 +30,35 @@ CREATE TABLE public.comments (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   content TEXT NOT NULL,
   author_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  creator_id TEXT NOT NULL, -- Creator of the content being commented on
   post_id UUID NOT NULL,
   post_type TEXT CHECK (post_type IN ('blog', 'product', 'video', 'podcast', 'course', 'lyrics')),
   parent_comment_id UUID REFERENCES public.comments(id) ON DELETE CASCADE, -- Nested replies
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   is_approved BOOLEAN DEFAULT false
 );
+
+-- Enable RLS
+ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public can view comments" 
+  ON public.comments FOR SELECT 
+  USING (true);
+
+CREATE POLICY "Authors and Creators can manage comments"
+  ON public.comments FOR ALL 
+  USING (
+    auth.uid() = author_id OR auth.uid() = creator_id
+  )
+  WITH CHECK (
+    auth.uid() = author_id OR auth.uid() = creator_id
+  );
+
+CREATE INDEX comments_post_id_idx ON public.comments(post_id);
+CREATE INDEX comments_post_type_idx ON public.comments(post_type);
+CREATE INDEX comments_parent_id_idx ON public.comments(parent_comment_id);
+CREATE INDEX comments_approved_idx ON public.comments(is_approved);
+CREATE INDEX comments_created_at_idx ON public.comments(created_at);
 
 -- Reporting System for Comments
 CREATE TABLE public.comment_reports (
