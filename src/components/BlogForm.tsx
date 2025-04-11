@@ -19,7 +19,9 @@ const blogPostSchema = z.object({
   content: z.string().min(1, "Content is required"),
   category: z.string().min(1, "Category is required"),
   cover_image: z.string().optional(),
-  status: z.enum(["draft", "published"]),
+  status: z.enum(["draft", "published"], {
+    errorMap: () => ({ message: "Status is required" }),
+  }),
   vip: z.boolean().optional(),
   ads_enabled: z.boolean().optional(),
   comments_enabled: z.boolean().optional(),
@@ -44,10 +46,10 @@ export default function BlogForm({
     handleSubmit,
     formState: { errors },
     control,
-    setValue,
   } = useForm<BlogPostFormData>({
     resolver: zodResolver(blogPostSchema),
-    defaultValues: initialData,
+    defaultValues: { ...initialData, status: "draft" },
+    mode: "onBlur",
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,9 +57,13 @@ export default function BlogForm({
 
   const handleImageUpload = async (file: File) => {
     try {
+      console.log("Uploading image:", file);
+      if (!file) throw new Error("No file selected");
+      if (!user?.id) throw new Error("User ID missing");
+
       const fileExt = file.name.split(".").pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${user?.id}/blog-covers/${fileName}`;
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const filePath = `${user.id}/blog-covers/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("blog-images")
@@ -81,14 +87,17 @@ export default function BlogForm({
     setIsSubmitting(true);
 
     try {
-      let coverImageUrl = data.cover_image;
+      let coverImageUrl = initialData?.cover_image || undefined;
 
       if (coverImage) {
+        console.log("Uploading cover image:", coverImage);
         coverImageUrl = (await handleImageUpload(coverImage)) || undefined;
         if (!coverImageUrl) throw new Error("Failed to upload cover image");
       }
 
       if (mode === "new") {
+        console.log("Creating new post with data:", data);
+
         const { error } = await supabase.from("blogs").insert({
           ...data,
           creator_id: user?.id,
@@ -99,6 +108,7 @@ export default function BlogForm({
 
         toast.success("Blog post created successfully");
       } else {
+        console.log("Updating post with ID:", postId, "and data:", data);
         const { error } = await supabase
           .from("blogs")
           .update({
@@ -135,7 +145,7 @@ export default function BlogForm({
             required
           />
           {errors.title && (
-            <p className="text-red-600">{errors.title.message}</p>
+            <p className="text-red-600 text-xs">{errors.title.message}</p>
           )}
         </div>
 
@@ -149,7 +159,7 @@ export default function BlogForm({
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
           {errors.excerpt && (
-            <p className="text-red-600">{errors.excerpt.message}</p>
+            <p className="text-red-600 text-xs">{errors.excerpt.message}</p>
           )}
         </div>
 
@@ -175,6 +185,9 @@ export default function BlogForm({
               </option>
             ))}
           </select>
+          {errors.category && (
+            <p className="text-red-600 text-xs">{errors.category.message}</p>
+          )}
         </div>
 
         <div>
@@ -187,6 +200,9 @@ export default function BlogForm({
             onChange={(e) => setCoverImage(e.target.files?.[0] || null)}
             className="mt-1 block w-full"
           />
+          {errors.cover_image && (
+            <p className="text-red-600 text-xs">{errors.cover_image.message}</p>
+          )}
         </div>
 
         <div>
@@ -205,7 +221,7 @@ export default function BlogForm({
             )}
           />
           {errors.content && (
-            <p className="text-red-600">{errors.content.message}</p>
+            <p className="text-red-600 text-xs">{errors.content.message}</p>
           )}
         </div>
 
@@ -238,21 +254,41 @@ export default function BlogForm({
           </label>
         </div>
 
-        <div className="flex justify-end space-x-4">
-          <button
-            type="button"
-            onClick={() => setValue("status", "draft")}
-            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Save as Draft
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            {isSubmitting ? "Publishing..." : "Publish"}
-          </button>
+        <div className="space-y-4">
+          <div className="flex items-center space-x-6">
+            <label className="flex items-center space-x-2">
+              <input
+                type="radio"
+                value="draft"
+                {...register("status")}
+                className="form-radio text-blue-600"
+              />
+              <span className="text-sm text-gray-700">Draft</span>
+            </label>
+
+            <label className="flex items-center space-x-2">
+              <input
+                type="radio"
+                value="published"
+                {...register("status")}
+                className="form-radio text-blue-600"
+              />
+              <span className="text-sm text-gray-700">Published</span>
+            </label>
+            {errors.status && (
+              <p className="text-red-600 text-xs">{errors.status.message}</p>
+            )}
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              {isSubmitting ? "Saving..." : "Save Post"}
+            </button>
+          </div>
         </div>
       </form>
     </div>

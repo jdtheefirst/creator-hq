@@ -105,10 +105,6 @@ export default function CreatorProfilePage() {
     }
 
     fetchProfileData();
-
-    return () => {
-      fetchProfileData();
-    };
   }, [creatorId, supabase]); // Empty dependency array for initial load only
 
   if (loading) {
