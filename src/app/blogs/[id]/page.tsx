@@ -16,8 +16,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { data: post } = await supabase
     .from("blogs")
     .select("*")
-    .eq("slug", params.id)
-    .eq("status", "published")
+    .eq("id", params.id)
     .single();
 
   if (!post) {

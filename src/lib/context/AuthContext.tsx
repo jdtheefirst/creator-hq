@@ -41,7 +41,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const supabase = getSupabaseClient();
+  const [supabase] = useState(() => getSupabaseClient());
 
   const fetchUserRole = useCallback(
     async (supabaseUser: SupabaseUser) => {

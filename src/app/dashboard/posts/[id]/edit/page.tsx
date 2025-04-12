@@ -10,6 +10,7 @@ interface EditBlogPostProps {
 
 export default async function EditBlogPost({ params }: EditBlogPostProps) {
   const supabase = await createClient();
+  const { id } = await params;
 
   let initialData = null;
 
@@ -17,7 +18,7 @@ export default async function EditBlogPost({ params }: EditBlogPostProps) {
     const { data, error } = await supabase
       .from("blogs")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (error) throw error;
@@ -40,7 +41,7 @@ export default async function EditBlogPost({ params }: EditBlogPostProps) {
     <div className="p-4 max-w-3xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">Edit Blog Post</h1>
       {initialData && (
-        <BlogForm mode="edit" initialData={initialData} postId={params.id} />
+        <BlogForm mode="edit" initialData={initialData} postId={id} />
       )}
     </div>
   );

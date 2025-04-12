@@ -38,9 +38,6 @@ export default function BlogForm({
   initialData?: Partial<BlogPostFormData>;
   postId?: string;
 }) {
-  const { user, supabase } = useAuth();
-  const router = useRouter();
-
   const {
     register,
     handleSubmit,
@@ -48,26 +45,43 @@ export default function BlogForm({
     control,
   } = useForm<BlogPostFormData>({
     resolver: zodResolver(blogPostSchema),
-    defaultValues: { ...initialData, status: "draft" },
+    defaultValues: { ...initialData, status: initialData?.status || "draft" },
     mode: "onBlur",
   });
 
+  const { supabase, user } = useAuth();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [coverImage, setCoverImage] = useState<File | null>(null);
+  const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
+  console.log("mode:", mode, "initialData:", initialData, "User:", user);
+  console.log("creatorId:", creatorId);
+  console.log("supabase:", supabase);
+  console.log("isSubmitting:", isSubmitting);
 
   const handleImageUpload = async (file: File) => {
+    console.log("User ID:", creatorId, "SUPABASE:", supabase);
     try {
-      console.log("Uploading image:", file);
+      console.log("Uploading image:", file.name);
       if (!file) throw new Error("No file selected");
-      if (!user?.id) throw new Error("User ID missing");
+      if (!creatorId) throw new Error("User ID missing");
+      if (!supabase) throw new Error("Supabase client not initialized");
+      console.log("Starting upload for file:", file.name);
+      console.log("File size:", file.size, "bytes");
 
       const fileExt = file.name.split(".").pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      const filePath = `${user.id}/blog-covers/${fileName}`;
+      const filePath = `${user?.id}/blog-covers/${fileName}`;
+
+      console.log("File path:", filePath);
+      console.log("File name:", fileName);
 
       const { error: uploadError } = await supabase.storage
         .from("blog-images")
         .upload(filePath, file);
+
+      console.log("Uploaded file:", filePath);
+      console.log("Error uploaing image:", uploadError);
 
       if (uploadError) throw uploadError;
 
@@ -85,19 +99,54 @@ export default function BlogForm({
 
   const onSubmit = async (data: BlogPostFormData) => {
     setIsSubmitting(true);
-
     try {
+      console.log("Form data:", data);
       let coverImageUrl = initialData?.cover_image || undefined;
+      console.log("Initial cover image URL:", coverImageUrl);
+      console.log("Selected cover image:", coverImage);
 
       if (coverImage) {
-        console.log("Uploading cover image:", coverImage);
+        console.log("Selected cover image:", coverImage.name);
+        // 1. Delete the old image if it exists
+
+        if (coverImageUrl) {
+          console.log("Deleting old image:", coverImageUrl);
+          try {
+            const pathStart =
+              coverImageUrl.indexOf("/storage/v1/object/public/blog-images/") +
+              "/storage/v1/object/public/blog-images/".length;
+            const filePath = coverImageUrl.substring(pathStart);
+
+            const { error: deleteError } = await supabase.storage
+              .from("blog-images")
+              .remove([filePath]);
+
+            if (deleteError) {
+              console.warn("Failed to delete old image:", deleteError.message);
+              toast.error("Failed to delete old image");
+            } else {
+              console.log("Old image deleted:", filePath);
+              toast.success("Old image deleted successfully");
+            }
+          } catch (deleteErr) {
+            console.error(
+              "Error extracting file path for deletion:",
+              deleteErr
+            );
+          }
+        }
+
+        console.log("Uploading new image:", coverImage.name);
+        // 2. Upload new image
         coverImageUrl = (await handleImageUpload(coverImage)) || undefined;
+        console.log("New image URL:", coverImageUrl);
         if (!coverImageUrl) throw new Error("Failed to upload cover image");
       }
+      console.log(mode, "mode");
+      console.log("Post ID:", postId);
 
       if (mode === "new") {
-        console.log("Creating new post with data:", data);
-
+        console.log("Creating new blog post with data:", data);
         const { error } = await supabase.from("blogs").insert({
           ...data,
           creator_id: user?.id,
@@ -108,7 +157,6 @@ export default function BlogForm({
 
         toast.success("Blog post created successfully");
       } else {
-        console.log("Updating post with ID:", postId, "and data:", data);
         const { error } = await supabase
           .from("blogs")
           .update({
@@ -190,8 +238,28 @@ export default function BlogForm({
           )}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
+        <div className="mb-4">
+          {initialData?.cover_image && (
+            <div className="mt-3">
+              <p className="text-sm text-gray-600 mb-1">Current Cover Image:</p>
+              <img
+                src={initialData?.cover_image}
+                alt="Current cover"
+                className="w-full max-w-xs rounded-lg border shadow"
+              />
+            </div>
+          )}
+          {coverImage && (
+            <div className="mt-3">
+              <p className="text-sm text-gray-600 mb-1">Select Image:</p>
+              <img
+                src={coverImage ? URL.createObjectURL(coverImage) : undefined}
+                alt="Current cover"
+                className="w-full max-w-xs rounded-lg border shadow"
+              />
+            </div>
+          )}
+          <label className="block text-sm font-medium text-gray-700 mt-3">
             Cover Image
           </label>
           <input
@@ -201,7 +269,9 @@ export default function BlogForm({
             className="mt-1 block w-full"
           />
           {errors.cover_image && (
-            <p className="text-red-600 text-xs">{errors.cover_image.message}</p>
+            <p className="text-red-600 text-xs mt-1">
+              {errors.cover_image.message}
+            </p>
           )}
         </div>
 

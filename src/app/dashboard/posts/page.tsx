@@ -8,6 +8,7 @@ export default async function PostsPage() {
   const { data: posts, error } = await supabase
     .from("blogs")
     .select("*")
+    .eq("creator_id", process.env.NEXT_PUBLIC_CREATOR_UID)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -20,7 +21,7 @@ export default async function PostsPage() {
           <h1 className="text-4xl font-bold">Blog Posts</h1>
           <Link
             href="/dashboard/posts/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
           >
             New Post
           </Link>
@@ -90,17 +91,10 @@ export default async function PostsPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex gap-4">
                       <Link
-                        href={`/dashboard/posts/${post.slug}/edit`}
-                        className="text-blue-600 hover:text-blue-900"
+                        href={`/dashboard/posts/${post.id}/edit`}
+                        className="text-destructive hover:text-blue-900"
                       >
                         Edit
-                      </Link>
-                      <Link
-                        href={`/blog/${post.slug}`}
-                        className="text-green-600 hover:text-green-900"
-                        target="_blank"
-                      >
-                        View
                       </Link>
                     </div>
                   </td>

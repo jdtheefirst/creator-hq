@@ -11,6 +11,7 @@ export default function SignOutButton() {
     try {
       // Sign out on the client side first
       await supabase.auth.signOut();
+      console.log("Client-side sign-out successful");
 
       // Then call the server-side sign-out endpoint
       const response = await fetch("/api/auth/signout", {
@@ -32,9 +33,10 @@ export default function SignOutButton() {
 
   return (
     <Button
-      variant="outline"
+      variant="ghost"
+      type="button"
       onClick={handleSignOut}
-      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+      className="text-red-600 bg-transparent hover:text-red-700 w-full"
     >
       Sign Out
     </Button>

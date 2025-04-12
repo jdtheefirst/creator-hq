@@ -10,6 +10,7 @@ export default async function BlogPage() {
   const { data: posts } = await supabase
     .from("blogs")
     .select("*")
+    .eq("creator_id", process.env.NEXT_PUBLIC_CREATOR_UID)
     .eq("status", "published")
     .order("created_at", { ascending: false });
 
@@ -60,7 +61,7 @@ export default async function BlogPage() {
                 </div>
                 <h2 className="text-xl font-semibold mb-2">
                   <Link
-                    href={`/blog/${post.id}`}
+                    href={`/blogs/${post.id}`}
                     className="hover:text-blue-600"
                   >
                     {post.title}
@@ -68,7 +69,7 @@ export default async function BlogPage() {
                 </h2>
                 <p className="text-gray-600 mb-4">{post.excerpt}</p>
                 <Link
-                  href={`/blog/${post.slug}`}
+                  href={`/blogs/${post.id}`}
                   className="text-blue-600 font-medium hover:text-blue-700"
                 >
                   Read more →
