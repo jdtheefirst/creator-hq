@@ -10,13 +10,14 @@ interface BlogPostPageProps {
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
+  const { id } = await params;
   const supabase = await createClient();
 
   // Fetch published post by slug
   const { data: post } = await supabase
     .from("blogs")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   if (!post) {
@@ -39,7 +40,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           </div>
           <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span>By {post.author?.email || "Anonymous"}</span>
+            <span>Straight from the Creator’s mind</span>
           </div>
         </header>
 
@@ -64,7 +65,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         )}
 
         {/* Content */}
-        <div className="prose prose-lg max-w-none">{post.content}</div>
+        <div
+          className="prose prose-lg max-w-none"
+          dangerouslySetInnerHTML={{ __html: post.content }}
+        />
 
         {/* Bottom Ad Space */}
         {post.ads_enabled && (
