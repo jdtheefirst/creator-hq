@@ -53,35 +53,18 @@ export default function BlogForm({
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [coverImage, setCoverImage] = useState<File | null>(null);
-  const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
-  console.log("mode:", mode, "initialData:", initialData, "User:", user);
-  console.log("creatorId:", creatorId);
-  console.log("supabase:", supabase);
-  console.log("isSubmitting:", isSubmitting);
 
   const handleImageUpload = async (file: File) => {
-    console.log("User ID:", creatorId, "SUPABASE:", supabase);
     try {
-      console.log("Uploading image:", file.name);
       if (!file) throw new Error("No file selected");
-      if (!creatorId) throw new Error("User ID missing");
-      if (!supabase) throw new Error("Supabase client not initialized");
-      console.log("Starting upload for file:", file.name);
-      console.log("File size:", file.size, "bytes");
 
       const fileExt = file.name.split(".").pop();
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const filePath = `${user?.id}/blog-covers/${fileName}`;
 
-      console.log("File path:", filePath);
-      console.log("File name:", fileName);
-
       const { error: uploadError } = await supabase.storage
         .from("blog-images")
         .upload(filePath, file);
-
-      console.log("Uploaded file:", filePath);
-      console.log("Error uploaing image:", uploadError);
 
       if (uploadError) throw uploadError;
 
@@ -100,17 +83,12 @@ export default function BlogForm({
   const onSubmit = async (data: BlogPostFormData) => {
     setIsSubmitting(true);
     try {
-      console.log("Form data:", data);
       let coverImageUrl = initialData?.cover_image || undefined;
-      console.log("Initial cover image URL:", coverImageUrl);
-      console.log("Selected cover image:", coverImage);
 
       if (coverImage) {
-        console.log("Selected cover image:", coverImage.name);
         // 1. Delete the old image if it exists
 
         if (coverImageUrl) {
-          console.log("Deleting old image:", coverImageUrl);
           try {
             const pathStart =
               coverImageUrl.indexOf("/storage/v1/object/public/blog-images/") +
@@ -122,10 +100,8 @@ export default function BlogForm({
               .remove([filePath]);
 
             if (deleteError) {
-              console.warn("Failed to delete old image:", deleteError.message);
               toast.error("Failed to delete old image");
             } else {
-              console.log("Old image deleted:", filePath);
               toast.success("Old image deleted successfully");
             }
           } catch (deleteErr) {
@@ -139,14 +115,10 @@ export default function BlogForm({
         console.log("Uploading new image:", coverImage.name);
         // 2. Upload new image
         coverImageUrl = (await handleImageUpload(coverImage)) || undefined;
-        console.log("New image URL:", coverImageUrl);
         if (!coverImageUrl) throw new Error("Failed to upload cover image");
       }
-      console.log(mode, "mode");
-      console.log("Post ID:", postId);
 
       if (mode === "new") {
-        console.log("Creating new blog post with data:", data);
         const { error } = await supabase.from("blogs").insert({
           ...data,
           creator_id: user?.id,

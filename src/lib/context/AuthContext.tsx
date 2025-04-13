@@ -98,20 +98,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     }: {
       data: { subscription: { unsubscribe: () => void } };
-    } = supabase.auth.onAuthStateChange(
-      async (_event: string, session: Session | null): Promise<void> => {
-        console.log("Auth event:", _event, session?.user?.email);
+    } = supabase.auth.onAuthStateChange((_event: String, session: Session) => {
+      console.log("Auth event:", _event, session?.user?.email);
 
-        if (!mounted) return;
+      if (!mounted) return;
 
+      (async () => {
         if (session?.user) {
           await fetchUserRole(session.user);
         } else {
           setUser(null);
           setLoading(false);
         }
-      }
-    );
+      })(); // wrapped in IIFE
+    });
 
     return () => {
       mounted = false;
