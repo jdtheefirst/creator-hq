@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Play } from "lucide-react";
+import { getEmbedUrl } from "@/lib/utils";
 
 export default async function VideosPage() {
   const supabase = await createClient();
@@ -18,6 +19,7 @@ export default async function VideosPage() {
       )
     `
     )
+    .eq("creator_id", process.env.NEXT_PUBLIC_CREATOR_UID)
     .eq("status", "published")
     .order("created_at", { ascending: false });
 
@@ -48,6 +50,20 @@ export default async function VideosPage() {
                   <div className="absolute top-2 right-2 px-2 py-1 rounded text-xs font-medium bg-red-600 text-white">
                     YouTube
                   </div>
+                )}
+                {video.source === "upload" ? (
+                  <video
+                    src={video.url}
+                    controls
+                    poster={video.thumbnail_url}
+                    className="w-full h-full"
+                  />
+                ) : (
+                  <iframe
+                    src={getEmbedUrl(video.source, video.video_id || video.url)}
+                    className="w-full h-full"
+                    allowFullScreen
+                  />
                 )}
               </div>
 

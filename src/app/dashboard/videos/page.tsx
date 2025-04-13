@@ -24,6 +24,7 @@ export default async function VideosPage() {
   const { data: videos, error } = await supabase
     .from("videos")
     .select("*")
+    .eq("creator_id", process.env.NEXT_PUBLIC_CREATOR_UID)
     .order("created_at", { ascending: false });
 
   if (error) {

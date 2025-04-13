@@ -18,6 +18,23 @@ export function formatCurrency(
   }).format(amount);
 }
 
+export function getEmbedUrl(source: string, videoIdOrUrl: string) {
+  switch (source) {
+    case "youtube":
+      return `https://www.youtube.com/embed/${videoIdOrUrl}`;
+    case "vimeo":
+      return `https://player.vimeo.com/video/${videoIdOrUrl}`;
+    case "twitch":
+      return `https://player.twitch.tv/?video=${videoIdOrUrl}&parent=yourdomain.com`;
+    case "facebook":
+      return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(videoIdOrUrl)}`;
+    case "custom":
+      return videoIdOrUrl; // fallback for fully custom embeds
+    default:
+      return "";
+  }
+}
+
 export const getCurrencyOptions = () => {
   const formatter = new Intl.DisplayNames(["en"], { type: "currency" });
 
