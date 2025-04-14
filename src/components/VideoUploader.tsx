@@ -3,12 +3,19 @@
 import { useState, useRef } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
-import { Upload, X, Youtube } from "lucide-react";
+import { Link2, Upload, X, Youtube } from "lucide-react";
 import axios from "axios";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 interface VideoUploaderProps {
   onUploadComplete: (url: string, thumbnailUrl: string) => void;
-  onYouTubeAdd: (videoId: string, thumbnailUrl: string) => void;
+  onYouTubeAdd: (videoId: string, thumbnailUrl: string, source: string) => void;
 }
 
 export default function VideoUploader({
@@ -18,9 +25,7 @@ export default function VideoUploader({
   const { user, supabase } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [uploadType, setUploadType] = useState<"upload" | "youtube" | null>(
-    null
-  );
+  const [uploadType, setUploadType] = useState<string | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,20 +75,65 @@ export default function VideoUploader({
     }
   };
 
-  const handleYouTubeAdd = () => {
+  const handleVideoUrlAdd = () => {
+    if (!uploadType) {
+      toast.error("Please select a video source.");
+      return;
+    }
+
     try {
-      // Extract video ID from YouTube URL
-      const videoId = new URL(youtubeUrl).searchParams.get("v");
-      if (!videoId) throw new Error("Invalid YouTube URL");
+      const url = new URL(youtubeUrl);
+      let videoId = "";
+      let thumbnailUrl = "";
+      const source = uploadType as
+        | "youtube"
+        | "vimeo"
+        | "twitch"
+        | "facebook"
+        | "custom";
 
-      // Get thumbnail
-      const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      switch (source) {
+        case "youtube":
+          videoId = url.searchParams.get("v") || url.pathname.split("/").pop()!;
+          thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+          break;
 
-      onYouTubeAdd(videoId, thumbnailUrl);
-      toast.success("YouTube video added successfully");
+        case "vimeo":
+          videoId = url.pathname.split("/").pop()!;
+          thumbnailUrl = `https://vumbnail.com/${videoId}.jpg`;
+          break;
+
+        case "twitch":
+          const twitchParts = url.pathname.split("/");
+          if (twitchParts.includes("videos")) {
+            videoId = twitchParts.pop()!;
+            thumbnailUrl = ""; // Optional: fetch via API later
+          }
+          break;
+
+        case "facebook":
+          videoId = youtubeUrl; // Store full URL since Facebook sucks for embeds
+          thumbnailUrl = ""; // Skip unless you have Graph API token
+          break;
+
+        case "custom":
+          videoId = youtubeUrl;
+          thumbnailUrl = "";
+          break;
+
+        default:
+          throw new Error("Unsupported video source");
+      }
+
+      if (!videoId) throw new Error("Could not extract video ID");
+
+      onYouTubeAdd(videoId, thumbnailUrl, source); // Add `source` param to this callback if not already
+      toast.success(
+        `${source.charAt(0).toUpperCase() + source.slice(1)} video added successfully`
+      );
       setYoutubeUrl("");
-    } catch (error) {
-      toast.error("Invalid YouTube URL");
+    } catch (err) {
+      toast.error("Invalid or unsupported video URL");
     }
   };
 
@@ -96,14 +146,14 @@ export default function VideoUploader({
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             <Upload className="w-4 h-4" />
-            Upload Video
+            Upload
           </button>
           <button
             onClick={() => setUploadType("youtube")}
             className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
           >
-            <Youtube className="w-4 h-4" />
-            Add YouTube Video
+            <Link2 className="w-4 h-4" />
+            Add Url
           </button>
         </div>
       ) : (
@@ -147,7 +197,7 @@ export default function VideoUploader({
                   <div className="text-center">
                     <Upload className="mx-auto h-12 w-12 text-gray-400" />
                     <p className="mt-2 text-sm text-gray-500">
-                      Click to upload video
+                      Click to upload
                     </p>
                   </div>
                 )}
@@ -155,19 +205,42 @@ export default function VideoUploader({
             </div>
           ) : (
             <div className="space-y-4">
+              <label className="block text-sm font-medium mb-1">
+                Select Source
+              </label>
+              <Select
+                defaultValue="youtube"
+                value={uploadType}
+                onValueChange={(value) => setUploadType(value)}
+              >
+                <SelectTrigger>
+                  {/* This is the visible part of the select dropdown */}
+                  <SelectValue placeholder="Select Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* This is the dropdown menu */}
+                  <SelectItem value="youtube">YouTube</SelectItem>
+                  <SelectItem value="vimeo">Vimeo</SelectItem>
+                  <SelectItem value="twitch">Twitch</SelectItem>
+                  <SelectItem value="facebook">Facebook</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
               <input
-                type="text"
+                type="url"
+                required
                 value={youtubeUrl}
                 onChange={(e) => setYoutubeUrl(e.target.value)}
-                placeholder="Enter YouTube URL"
+                placeholder="Enter URL"
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
               />
+
               <button
-                onClick={handleYouTubeAdd}
+                onClick={handleVideoUrlAdd}
                 disabled={!youtubeUrl}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
               >
-                Add YouTube Video
+                Add Url
               </button>
             </div>
           )}

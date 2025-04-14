@@ -5,15 +5,19 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
 import VideoUploader from "@/components/VideoUploader";
+import VideoPlayer from "@/components/VideoPlayer";
 
 interface VideoForm {
   title: string;
   description: string;
   url: string;
   thumbnail_url: string;
-  source: "youtube" | "upload";
+  source: "youtube" | "upload" | "vimeo" | "twitch" | "facebook" | "custom";
   video_id?: string;
   status: "draft" | "published";
+  comments_enabled?: boolean;
+  ads_enabled?: boolean;
+  vip?: boolean;
 }
 
 export default function NewVideoPage() {
@@ -26,7 +30,11 @@ export default function NewVideoPage() {
     url: "",
     thumbnail_url: "",
     source: "upload",
-    status: "draft",
+    status: "published",
+    video_id: "",
+    comments_enabled: true,
+    ads_enabled: true,
+    vip: false,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,9 +67,6 @@ export default function NewVideoPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Video Uploader */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Video
-          </label>
           <VideoUploader
             onUploadComplete={(url, thumbnailUrl) => {
               setForm((prev) => ({
@@ -71,13 +76,19 @@ export default function NewVideoPage() {
                 source: "upload",
               }));
             }}
-            onYouTubeAdd={(videoId, thumbnailUrl) => {
+            onYouTubeAdd={(videoId, thumbnailUrl, source) => {
               setForm((prev) => ({
                 ...prev,
                 video_id: videoId,
                 thumbnail_url: thumbnailUrl,
-                url: `https://www.youtube.com/watch?v=${videoId}`,
-                source: "youtube",
+                url: videoId,
+                source: source as
+                  | "youtube"
+                  | "upload"
+                  | "vimeo"
+                  | "twitch"
+                  | "facebook"
+                  | "custom",
               }));
             }}
           />
@@ -130,6 +141,53 @@ export default function NewVideoPage() {
           </select>
         </div>
 
+        <div className="flex items-center space-x-4">
+          <label className="text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={form.vip}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  vip: e.target.checked,
+                })
+              }
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="ml-2 text-sm text-gray-600">VIP Course</span>
+          </label>
+
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={form.ads_enabled}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  ads_enabled: e.target.checked,
+                })
+              }
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="ml-2 text-sm text-gray-600">Enable Ads</span>
+          </label>
+
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={form.comments_enabled}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  comments_enabled: e.target.checked,
+                })
+              }
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="ml-2 text-sm text-gray-600">Enable Comments</span>
+          </label>
+        </div>
+
         {/* Submit Button */}
         <div className="flex justify-end space-x-4">
           <button
@@ -154,20 +212,12 @@ export default function NewVideoPage() {
         <div className="mt-8">
           <h2 className="text-lg font-medium mb-4">Preview</h2>
           <div className="aspect-video rounded-lg overflow-hidden bg-black">
-            {form.source === "youtube" ? (
-              <iframe
-                src={`https://www.youtube.com/embed/${form.video_id}`}
-                className="w-full h-full"
-                allowFullScreen
-              />
-            ) : (
-              <video
-                src={form.url}
-                controls
-                className="w-full h-full"
-                poster={form.thumbnail_url}
-              />
-            )}
+            <VideoPlayer
+              url={form.url}
+              source={form.source}
+              videoId={form.video_id}
+              thumbnailUrl={form.thumbnail_url}
+            />
           </div>
         </div>
       )}

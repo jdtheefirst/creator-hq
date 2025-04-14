@@ -106,7 +106,7 @@ export default async function VideosPage() {
 
                   <div className="flex items-center gap-2">
                     <Link
-                      href={`/dashboard/videos/${video.slug}/edit`}
+                      href={`/dashboard/videos/${video.id}/edit`}
                       className="p-1 text-blue-600 hover:text-blue-800"
                     >
                       <Edit className="w-4 h-4" />
