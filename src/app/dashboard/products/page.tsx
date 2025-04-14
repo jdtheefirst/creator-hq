@@ -19,6 +19,7 @@ export default async function ProductsPage({
   let query = supabase
     .from("products")
     .select("*")
+    .eq("creator_id", process.env.NEXT_PUBLIC_CREATOR_UID)
     .order("created_at", { ascending: false });
 
   if (searchParams.search) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm, Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,8 @@ import {
 import { Product, ProductType } from "@/types/store";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/context/AuthContext";
+import { Label } from "../ui/label";
+import { Switch } from "../ui/switch";
 
 const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -32,6 +34,22 @@ const productSchema = z.object({
   affiliate_url: z.string().url().optional().nullable(),
   thumbnail_url: z.string().url().optional().nullable(),
   digital_file_url: z.string().url().optional().nullable(),
+  variants: z
+    .array(
+      z.object({
+        name: z.string().min(1, "Variant name is required"),
+        price: z.number().min(0, "Price must be positive"),
+        currency: z.string().min(1, "Currency is required"),
+        sku: z.string().optional(),
+        stock_quantity: z.number().min(0).optional(),
+        is_default: z.boolean().optional(),
+        is_active: z.boolean().optional(),
+        thumbnail_url: z.string().url().optional().nullable(),
+        digital_file_url: z.string().url().optional().nullable(),
+        metadata: z.record(z.any()).optional(),
+      })
+    )
+    .optional(),
 });
 
 interface ProductFormProps {
@@ -54,6 +72,7 @@ export function ProductForm({
   const [digitalFilePreview, setDigitalFilePreview] = useState<string | null>(
     initialData?.digital_file_url ?? null
   );
+  const [uploading, setUploading] = useState(false);
   const { supabase } = useAuth();
 
   useEffect(() => {
@@ -84,6 +103,11 @@ export function ProductForm({
       ? {
           ...initialData,
           stock_quantity: initialData.stock_quantity ?? undefined,
+          variants: initialData.variants?.map((variant) => ({
+            ...variant,
+            stock_quantity: variant.stock_quantity ?? undefined,
+            sku: variant.sku ?? undefined, // Convert null to undefined
+          })),
         }
       : {
           name: "",
@@ -97,7 +121,14 @@ export function ProductForm({
           affiliate_url: undefined,
           thumbnail_url: undefined,
           digital_file_url: undefined,
+          variants: [],
         },
+  });
+
+  const { control } = form;
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "variants",
   });
 
   const uploadToSupabase = async (
@@ -119,6 +150,26 @@ export function ProductForm({
 
     const { data } = supabase.storage.from("products").getPublicUrl(filePath);
     return data.publicUrl;
+  };
+
+  const handleUpload = async (
+    file: File,
+    index: number,
+    type: "thumbnail_url" | "digital_file_url"
+  ) => {
+    try {
+      setUploading(true);
+      const folder = type === "thumbnail_url" ? "thumbnails" : "digital";
+      const url = await uploadToSupabase(file, folder);
+      form.setValue(
+        `variants.${index}.${type}` as Path<z.infer<typeof productSchema>>,
+        url
+      );
+    } catch (err) {
+      console.error("Upload failed", err);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = async (data: z.infer<typeof productSchema>) => {
@@ -342,6 +393,7 @@ export function ProductForm({
           <label className="block text-sm font-medium mb-1">Digital File</label>
           <Input
             type="file"
+            accept=".pdf,.mp3,.mp4,.zip"
             onChange={(e) => setDigitalFile(e.target.files?.[0] || null)}
             className="w-full"
           />
@@ -380,6 +432,128 @@ export function ProductForm({
             {form.formState.errors.status.message}
           </p>
         )}
+      </div>
+
+      {/* Variants */}
+      <div className="space-y-6 mt-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-xl font-semibold">Product Variants</h3>
+          <Button
+            type="button"
+            onClick={() =>
+              append({
+                name: "",
+                price: 0,
+                currency: "USD",
+                sku: "",
+                stock_quantity: 0,
+                is_default: false,
+                is_active: true,
+                thumbnail_url: "",
+                digital_file_url: "",
+                metadata: {},
+              })
+            }
+          >
+            + Add Variant
+          </Button>
+        </div>
+
+        {fields.map((field, index) => {
+          const variant = form.watch(`variants.${index}`);
+
+          return (
+            <div
+              key={field.id}
+              className="p-4 border rounded-lg space-y-4 bg-muted/10"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Input
+                  {...form.register(`variants.${index}.name`)}
+                  placeholder="Variant Name"
+                />
+                <Input
+                  type="number"
+                  {...form.register(`variants.${index}.price`, {
+                    valueAsNumber: true,
+                  })}
+                  placeholder="Price"
+                />
+                <Input
+                  {...form.register(`variants.${index}.currency`)}
+                  placeholder="Currency (e.g. USD)"
+                />
+                <Input
+                  {...form.register(`variants.${index}.sku`)}
+                  placeholder="SKU"
+                />
+                <Input
+                  type="number"
+                  {...form.register(`variants.${index}.stock_quantity`, {
+                    valueAsNumber: true,
+                  })}
+                  placeholder="Stock Quantity"
+                />
+
+                {/* Switches */}
+                <div className="flex items-center gap-2">
+                  <Switch {...form.register(`variants.${index}.is_default`)} />
+                  <Label>Default</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch {...form.register(`variants.${index}.is_active`)} />
+                  <Label>Active</Label>
+                </div>
+              </div>
+
+              {/* File Uploads */}
+              <div className="flex flex-col gap-2 md:flex-row md:gap-6">
+                <div>
+                  <Label>Thumbnail</Label>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUpload(file, index, "thumbnail_url");
+                    }}
+                  />
+                  {variant.thumbnail_url && (
+                    <img
+                      src={variant.thumbnail_url}
+                      alt="Thumbnail"
+                      className="mt-2 w-24 h-24 object-cover rounded"
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <Label>Digital File</Label>
+                  <Input
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUpload(file, index, "digital_file_url");
+                    }}
+                  />
+                  {variant.digital_file_url && (
+                    <p className="text-sm text-green-600 mt-2">
+                      File uploaded ✔
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => remove(index)}
+              >
+                Remove Variant
+              </Button>
+            </div>
+          );
+        })}
       </div>
 
       <Button type="submit" disabled={isLoading} className="w-full">

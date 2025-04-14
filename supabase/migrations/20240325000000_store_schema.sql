@@ -36,6 +36,12 @@ CREATE TABLE product_variants (
     currency VARCHAR(3) NOT NULL DEFAULT 'USD',
     sku VARCHAR(100),
     stock_quantity INTEGER,
+    is_default BOOLEAN DEFAULT false,
+    thumbnail_url TEXT,
+    digital_file_url TEXT,
+    is_active BOOLEAN DEFAULT true,
+    weight DECIMAL(10,2),
+    metadata JSONB;
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -60,6 +66,7 @@ CREATE TABLE order_items (
     order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
     product_id UUID REFERENCES products(id),
     variant_id UUID REFERENCES product_variants(id),
+    product_variant_id UUID REFERENCES product_variants(id);
     quantity INTEGER NOT NULL,
     unit_price DECIMAL(10,2) NOT NULL,
     currency VARCHAR(3) NOT NULL DEFAULT 'USD',
