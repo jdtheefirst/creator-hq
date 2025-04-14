@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { format } from "date-fns";
-import { Video, Play, Edit, Trash2 } from "lucide-react";
+import { Video, Edit } from "lucide-react";
+import DeleteButton from "@/components/ui/deleteButton";
+import VideoPlayer from "@/components/VideoPlayer";
 
 interface VideoData {
   id: string;
@@ -12,10 +14,12 @@ interface VideoData {
   views: number;
   likes: number;
   status: "draft" | "published";
-  source: "youtube" | "upload";
+  source: "youtube" | "upload" | "vimeo" | "twitch" | "facebook" | "custom";
   video_id?: string;
+  vip: boolean;
+  comments_enabled: boolean;
+  ads_enabled: boolean;
   created_at: string;
-  slug: string;
 }
 
 export default async function VideosPage() {
@@ -62,17 +66,12 @@ export default async function VideosPage() {
               className="bg-white rounded-lg shadow-md overflow-hidden"
             >
               <div className="relative aspect-video">
-                <img
-                  src={video.thumbnail_url}
-                  alt={video.title}
-                  className="w-full h-full object-cover"
+                <VideoPlayer
+                  url={video.url}
+                  source={video.source}
+                  videoId={video.video_id}
+                  thumbnailUrl={video.thumbnail_url}
                 />
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                  <Play className="w-12 h-12 text-white" />
-                </div>
-                <div className="absolute top-2 right-2 px-2 py-1 rounded text-xs font-medium bg-black bg-opacity-50 text-white">
-                  {video.source === "youtube" ? "YouTube" : "Upload"}
-                </div>
               </div>
 
               <div className="p-4">
@@ -94,15 +93,51 @@ export default async function VideosPage() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      video.status === "published"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}
-                  >
-                    {video.status}
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Status */}
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        video.status === "published"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {video.status}
+                    </span>
+
+                    {/* Ads */}
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        video.ads_enabled
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      ads {video.ads_enabled ? "on" : "off"}
+                    </span>
+
+                    {/* Comments */}
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        video.comments_enabled
+                          ? "bg-indigo-100 text-indigo-800"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      comments {video.comments_enabled ? "on" : "off"}
+                    </span>
+
+                    {/* VIP */}
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        video.vip
+                          ? "bg-pink-100 text-pink-800"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {video.vip ? "VIP" : "standard"}
+                    </span>
+                  </div>
 
                   <div className="flex items-center gap-2">
                     <Link
@@ -111,23 +146,7 @@ export default async function VideosPage() {
                     >
                       <Edit className="w-4 h-4" />
                     </Link>
-                    <button
-                      onClick={async () => {
-                        if (
-                          confirm("Are you sure you want to delete this video?")
-                        ) {
-                          const supabase = await createClient();
-                          await supabase
-                            .from("videos")
-                            .delete()
-                            .eq("id", video.id);
-                          window.location.reload();
-                        }
-                      }}
-                      className="p-1 text-red-600 hover:text-red-800"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <DeleteButton videoId={video.id} />
                   </div>
                 </div>
               </div>

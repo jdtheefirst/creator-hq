@@ -28,6 +28,7 @@ CREATE TABLE videos (
   source TEXT NOT NULL CHECK (source IN ('youtube', 'upload', 'vimeo', 'twitch', 'facebook', 'custom')),
   video_id TEXT,
   processing_status TEXT DEFAULT 'pending' CHECK (processing_status IN ('pending', 'processing', 'completed', 'failed')),
+  ads_enabled BOOLEAN DEFAULT false,
   comments_enabled BOOLEAN DEFAULT true,
   vip BOOLEAN DEFAULT false
 );

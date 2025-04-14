@@ -28,13 +28,23 @@ export default function VideoUploader({
   const [uploadType, setUploadType] = useState<string | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
+  const [selectedThumbnail, setSelectedThumbnail] = useState<File | null>(null);
 
-  const handleFileUpload = async (file: File) => {
+  const videoURL = selectedVideo ? URL.createObjectURL(selectedVideo) : null;
+  const thumbnailURL = selectedThumbnail
+    ? URL.createObjectURL(selectedThumbnail)
+    : null;
+
+  const handleFileUpload = async (file: File, thumbnail: File) => {
     try {
       setUploading(true);
       const fileExt = file.name.split(".").pop();
       const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
       const filePath = `${user?.id}/videos/${fileName}`; // Path relative to bucket
+      const thumbnailExt = thumbnail.name.split(".").pop();
+      const thumbnailName = `${Math.random().toString(36).substring(2)}.${thumbnailExt}`;
+      const thumbnailPath = `${user?.id}/thumbnails/${thumbnailName}`; // Path relative to bucket
 
       // 🔹 Step 1: Generate Signed Upload URL
       const { data, error } = await supabase.storage
@@ -53,8 +63,16 @@ export default function VideoUploader({
         },
       });
 
-      // 🔹 Step 3: Generate Thumbnail Path (if needed)
-      const thumbnailPath = `${user?.id}/thumbnails/${fileName}`;
+      const { data: thumbnailData, error: thumbnailError } =
+        await supabase.storage
+          .from("videos")
+          .createSignedUploadUrl(thumbnailPath);
+
+      if (thumbnailError) throw thumbnailError;
+
+      await axios.put(thumbnailData.signedUrl, thumbnail, {
+        headers: { "Content-Type": thumbnail.type },
+      });
 
       // 🔹 Step 4: Get Public URLs (Fix Destructuring)
       const videoUrl = supabase.storage.from("videos").getPublicUrl(filePath)
@@ -72,6 +90,7 @@ export default function VideoUploader({
     } finally {
       setUploading(false);
       setProgress(0);
+      setUploadType(null);
     }
   };
 
@@ -176,40 +195,77 @@ export default function VideoUploader({
 
           {uploadType === "upload" ? (
             <div className="space-y-4">
+              {/* Video Picker */}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="video/*"
-                onChange={(e) =>
-                  e.target.files?.[0] && handleFileUpload(e.target.files[0])
-                }
                 className="hidden"
+                onChange={(e) => setSelectedVideo(e.target.files?.[0] || null)}
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
                 className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 flex items-center justify-center"
               >
-                {uploading ? (
-                  <div className="text-center">
-                    <div className="h-2 w-full bg-gray-200 rounded-full">
-                      <div
-                        className="h-2 bg-blue-600 rounded-full transition-all"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <p className="mt-2 text-sm text-gray-500">
-                      {Math.round(progress)}%
-                    </p>
-                  </div>
+                {selectedVideo ? (
+                  <video
+                    src={videoURL!}
+                    className="max-h-28 rounded shadow-md"
+                    controls
+                  />
                 ) : (
                   <div className="text-center">
                     <Upload className="mx-auto h-12 w-12 text-gray-400" />
                     <p className="mt-2 text-sm text-gray-500">
-                      Click to upload
+                      Click to choose a video
                     </p>
                   </div>
                 )}
+              </button>
+
+              {/* Thumbnail Picker */}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id="thumbnailInput"
+                onChange={(e) =>
+                  setSelectedThumbnail(e.target.files?.[0] || null)
+                }
+              />
+              <button
+                onClick={() =>
+                  document.getElementById("thumbnailInput")?.click()
+                }
+                className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 flex items-center justify-center"
+              >
+                {selectedThumbnail ? (
+                  <img
+                    src={thumbnailURL!}
+                    alt="Thumbnail Preview"
+                    className="max-h-28 rounded shadow-md object-cover"
+                  />
+                ) : (
+                  <div className="text-center">
+                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-500">
+                      Click to choose a thumbnail
+                    </p>
+                  </div>
+                )}
+              </button>
+
+              {/* Upload Button */}
+              <button
+                disabled={!selectedVideo || !selectedThumbnail || uploading}
+                onClick={() =>
+                  handleFileUpload(selectedVideo!, selectedThumbnail!)
+                }
+                className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+              >
+                {uploading
+                  ? `Uploading (${Math.round(progress)}%)...`
+                  : "Upload Video & Thumbnail"}
               </button>
             </div>
           ) : (
