@@ -92,6 +92,10 @@ export default function NewVideoPage() {
               }));
             }}
           />
+          <span className="text-sm text-gray-500">
+            Source: {form.source} Video ID: {form.video_id} Video Url:{" "}
+            {form.url} Thumbnail: {form.thumbnail_url}
+          </span>
         </div>
 
         {/* Title */}

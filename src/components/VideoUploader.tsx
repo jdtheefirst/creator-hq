@@ -82,7 +82,7 @@ export default function VideoUploader({
     }
 
     try {
-      const url = new URL(youtubeUrl);
+      const url = new URL(youtubeUrl.trim());
       let videoId = "";
       let thumbnailUrl = "";
       const source = uploadType as
@@ -93,47 +93,56 @@ export default function VideoUploader({
         | "custom";
 
       switch (source) {
-        case "youtube":
-          videoId = url.searchParams.get("v") || url.pathname.split("/").pop()!;
+        case "youtube": {
+          const host = url.hostname;
+          if (host.includes("youtu.be")) {
+            // Shortlink: youtu.be/<id>
+            videoId = url.pathname.split("/").pop()!;
+          } else if (host.includes("youtube.com")) {
+            // Full link: youtube.com/watch?v=<id>
+            videoId = url.searchParams.get("v")!;
+          }
+          if (!videoId) throw new Error("Invalid YouTube URL");
           thumbnailUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
           break;
+        }
 
-        case "vimeo":
-          videoId = url.pathname.split("/").pop()!;
+        case "vimeo": {
+          videoId = url.pathname.split("/").filter(Boolean).pop()!;
+          if (!videoId) throw new Error("Invalid Vimeo URL");
           thumbnailUrl = `https://vumbnail.com/${videoId}.jpg`;
           break;
+        }
 
-        case "twitch":
-          const twitchParts = url.pathname.split("/");
-          if (twitchParts.includes("videos")) {
-            videoId = twitchParts.pop()!;
-            thumbnailUrl = ""; // Optional: fetch via API later
+        case "twitch": {
+          const parts = url.pathname.split("/");
+          if (parts.includes("videos")) {
+            videoId = parts.pop()!;
           }
+          thumbnailUrl = ""; // Optional: Twitch needs API for this
           break;
+        }
 
         case "facebook":
-          videoId = youtubeUrl; // Store full URL since Facebook sucks for embeds
-          thumbnailUrl = ""; // Skip unless you have Graph API token
-          break;
-
-        case "custom":
+        case "custom": {
           videoId = youtubeUrl;
-          thumbnailUrl = "";
+          thumbnailUrl = ""; // Facebook & custom embeds need API or manual uploads
           break;
+        }
 
         default:
-          throw new Error("Unsupported video source");
+          throw new Error("Unsupported source");
       }
 
       if (!videoId) throw new Error("Could not extract video ID");
 
-      onYouTubeAdd(videoId, thumbnailUrl, source); // Add `source` param to this callback if not already
-      toast.success(
-        `${source.charAt(0).toUpperCase() + source.slice(1)} video added successfully`
-      );
+      onYouTubeAdd(videoId, thumbnailUrl, source);
+      toast.success(`${source} video added successfully`);
       setYoutubeUrl("");
     } catch (err) {
       toast.error("Invalid or unsupported video URL");
+    } finally {
+      setUploadType(null);
     }
   };
 
