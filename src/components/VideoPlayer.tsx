@@ -1,5 +1,6 @@
 "use client";
 
+import { Play } from "lucide-react";
 import { useState } from "react";
 
 interface VideoPlayerProps {
@@ -15,7 +16,7 @@ export default function VideoPlayer({
   videoId,
   thumbnailUrl,
 }: VideoPlayerProps) {
-  const [isPlaying, setIsPlaying] = useState(source === "upload");
+  const [isPlaying, setIsPlaying] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
 
   const handlePlay = () => {
@@ -90,9 +91,9 @@ export default function VideoPlayer({
             alt="Video thumbnail"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/60 transition">
-            <div className="bg-white rounded-full p-4 shadow-lg text-2xl">
-              ▶️
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/60 transition duration-300">
+            <div className="bg-white rounded-full p-4 shadow-lg text-2xl transform group-hover:scale-110 transition-transform duration-300">
+              <Play />
             </div>
           </div>
         </div>
@@ -103,16 +104,7 @@ export default function VideoPlayer({
             poster={thumbnailUrl}
             controls
             className="w-full h-full"
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
           />
-          <a
-            href={url}
-            download
-            className="text-sm text-blue-500 underline mt-2 inline-block"
-          >
-            Download Video
-          </a>
         </div>
       ) : (
         renderEmbed()
