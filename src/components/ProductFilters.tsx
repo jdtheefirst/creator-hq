@@ -1,7 +1,15 @@
 "use client";
 
+import { SelectIcon } from "@radix-ui/react-select";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 interface ProductFiltersProps {
   categories: string[];
@@ -37,8 +45,7 @@ export default function ProductFilters({
     router.push(`?${createQueryString("search", value)}`);
   };
 
-  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
+  const handleCategoryChange = (value: string) => {
     router.push(`?${createQueryString("category", value)}`);
   };
 
@@ -76,18 +83,23 @@ export default function ProductFilters({
           >
             Category
           </label>
-          <select
-            id="category"
+          <Select
             value={currentCategory || "All"}
-            onChange={handleCategoryChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            onValueChange={(value) => handleCategoryChange(value)}
           >
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger>
+              {/* This is the visible part of the select dropdown */}
+              <SelectValue placeholder="Select Category" />
+            </SelectTrigger>
+            <SelectContent>
+              {/* Wrap SelectItems within SelectContent */}
+              {categories.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Status Filter */}
@@ -98,18 +110,22 @@ export default function ProductFilters({
           >
             Status
           </label>
-          <select
-            id="status"
+          <Select
             value={currentStatus || "All"}
-            onChange={handleStatusChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            onValueChange={() => handleStatusChange}
           >
-            <option value="All">All Status</option>
-            <option value="draft">Draft</option>
-            <option value="active">Active</option>
-            <option value="out_of_stock">Out of Stock</option>
-            <option value="archived">Archived</option>
-          </select>
+            <SelectTrigger>
+              {/* This is the visible part of the select dropdown */}
+              <SelectValue placeholder="Select Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All Status</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>

@@ -47,6 +47,17 @@ export interface ProductVariant {
   currency: string;
   sku: string | null;
   stock_quantity: number | null;
+  is_default: boolean;
+  thumbnail_url: string | null;
+  digital_file_url: string | null;
+  affiliate_url: string | null;
+  is_active: boolean;
+  weight: number | null;
+  weight_unit: string | null;
+  length: number | null;
+  width: number | null;
+  height: number | null;
+  metadata: Record<string, string> | null;
   created_at: string;
 }
 

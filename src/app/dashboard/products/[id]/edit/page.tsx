@@ -21,6 +21,11 @@ export default async function EditProductPage({
     .eq("id", params.id)
     .single();
 
+  const { data: variants, error: variantsError } = await supabase
+    .from("product_variants")
+    .select("*")
+    .eq("product_id", params.id);
+
   if (error || !product) {
     notFound();
   }
@@ -30,7 +35,7 @@ export default async function EditProductPage({
       <div className="container mx-auto px-4">
         <h1 className="text-4xl font-bold mb-8">Edit Product</h1>
         <ProductForm
-          initialData={product}
+          initialData={{ product, variants: variants || [] }}
           onSubmit={{ update: true, id: params.id }}
           currencyOptions={currencyOptions}
         />

@@ -14,6 +14,7 @@ export default async function ProductsPage({
   searchParams,
 }: ProductsPageProps) {
   const supabase = await createClient();
+  const { search, category, status } = await searchParams;
 
   // Build query based on filters
   let query = supabase
@@ -22,16 +23,16 @@ export default async function ProductsPage({
     .eq("creator_id", process.env.NEXT_PUBLIC_CREATOR_UID)
     .order("created_at", { ascending: false });
 
-  if (searchParams.search) {
-    query = query.ilike("name", `%${searchParams.search}%`);
+  if (search) {
+    query = query.ilike("name", `%${search}%`);
   }
 
-  if (searchParams.category && searchParams.category !== "All") {
-    query = query.eq("category", searchParams.category);
+  if (category && category !== "All") {
+    query = query.eq("category", category);
   }
 
-  if (searchParams.status && searchParams.status !== "All") {
-    query = query.eq("status", searchParams.status);
+  if (status && status !== "All") {
+    query = query.eq("status", status);
   }
 
   const { data: products, error } = await query;
@@ -72,9 +73,9 @@ export default async function ProductsPage({
         {/* Filters */}
         <ProductFilters
           categories={categories}
-          currentCategory={searchParams.category}
-          currentStatus={searchParams.status}
-          currentSearch={searchParams.search}
+          currentCategory={category}
+          currentStatus={status}
+          currentSearch={search}
         />
 
         {/* Products Table */}
