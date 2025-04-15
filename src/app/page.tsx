@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
 import Notification from "@/components/Notification";
-import { LayoutDashboard, UserRoundPen } from "lucide-react";
+import { ShieldUser, UserRoundPen } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -168,7 +168,7 @@ export default function CreatorProfilePage() {
                 href="/dashboard"
                 className="flex px-4 py-2 text-gray-700 hover:bg-gray-100"
               >
-                <LayoutDashboard /> &nbsp; Dashboard
+                <ShieldUser /> &nbsp; Creator
               </Link>
             </div>
           </details>

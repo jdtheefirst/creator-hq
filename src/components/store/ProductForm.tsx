@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useFieldArray, useForm, Path } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,6 @@ import { Label } from "../ui/label";
 import { Switch } from "../ui/switch";
 import { FileIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { is } from "date-fns/locale";
 
 const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -54,7 +53,6 @@ const productSchema = z.object({
         digital_file_url: z.string().url().optional().nullable(),
         thumbnail_file: z.any().optional().nullable(),
         digital_file: z.any().optional().nullable(),
-        metadata: z.record(z.any()).optional(),
       })
     )
     .optional(),
@@ -79,7 +77,7 @@ export function ProductForm({
   currencyOptions,
 }: ProductFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const { supabase } = useAuth();
+  const { supabase, user } = useAuth();
   const router = useRouter();
   const isSubmitting = useRef(false);
 
@@ -97,7 +95,6 @@ export function ProductForm({
             sku: variant.sku ?? undefined, // Convert null to undefined
             thumbnail_file: null,
             digital_file: null,
-            metadata: variant.metadata ?? {}, // Convert null to an empty object
           })),
         }
       : {
@@ -133,7 +130,7 @@ export function ProductForm({
     const cleanName = file.name
       .replace(/\s+/g, "_")
       .replace(/[^a-zA-Z0-9._-]/g, "");
-    const filePath = `products/${folder}/${timestamp}_${randomHash}_${cleanName}`;
+    const filePath = `${user?.id}/${folder}/${timestamp}_${randomHash}_${cleanName}`;
 
     try {
       const { error: uploadError } = await supabase.storage
@@ -224,6 +221,8 @@ export function ProductForm({
 
   // 5. Updated submit handler
   const handleSubmit = async (data: z.infer<typeof productSchema>) => {
+    console.log("Form data:", data); // Debugging line
+
     if (isLoading) return;
     try {
       setIsLoading(true);
@@ -619,7 +618,6 @@ export function ProductForm({
                 is_active: true,
                 thumbnail_url: "",
                 digital_file_url: "",
-                metadata: {},
               })
             }
             className="gap-2"
@@ -872,13 +870,17 @@ export function ProductForm({
         ))}
       </div>
 
-      <Button type="submit" disabled={isLoading} className="w-full">
+      <button
+        type="submit"
+        disabled={isLoading}
+        className="w-full bg-black text-white py-2 px-4 rounded-md hover:bg-gray-900 transition"
+      >
         {isLoading
           ? "Saving..."
           : initialData
             ? "Update Product"
             : "Create Product"}
-      </Button>
+      </button>
     </form>
   );
 }
