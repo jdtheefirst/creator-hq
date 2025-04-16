@@ -34,6 +34,14 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   isCreator: boolean;
   supabase: ReturnType<typeof getSupabaseClient>;
+  deleteFileFromSupabase: (
+    fileUrl: string,
+    bucketName: string
+  ) => Promise<boolean>; // ✅ Also needed!
+  debouncePromise: <T extends (...args: any[]) => Promise<any>>(
+    fn: T,
+    delay: number
+  ) => (...args: Parameters<T>) => Promise<ReturnType<T>>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -176,6 +184,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   };
 
+  /**
+   * Deletes a file from Supabase Storage using its public URL.
+   * Only works in the browser (requires cookie-based auth).
+   */
+  const deleteFileFromSupabase = async (
+    fileUrl: string,
+    bucketName: string
+  ): Promise<boolean> => {
+    if (!fileUrl || !bucketName) {
+      console.warn("Missing URL or bucket name.");
+      return false;
+    }
+
+    try {
+      const prefix = "/storage/v1/object/public/";
+      const [_, path] = fileUrl.split(prefix);
+
+      if (!path) {
+        console.warn("Invalid Supabase URL format:", fileUrl);
+        return false;
+      }
+
+      const { error } = await supabase.storage.from(bucketName).remove([path]);
+
+      if (error) {
+        console.error("Supabase delete error:", error.message);
+        return false;
+      }
+
+      console.log("Deleted from Supabase:", path);
+      return true;
+    } catch (err) {
+      console.error("Unexpected delete error:", err);
+      return false;
+    }
+  };
+
+  function debouncePromise<T extends (...args: any[]) => Promise<any>>(
+    fn: T,
+    delay: number
+  ) {
+    let timer: NodeJS.Timeout | null = null;
+    let lastCall: Promise<any> | null = null;
+
+    return (...args: Parameters<T>): Promise<ReturnType<T>> => {
+      if (timer) clearTimeout(timer);
+      return new Promise((resolve) => {
+        timer = setTimeout(() => {
+          lastCall = fn(...args).then(resolve);
+        }, delay);
+      });
+    };
+  }
+
   const value = useMemo<AuthContextType>(() => {
     return {
       user,
@@ -186,6 +248,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInWithTwitter,
       signUp,
       signOut,
+      deleteFileFromSupabase,
+      debouncePromise,
       isCreator: user?.role === "creator",
       supabase,
     };

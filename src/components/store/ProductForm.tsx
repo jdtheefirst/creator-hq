@@ -28,50 +28,76 @@ import { FileIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cleanObject } from "@/lib/utils";
 
-const productSchema = z.object({
-  id: z.string().optional(),
-  creator_id: z.string().optional(),
-  name: z.string().min(1, "Name is required"),
-  description: z.string().min(1, "Description is required"),
-  category: z.string().min(1, "Category is required"),
-  price: z.number().min(0, "Price must be positive"),
-  currency: z.string().min(1, "Currency is required"),
-  type: z.enum(["physical", "digital", "affiliate"]),
-  status: z.enum(["draft", "published"]),
-  stock_quantity: z
-    .number()
-    .positive("Stock quantity must be a positive number")
-    .optional(),
-  affiliate_url: z.string().url().optional().nullable(),
-  thumbnail_url: z.string().url().optional().nullable(),
-  thumbnail_file: z.any().optional().nullable(),
-  digital_file: z.any().optional().nullable(),
-  digital_file_url: z.string().url().or(z.literal("")).optional().nullable(),
-  variants: z
-    .array(
-      z.object({
-        id: z.string().optional(),
-        product_id: z.string().optional(),
-        name: z.string().min(1, "Variant name is required"),
-        price: z.number().min(0, "Price must be positive"),
-        currency: z.string().min(1, "Currency is required"),
-        sku: z.string().optional(),
-        stock_quantity: z.number().min(0).optional(),
-        is_default: z.boolean().optional(),
-        is_active: z.boolean().optional(),
-        thumbnail_url: z.string().url().optional().nullable(),
-        digital_file_url: z
-          .string()
-          .url()
-          .optional()
-          .or(z.literal(""))
-          .nullable(),
-        thumbnail_file: z.any().optional().nullable(),
-        digital_file: z.any().optional().nullable(),
-      })
-    )
-    .optional(),
-});
+const productSchema = z
+  .object({
+    id: z.string().optional(),
+    creator_id: z.string().optional(),
+    name: z.string().min(1, "Name is required"),
+    description: z.string().min(1, "Description is required"),
+    category: z.string().min(1, "Category is required"),
+    price: z.number().min(0, "Price must be positive"),
+    currency: z.string().min(1, "Currency is required"),
+    type: z.enum(["physical", "digital", "affiliate"]),
+    status: z.enum(["draft", "published"]),
+    stock_quantity: z
+      .number()
+      .positive("Stock quantity must be a positive number")
+      .optional(),
+
+    affiliate_url: z.string().url().optional().nullable(),
+    thumbnail_url: z.string().url().optional().nullable(),
+    thumbnail_file: z.any().optional().nullable(),
+    digital_file: z.any().optional().nullable(),
+    digital_file_url: z.string().url().or(z.literal("")).optional().nullable(),
+
+    variants: z
+      .array(
+        z.object({
+          id: z.string().optional(),
+          product_id: z.string().optional(),
+          name: z.string().min(1, "Variant name is required"),
+          price: z.number().min(0, "Price must be positive"),
+          currency: z.string().min(1, "Currency is required"),
+          sku: z.string().optional(),
+          stock_quantity: z.number().min(0).optional(),
+          is_default: z.boolean().optional(),
+          is_active: z.boolean().optional(),
+          affiliate_url: z.string().url().optional().nullable(),
+          thumbnail_url: z.string().url().optional().nullable(),
+          digital_file_url: z
+            .string()
+            .url()
+            .optional()
+            .or(z.literal(""))
+            .nullable(),
+          thumbnail_file: z.any().optional().nullable(),
+          digital_file: z.any().optional().nullable(),
+        })
+      )
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.type === "affiliate")
+        return !!data.affiliate_url && !!data.thumbnail_url;
+      if (data.type === "digital") return !!data.digital_file_url;
+      if (data.type === "physical") return !!data.thumbnail_url;
+      return false;
+    },
+    {
+      message: "Required field missing based on product type",
+      path: ["type"], // show error on the "type" field
+    }
+  )
+  .refine(
+    (data) =>
+      !!data.digital_file_url || !!data.thumbnail_url || !!data.affiliate_url,
+    {
+      message:
+        "At least one of thumbnail, digital file, or affiliate URL is required.",
+      path: ["thumbnail_url"], // show error under thumbnail by default
+    }
+  );
 
 interface ProductFormProps {
   initialData?: {
@@ -92,10 +118,11 @@ export function ProductForm({
   currencyOptions,
 }: ProductFormProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const { supabase, user } = useAuth();
+  const { supabase, user, debouncePromise, deleteFileFromSupabase } = useAuth();
   const router = useRouter();
   const isSubmitting = useRef(false);
   const [removingIndex, setRemovingIndex] = useState(false);
+  const debouncedDelete = debouncePromise(deleteFileFromSupabase, 500);
 
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
@@ -468,7 +495,11 @@ export function ProductForm({
           control={form.control}
           defaultValue={initialData?.product.type || "physical"}
           render={({ field }) => (
-            <Select value={field.value} onValueChange={field.onChange}>
+            <Select
+              value={field.value}
+              onValueChange={field.onChange}
+              disabled={!!initialData}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select Type" />
               </SelectTrigger>
@@ -530,128 +561,165 @@ export function ProductForm({
       )}
 
       {/* Thumbnail Upload */}
-      <div className="space-y-2">
-        <Label>Product Thumbnail (Max 5MB)</Label>
-        <Input
-          type="file"
-          accept="image/*"
-          id="main-thumbnail-upload"
-          onChange={(e) => {
-            handleImageChange("thumbnail_file", e);
-          }}
-        />
+      {(form.watch("type") === "physical" ||
+        form.watch("type") === "affiliate") && (
+        <div className="space-y-2">
+          <Label>Product Thumbnail (Max 5MB)</Label>
+          <Input
+            type="file"
+            accept="image/*"
+            id="main-thumbnail-upload"
+            onChange={(e) => {
+              handleImageChange("thumbnail_file", e);
+            }}
+          />
 
-        {(form.watch("thumbnail_url") || form.getValues("thumbnail_file")) && (
-          <div className="mt-2 flex items-center gap-2">
-            <img
-              src={
-                form.getValues("thumbnail_file")
-                  ? URL.createObjectURL(form.getValues("thumbnail_file"))
-                  : form.watch("thumbnail_url")!
-              }
-              className="w-16 h-16 object-cover rounded border"
-              alt="Thumbnail preview"
-            />
-            <div className="flex flex-col gap-1">
-              {form.getValues("thumbnail_file") && (
-                <div className="flex flex-col">
+          {(form.watch("thumbnail_url") ||
+            form.getValues("thumbnail_file")) && (
+            <div className="mt-2 flex items-center gap-2">
+              <img
+                src={
+                  form.getValues("thumbnail_file")
+                    ? URL.createObjectURL(form.getValues("thumbnail_file"))
+                    : form.watch("thumbnail_url")!
+                }
+                className="w-16 h-16 object-cover rounded border"
+                alt="Thumbnail preview"
+              />
+              <div className="flex flex-col gap-1">
+                {form.getValues("thumbnail_file") && (
+                  <div className="flex flex-col">
+                    <span className="text-xs text-muted-foreground">
+                      New file: {form.getValues("thumbnail_file")?.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Size:{" "}
+                      {(
+                        form.getValues("thumbnail_file")?.size /
+                        1024 /
+                        1024
+                      ).toFixed(2)}{" "}
+                      MB
+                    </span>
+                  </div>
+                )}
+                {form.watch("thumbnail_url")?.startsWith("http") && (
                   <span className="text-xs text-muted-foreground">
-                    New file: {form.getValues("thumbnail_file")?.name}
+                    Current: {form.watch("thumbnail_url")?.split("/").pop()}
                   </span>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8"
+                  onClick={async () => {
+                    const thumbnailUrl = form.getValues("thumbnail_url");
+
+                    // If it's a real Supabase URL
+                    if (thumbnailUrl && thumbnailUrl.startsWith("https://")) {
+                      const deleted = await debouncedDelete(
+                        thumbnailUrl!,
+                        "products"
+                      );
+                      if (deleted) {
+                        toast.success("Thumbnail deleted!");
+                      } else {
+                        toast.error("Failed to delete thumbnail");
+                      }
+                    }
+                    // If it's a blob URL, revoke it
+                    if (thumbnailUrl?.startsWith("blob:")) {
+                      URL.revokeObjectURL(thumbnailUrl);
+                    }
+                    // Clear form values
+                    form.setValue("thumbnail_url", null);
+                    form.setValue("thumbnail_file", null);
+                    // Clear file input value
+                    const fileInput = document.getElementById(
+                      "main-thumbnail-upload"
+                    ) as HTMLInputElement;
+                    if (fileInput) fileInput.value = "";
+                  }}
+                >
+                  <TrashIcon className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Digital Upload */}
+      {form.watch("type") === "digital" && (
+        <div className="space-y-2">
+          <Label>Digital File (Max 10MB)</Label>
+          <Input
+            type="file"
+            accept=".pdf,.mp3,.mp4,.zip"
+            id="main-digital-upload"
+            onChange={(e) => {
+              handleDigitalChange("digital_file", e, 10);
+            }}
+          />
+
+          {/* Digital File Display */}
+          {(form.watch("digital_file_url") || form.watch("digital_file")) && (
+            <div className="mt-2 flex items-center gap-2">
+              <FileIcon className="h-5 w-5" />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm truncate block">
+                  {/* Show either new filename or existing URL */}
+                  {form.getValues(`digital_file`)?.name ??
+                    form.watch(`digital_file_url`)?.split("/").pop()}
+                </span>
+                {form.getValues(`digital_file`) && (
                   <span className="text-xs text-muted-foreground">
-                    Size:{" "}
                     {(
-                      form.getValues("thumbnail_file")?.size /
+                      form.getValues(`digital_file`)?.size /
                       1024 /
                       1024
                     ).toFixed(2)}{" "}
                     MB
                   </span>
-                </div>
-              )}
-              {form.watch("thumbnail_url")?.startsWith("http") && (
-                <span className="text-xs text-muted-foreground">
-                  Current: {form.watch("thumbnail_url")?.split("/").pop()}
-                </span>
-              )}
+                )}
+              </div>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className="h-8"
-                onClick={() => {
-                  const thumbnailUrl = form.getValues("thumbnail_url");
-                  if (thumbnailUrl?.startsWith("blob:")) {
-                    URL.revokeObjectURL(thumbnailUrl);
+                onClick={async () => {
+                  const thumbnailUrl = form.getValues("digital_file_url");
+                  // If it's a real Supabase URL
+                  if (thumbnailUrl && thumbnailUrl.startsWith("https://")) {
+                    const deleted = await debouncedDelete(
+                      thumbnailUrl!,
+                      "products"
+                    );
+                    if (deleted) {
+                      toast.success("Thumbnail deleted!");
+                    } else {
+                      toast.error("Failed to delete thumbnail");
+                    }
                   }
-                  form.setValue("thumbnail_url", null);
-                  form.setValue("thumbnail_file", null);
+                  // If it's a blob URL, revoke it
+                  form.setValue("digital_file_url", null);
+                  form.setValue("digital_file", null);
                   // Clear file input value
-                  const fileInput = document.getElementById(
-                    "main-thumbnail-upload"
-                  ) as HTMLInputElement;
-                  if (fileInput) fileInput.value = "";
+                  (
+                    document.getElementById(
+                      "main-digital-upload"
+                    ) as HTMLInputElement
+                  ).value = "";
                 }}
               >
                 <TrashIcon className="h-4 w-4 text-destructive" />
               </Button>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Digital Upload */}
-      <div className="space-y-2">
-        <Label>Digital File (Max 10MB)</Label>
-        <Input
-          type="file"
-          accept=".pdf,.mp3,.mp4,.zip"
-          id="main-digital-upload"
-          onChange={(e) => {
-            handleDigitalChange("digital_file", e, 10);
-          }}
-        />
-
-        {/* Digital File Display */}
-        {(form.watch("digital_file_url") || form.watch("digital_file")) && (
-          <div className="mt-2 flex items-center gap-2">
-            <FileIcon className="h-5 w-5" />
-            <div className="flex-1 min-w-0">
-              <span className="text-sm truncate block">
-                {/* Show either new filename or existing URL */}
-                {form.getValues(`digital_file`)?.name ??
-                  form.watch(`digital_file_url`)?.split("/").pop()}
-              </span>
-              {form.getValues(`digital_file`) && (
-                <span className="text-xs text-muted-foreground">
-                  {(form.getValues(`digital_file`)?.size / 1024 / 1024).toFixed(
-                    2
-                  )}{" "}
-                  MB
-                </span>
-              )}
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8"
-              onClick={() => {
-                form.setValue("digital_file_url", null);
-                form.setValue("digital_file", null);
-                // Clear file input value
-                (
-                  document.getElementById(
-                    "main-digital-upload"
-                  ) as HTMLInputElement
-                ).value = "";
-              }}
-            >
-              <TrashIcon className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Status */}
       <div>
@@ -694,6 +762,7 @@ export function ProductForm({
                 stock_quantity: undefined,
                 is_default: false,
                 is_active: false,
+                affiliate_url: undefined,
                 thumbnail_url: undefined,
                 digital_file_url: undefined,
                 thumbnail_file: undefined,
@@ -794,27 +863,31 @@ export function ProductForm({
                 )}
               </div>
 
-              <div className="space-y-1">
-                <Label htmlFor={`variants.${index}.stock_quantity`}>
-                  Stock
-                </Label>
-                <Input
-                  id={`variants.${index}.stock_quantity`}
-                  type="number"
-                  {...form.register(`variants.${index}.stock_quantity`, {
-                    valueAsNumber: true,
-                  })}
-                  placeholder="Available quantity"
-                />
-                {form.formState.errors?.variants?.[index]?.stock_quantity && (
-                  <p className="text-sm text-red-500">
-                    {
-                      form.formState.errors.variants[index]?.stock_quantity
-                        ?.message
-                    }
-                  </p>
-                )}
-              </div>
+              {/* Stock Quantity */}
+              {/* Only show if product type is physical or stock_quantity is defined */}
+              {form.watch("type") === "physical" && (
+                <div className="space-y-1">
+                  <Label htmlFor={`variants.${index}.stock_quantity`}>
+                    Stock
+                  </Label>
+                  <Input
+                    id={`variants.${index}.stock_quantity`}
+                    type="number"
+                    {...form.register(`variants.${index}.stock_quantity`, {
+                      valueAsNumber: true,
+                    })}
+                    placeholder="Available quantity"
+                  />
+                  {form.formState.errors?.variants?.[index]?.stock_quantity && (
+                    <p className="text-sm text-red-500">
+                      {
+                        form.formState.errors.variants[index]?.stock_quantity
+                          ?.message
+                      }
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Toggles */}
               <div className="flex items-center gap-4">
@@ -870,67 +943,203 @@ export function ProductForm({
 
             {/* Variants Media Uploads Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Affiliate URL */}
+              {(form.watch("type") === "affiliate" ||
+                form.watch(`variants.${index}.affiliate_url`)) && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Affiliate URL
+                  </label>
+                  <Input
+                    {...form.register(`variants.${index}.affiliate_url`)}
+                    defaultValue={initialData?.product.affiliate_url || ""}
+                    placeholder="Enter affiliate URL"
+                    className="w-full"
+                  />
+                  {form.formState.errors.affiliate_url && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {form.formState.errors.affiliate_url.message}
+                    </p>
+                  )}
+                </div>
+              )}
               {/* Variant Image Column */}
-              <div className="space-y-2">
-                <Label>Variant Image (Max 5MB)</Label>
-                <Input
-                  id={`variant-thumbnail-${index}`}
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) =>
-                    handleImageChange(`variants.${index}.thumbnail_file`, e)
-                  }
-                  className="cursor-pointer"
-                />
-                {form.formState.errors?.variants?.[index]?.thumbnail_file && (
-                  <p className="text-sm text-red-500">
-                    {String(
-                      form.formState.errors.variants[index]?.thumbnail_file
-                        ?.message || ""
-                    )}
-                  </p>
-                )}
-
-                {/* Thumbnail Preview Section */}
-                {form.watch(`variants.${index}.thumbnail_url`) && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <img
-                      src={form.watch(`variants.${index}.thumbnail_url`)!}
-                      alt="Variant preview"
-                      className="w-16 h-16 object-cover rounded border"
-                    />
-                    <div className="flex flex-col gap-1">
-                      {form.getValues(`variants.${index}.thumbnail_file`) && (
-                        <span className="text-xs text-muted-foreground">
-                          {(
-                            form.getValues(`variants.${index}.thumbnail_file`)
-                              ?.size /
-                            1024 /
-                            1024
-                          ).toFixed(2)}{" "}
-                          MB
-                        </span>
+              {(form.watch("type") === "physical" ||
+                form.watch("type") === "affiliate") && (
+                <div className="space-y-2">
+                  <Label>Variant Image (Max 5MB)</Label>
+                  <Input
+                    id={`variant-thumbnail-${index}`}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      handleImageChange(`variants.${index}.thumbnail_file`, e)
+                    }
+                    className="cursor-pointer"
+                  />
+                  {form.formState.errors?.variants?.[index]?.thumbnail_file && (
+                    <p className="text-sm text-red-500">
+                      {String(
+                        form.formState.errors.variants[index]?.thumbnail_file
+                          ?.message || ""
                       )}
+                    </p>
+                  )}
+
+                  {/* Thumbnail Preview Section */}
+                  {form.watch(`variants.${index}.thumbnail_url`) && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <img
+                        src={form.watch(`variants.${index}.thumbnail_url`)!}
+                        alt="Variant preview"
+                        className="w-16 h-16 object-cover rounded border"
+                      />
+                      <div className="flex flex-col gap-1">
+                        {form.getValues(`variants.${index}.thumbnail_file`) && (
+                          <span className="text-xs text-muted-foreground">
+                            {(
+                              form.getValues(`variants.${index}.thumbnail_file`)
+                                ?.size /
+                              1024 /
+                              1024
+                            ).toFixed(2)}{" "}
+                            MB
+                          </span>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-fit"
+                          onClick={async () => {
+                            const thumbUrl = form.getValues(
+                              `variants.${index}.thumbnail_url`
+                            );
+                            // If it's a real Supabase URL
+                            if (thumbUrl && thumbUrl.startsWith("https://")) {
+                              const deleted = await debouncedDelete(
+                                thumbUrl!,
+                                "products"
+                              );
+                              if (deleted) {
+                                toast.success("Thumbnail deleted!");
+                              } else {
+                                toast.error("Failed to delete thumbnail");
+                              }
+                            }
+                            if (thumbUrl?.startsWith("blob:")) {
+                              URL.revokeObjectURL(thumbUrl);
+                            }
+                            form.setValue(
+                              `variants.${index}.thumbnail_url`,
+                              ""
+                            );
+                            form.setValue(
+                              `variants.${index}.thumbnail_file`,
+                              null
+                            );
+                            (
+                              document.getElementById(
+                                `variant-thumbnail-${index}`
+                              ) as HTMLInputElement
+                            ).value = "";
+                          }}
+                        >
+                          <TrashIcon className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Digital Asset Column */}
+              {form.watch("type") === "digital" && (
+                <div className="space-y-2">
+                  <Label>Digital Asset (Max 10MB)</Label>
+                  <Input
+                    id={`variant-digital-${index}`}
+                    type="file"
+                    accept=".pdf,.zip,.mp3,.mp4"
+                    onChange={(e) =>
+                      handleDigitalChange(
+                        `variants.${index}.digital_file`,
+                        e,
+                        10
+                      )
+                    }
+                    className="cursor-pointer"
+                  />
+                  {form.formState.errors?.variants?.[index]?.digital_file && (
+                    <p className="text-sm text-red-500">
+                      {String(
+                        form.formState.errors.variants[index]?.digital_file
+                          ?.message
+                      )}
+                    </p>
+                  )}
+
+                  {/* Digital File Display - NOW WITH VISIBLE TRASH ICON */}
+                  {(form.watch(`variants.${index}.digital_file_url`) ||
+                    form.watch(`variants.${index}.digital_file`)) && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <FileIcon className="h-5 w-5" />
+                      <div className="flex-1 min-w-0">
+                        {" "}
+                        {/* Added flex-1 and min-w-0 for text truncation */}
+                        <span className="text-sm truncate block">
+                          {form.getValues(`variants.${index}.digital_file`)
+                            ?.name ??
+                            form
+                              .watch(`variants.${index}.digital_file_url`)
+                              ?.split("/")
+                              .pop()}
+                        </span>
+                        {form.getValues(`variants.${index}.digital_file`) && (
+                          <span className="text-xs text-muted-foreground block">
+                            {(
+                              form.getValues(`variants.${index}.digital_file`)
+                                ?.size /
+                              1024 /
+                              1024
+                            ).toFixed(2)}{" "}
+                            MB
+                          </span>
+                        )}
+                      </div>
+                      {/* DELETE BUTTON - NOW VISIBLE */}
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-fit"
-                        onClick={() => {
-                          const thumbUrl = form.getValues(
-                            `variants.${index}.thumbnail_url`
+                        className="h-8 w-8 p-0" // Adjusted for square icon button
+                        onClick={async () => {
+                          const thumbnailUrl = form.getValues(
+                            `variants.${index}.digital_file_url`
                           );
-                          if (thumbUrl?.startsWith("blob:")) {
-                            URL.revokeObjectURL(thumbUrl);
+                          // If it's a real Supabase URL
+                          if (
+                            thumbnailUrl &&
+                            thumbnailUrl.startsWith("https://")
+                          ) {
+                            const deleted = await debouncedDelete(
+                              thumbnailUrl!,
+                              "products"
+                            );
+                            if (deleted) {
+                              toast.success("Thumbnail deleted!");
+                            } else {
+                              toast.error("Failed to delete thumbnail");
+                            }
                           }
-                          form.setValue(`variants.${index}.thumbnail_url`, "");
                           form.setValue(
-                            `variants.${index}.thumbnail_file`,
-                            null
+                            `variants.${index}.digital_file_url`,
+                            ""
                           );
+                          form.setValue(`variants.${index}.digital_file`, null);
                           (
                             document.getElementById(
-                              `variant-thumbnail-${index}`
+                              `variant-digital-${index}`
                             ) as HTMLInputElement
                           ).value = "";
                         }}
@@ -938,80 +1147,9 @@ export function ProductForm({
                         <TrashIcon className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Digital Asset Column */}
-              <div className="space-y-2">
-                <Label>Digital Asset (Max 10MB)</Label>
-                <Input
-                  id={`variant-digital-${index}`}
-                  type="file"
-                  accept=".pdf,.zip,.mp3,.mp4"
-                  onChange={(e) =>
-                    handleDigitalChange(`variants.${index}.digital_file`, e, 10)
-                  }
-                  className="cursor-pointer"
-                />
-                {form.formState.errors?.variants?.[index]?.digital_file && (
-                  <p className="text-sm text-red-500">
-                    {String(
-                      form.formState.errors.variants[index]?.digital_file
-                        ?.message
-                    )}
-                  </p>
-                )}
-
-                {/* Digital File Display - NOW WITH VISIBLE TRASH ICON */}
-                {(form.watch(`variants.${index}.digital_file_url`) ||
-                  form.watch(`variants.${index}.digital_file`)) && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <FileIcon className="h-5 w-5" />
-                    <div className="flex-1 min-w-0">
-                      {" "}
-                      {/* Added flex-1 and min-w-0 for text truncation */}
-                      <span className="text-sm truncate block">
-                        {form.getValues(`variants.${index}.digital_file`)
-                          ?.name ??
-                          form
-                            .watch(`variants.${index}.digital_file_url`)
-                            ?.split("/")
-                            .pop()}
-                      </span>
-                      {form.getValues(`variants.${index}.digital_file`) && (
-                        <span className="text-xs text-muted-foreground block">
-                          {(
-                            form.getValues(`variants.${index}.digital_file`)
-                              ?.size /
-                            1024 /
-                            1024
-                          ).toFixed(2)}{" "}
-                          MB
-                        </span>
-                      )}
-                    </div>
-                    {/* DELETE BUTTON - NOW VISIBLE */}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0" // Adjusted for square icon button
-                      onClick={() => {
-                        form.setValue(`variants.${index}.digital_file_url`, "");
-                        form.setValue(`variants.${index}.digital_file`, null);
-                        (
-                          document.getElementById(
-                            `variant-digital-${index}`
-                          ) as HTMLInputElement
-                        ).value = "";
-                      }}
-                    >
-                      <TrashIcon className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
             <Button
               type="button"
