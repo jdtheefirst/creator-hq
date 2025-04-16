@@ -1,5 +1,5 @@
 export type ProductType = "physical" | "digital" | "affiliate";
-export type ProductStatus = "draft" | "published" | "archived";
+export type ProductStatus = "draft" | "published";
 export type OrderStatus = "pending" | "paid" | "fulfilled" | "cancelled";
 
 export interface Product {
@@ -12,7 +12,6 @@ export interface Product {
   currency: string;
   type: ProductType;
   status: ProductStatus;
-  slug: string;
   thumbnail_url: string | null;
   affiliate_url: string | null;
   digital_file_url: string | null;

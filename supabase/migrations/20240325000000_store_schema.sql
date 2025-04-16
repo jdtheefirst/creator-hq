@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS products CASCADE;
 -- PRODUCTS
 CREATE TABLE products (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    creator_id UUID REFERENCES profiles(id) NOT NULL,
+    creator_id UUID NOT NULL REFERENCES auth.users(id),
     name VARCHAR(255) NOT NULL,
     description TEXT,
     category TEXT NOT NULL,

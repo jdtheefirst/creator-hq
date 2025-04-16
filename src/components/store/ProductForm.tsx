@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Input } from "@/components/ui/input";
@@ -14,22 +14,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Product, ProductType, ProductVariant } from "@/types/store";
+import {
+  Product,
+  ProductStatus,
+  ProductType,
+  ProductVariant,
+} from "@/types/store";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/context/AuthContext";
 import { Label } from "../ui/label";
 import { Switch } from "../ui/switch";
 import { FileIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { cleanObject } from "@/lib/utils";
 
 const productSchema = z.object({
+  id: z.string().optional(),
+  creator_id: z.string().optional(),
   name: z.string().min(1, "Name is required"),
   description: z.string().min(1, "Description is required"),
   category: z.string().min(1, "Category is required"),
   price: z.number().min(0, "Price must be positive"),
   currency: z.string().min(1, "Currency is required"),
   type: z.enum(["physical", "digital", "affiliate"]),
-  status: z.enum(["draft", "published", "archived"]),
+  status: z.enum(["draft", "published"]),
   stock_quantity: z
     .number()
     .positive("Stock quantity must be a positive number")
@@ -38,10 +46,12 @@ const productSchema = z.object({
   thumbnail_url: z.string().url().optional().nullable(),
   thumbnail_file: z.any().optional().nullable(),
   digital_file: z.any().optional().nullable(),
-  digital_file_url: z.string().url().optional().nullable(),
+  digital_file_url: z.string().url().or(z.literal("")).optional().nullable(),
   variants: z
     .array(
       z.object({
+        id: z.string().optional(),
+        product_id: z.string().optional(),
         name: z.string().min(1, "Variant name is required"),
         price: z.number().min(0, "Price must be positive"),
         currency: z.string().min(1, "Currency is required"),
@@ -50,7 +60,12 @@ const productSchema = z.object({
         is_default: z.boolean().optional(),
         is_active: z.boolean().optional(),
         thumbnail_url: z.string().url().optional().nullable(),
-        digital_file_url: z.string().url().optional().nullable(),
+        digital_file_url: z
+          .string()
+          .url()
+          .optional()
+          .or(z.literal(""))
+          .nullable(),
         thumbnail_file: z.any().optional().nullable(),
         digital_file: z.any().optional().nullable(),
       })
@@ -80,6 +95,7 @@ export function ProductForm({
   const { supabase, user } = useAuth();
   const router = useRouter();
   const isSubmitting = useRef(false);
+  const [removingIndex, setRemovingIndex] = useState(false);
 
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
@@ -92,9 +108,13 @@ export function ProductForm({
           variants: initialData.variants?.map((variant) => ({
             ...variant,
             stock_quantity: variant.stock_quantity ?? undefined,
-            sku: variant.sku ?? undefined, // Convert null to undefined
-            thumbnail_file: null,
-            digital_file: null,
+            sku: variant.sku ?? undefined,
+            is_default: variant.is_default ?? false,
+            is_active: variant.is_active ?? false,
+            thumbnail_file: undefined,
+            digital_file: undefined,
+            thumbnail_url: variant.thumbnail_url ?? undefined,
+            digital_file_url: variant.digital_file_url ?? undefined,
           })),
         }
       : {
@@ -104,13 +124,13 @@ export function ProductForm({
           price: 0,
           currency: "USD",
           type: "physical" as ProductType,
-          status: "draft",
+          status: "draft" as ProductStatus,
           stock_quantity: undefined,
           affiliate_url: undefined,
           thumbnail_url: undefined,
           digital_file_url: undefined,
-          thumbnail_file: null,
-          digital_file: null,
+          thumbnail_file: undefined,
+          digital_file: undefined,
           variants: [],
         },
   });
@@ -120,6 +140,32 @@ export function ProductForm({
     control,
     name: "variants",
   });
+
+  const handleRemoveVariant = async (index: number) => {
+    if (removingIndex) return;
+    setRemovingIndex(true);
+    try {
+      if (onSubmit.update) {
+        const variant = form.getValues(`variants.${index}`);
+        if (!variant) {
+          toast.error("Variant ID not found for deletion");
+          return;
+        }
+
+        await supabase.from("product_variants").delete().eq("id", variant.id);
+        remove(index);
+        initialData?.variants.splice(index, 1); // Remove from initialData
+        toast.success("Variant deleted successfully!");
+      } else {
+        remove(index);
+      }
+    } catch (error) {
+      console.log("Error removing variant:", error);
+      toast.error("Failed to delete variant. Please try again.");
+    } finally {
+      setRemovingIndex(false);
+    }
+  };
 
   const uploadToSupabase = async (
     file: File,
@@ -219,73 +265,82 @@ export function ProductForm({
     };
   }, []);
 
-  // 5. Updated submit handler
   const handleSubmit = async (data: z.infer<typeof productSchema>) => {
-    console.log("Form data:", data); // Debugging line
+    if (isLoading || isSubmitting.current) return;
 
-    if (isLoading) return;
     try {
       setIsLoading(true);
       isSubmitting.current = true;
 
-      // 🛠️ Upload product-level files
+      // 🔼 Upload product-level files
       if (data.thumbnail_file) {
         data.thumbnail_url = await uploadToSupabase(
           data.thumbnail_file,
           "thumbnails"
         );
-        delete data.thumbnail_file;
       }
 
-      if (data.type === "digital" && data.digital_file) {
+      if (data.digital_file) {
         const ext = data.digital_file.name.split(".").pop()?.toLowerCase();
         if (!["pdf", "mp3", "mp4", "zip"].includes(ext || "")) {
           throw new Error(`Invalid file type: .${ext}`);
         }
-
         data.digital_file_url = await uploadToSupabase(
           data.digital_file,
           "digital"
         );
-        delete data.digital_file;
       }
 
-      // 🧼 Process variant files
-      for (const [i, variant] of (data.variants ?? []).entries()) {
+      // 🧼 Upload variant files
+      for (const variant of data.variants ?? []) {
         if (variant.thumbnail_file) {
           variant.thumbnail_url = await uploadToSupabase(
             variant.thumbnail_file,
             "variant-thumbnails"
           );
-          delete variant.thumbnail_file;
         }
         if (variant.digital_file) {
           variant.digital_file_url = await uploadToSupabase(
             variant.digital_file,
             "variant-digital"
           );
-          delete variant.digital_file;
         }
       }
 
-      // ✂️ Split main product and variants
+      // ✂️ Split product and variants
       const { variants, ...productData } = data;
+      const variantsWithIds = initialData?.variants?.map((original, i) => ({
+        ...original,
+        ...(variants?.[i] ?? {}),
+      }));
 
-      // 🔄 Insert or update product
+      // 🧼 Clean the data
+      const cleanProductData = cleanObject(productData);
+      const cleanVariants = variantsWithIds?.map(cleanObject);
+
+      // 🆙 Insert or update product
       const { data: upsertedProduct, error: productError } = onSubmit.update
         ? await supabase
             .from("products")
-            .update(productData)
+            .update(cleanProductData)
             .eq("id", onSubmit.id)
+            .eq("creator_id", user?.id)
             .select()
             .single()
-        : await supabase.from("products").insert(productData).select().single();
+        : await supabase
+            .from("products")
+            .insert({
+              ...cleanProductData,
+              creator_id: user?.id,
+            })
+            .select()
+            .single();
 
       if (productError || !upsertedProduct) throw productError;
 
       // 🔁 Upsert variants if any
-      if (variants && variants.length > 0) {
-        const variantUpserts = variants.map((v) => ({
+      if (cleanVariants?.length) {
+        const variantUpserts = cleanVariants.map((v) => ({
           ...v,
           product_id: upsertedProduct.id,
         }));
@@ -375,25 +430,30 @@ export function ProductForm({
         {/* Currency */}
         <div>
           <label className="block text-sm font-medium mb-1">Currency</label>
-          <Select
-            {...form.register("currency")}
-            defaultValue={initialData?.product.currency || "USD"}
-          >
-            <SelectTrigger>
-              {/* You can also use SelectValue for better accessibility */}
-              <SelectValue placeholder="Select Currency" />
-            </SelectTrigger>
 
-            <SelectContent>
-              {/* Wrap SelectItems within SelectContent */}
-              {currencyOptions &&
-                currencyOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+          <Controller
+            name="currency"
+            control={form.control}
+            defaultValue={initialData?.product.currency || "USD"}
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger>
+                  {/* You can also use SelectValue for better accessibility */}
+                  <SelectValue placeholder="Select Currency" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {/* Wrap SelectItems within SelectContent */}
+                  {currencyOptions &&
+                    currencyOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
           {form.formState.errors.currency && (
             <p className="text-red-500 text-sm mt-1">
               {form.formState.errors.currency.message}
@@ -403,19 +463,23 @@ export function ProductForm({
 
         {/* Type */}
         <label className="block text-sm font-medium mb-1">Product Type</label>
-        <Select
-          {...form.register("type")}
+        <Controller
+          name="type"
+          control={form.control}
           defaultValue={initialData?.product.type || "physical"}
-        >
-          <SelectTrigger>
-            <div>{initialData?.product.type || "physical"}</div>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="physical">Physical Product</SelectItem>
-            <SelectItem value="digital">Digital Product</SelectItem>
-            <SelectItem value="affiliate">Affiliate Product</SelectItem>
-          </SelectContent>
-        </Select>
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="physical">Physical Product</SelectItem>
+                <SelectItem value="digital">Digital Product</SelectItem>
+                <SelectItem value="affiliate">Affiliate Product</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        />
         {form.formState.errors.type && (
           <p className="text-red-500 text-sm mt-1">
             {form.formState.errors.type.message}
@@ -437,20 +501,31 @@ export function ProductForm({
             className="w-full"
             min={1}
           />
+          {form.formState.errors.stock_quantity && (
+            <p className="text-red-500 text-sm mt-1">
+              {form.formState.errors.stock_quantity.message}
+            </p>
+          )}
         </div>
       )}
 
       {/* Affiliate URL */}
-      {form.watch("type") === "affiliate" && (
+      {(form.watch("type") === "affiliate" || form.watch("affiliate_url")) && (
         <div>
           <label className="block text-sm font-medium mb-1">
             Affiliate URL
           </label>
           <Input
             {...form.register("affiliate_url")}
+            defaultValue={initialData?.product.affiliate_url || ""}
             placeholder="Enter affiliate URL"
             className="w-full"
           />
+          {form.formState.errors.affiliate_url && (
+            <p className="text-red-500 text-sm mt-1">
+              {form.formState.errors.affiliate_url.message}
+            </p>
+          )}
         </div>
       )}
 
@@ -542,10 +617,10 @@ export function ProductForm({
           <div className="mt-2 flex items-center gap-2">
             <FileIcon className="h-5 w-5" />
             <div className="flex-1 min-w-0">
-              <span className="text-sm truncate max-w-[180px]">
+              <span className="text-sm truncate block">
                 {/* Show either new filename or existing URL */}
-                {form.getValues(`digital_file`)?.name ||
-                  form.watch(`digital_file_url`)}
+                {form.getValues(`digital_file`)?.name ??
+                  form.watch(`digital_file_url`)?.split("/").pop()}
               </span>
               {form.getValues(`digital_file`) && (
                 <span className="text-xs text-muted-foreground">
@@ -581,19 +656,22 @@ export function ProductForm({
       {/* Status */}
       <div>
         <label className="block text-sm font-medium mb-1">Status</label>
-        <Select
-          {...form.register("status")}
+        <Controller
+          name="status"
+          control={form.control}
           defaultValue={initialData?.product.status || "draft"}
-        >
-          <SelectTrigger>
-            <div>{initialData?.product.status || "draft"}</div>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="published">Published</SelectItem>
-            <SelectItem value="archived">Archived</SelectItem>
-          </SelectContent>
-        </Select>
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="published">Published</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        />
         {form.formState.errors.status && (
           <p className="text-red-500 text-sm mt-1">
             {form.formState.errors.status.message}
@@ -612,12 +690,14 @@ export function ProductForm({
                 name: "",
                 price: 0,
                 currency: "USD",
-                sku: "",
-                stock_quantity: 0,
+                sku: undefined,
+                stock_quantity: undefined,
                 is_default: false,
-                is_active: true,
-                thumbnail_url: "",
-                digital_file_url: "",
+                is_active: false,
+                thumbnail_url: undefined,
+                digital_file_url: undefined,
+                thumbnail_file: undefined,
+                digital_file: undefined,
               })
             }
             className="gap-2"
@@ -641,6 +721,11 @@ export function ProductForm({
                   {...form.register(`variants.${index}.name`)}
                   placeholder="e.g., Large, Blue, Premium"
                 />
+                {form.formState.errors?.variants?.[index]?.name && (
+                  <p className="text-sm text-red-500">
+                    {form.formState.errors.variants[index]?.name?.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1">
@@ -654,34 +739,43 @@ export function ProductForm({
                   })}
                   placeholder="0.00"
                 />
+                {form.formState.errors?.variants?.[index]?.price && (
+                  <p className="text-sm text-red-500">
+                    {form.formState.errors.variants[index]?.price?.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1">
                 <Label htmlFor={`variants.${index}.currency`}>Currency</Label>
-                <Select
-                  {...form.register(`variants.${index}.currency`)}
+                <Controller
+                  name={`variants.${index}.currency`}
+                  control={form.control}
                   defaultValue={
                     initialData?.variants?.[index]?.currency || "USD"
                   }
-                >
-                  <SelectTrigger>
-                    {/* You can also use SelectValue for better accessibility */}
-                    <SelectValue placeholder="Select Currency" />
-                  </SelectTrigger>
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        {/* You can also use SelectValue for better accessibility */}
+                        <SelectValue placeholder="Select Currency" />
+                      </SelectTrigger>
 
-                  <SelectContent>
-                    {/* Wrap SelectItems within SelectContent */}
-                    {currencyOptions &&
-                      currencyOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {form.formState.errors.currency && (
+                      <SelectContent>
+                        {/* Wrap SelectItems within SelectContent */}
+                        {currencyOptions &&
+                          currencyOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors?.variants?.[index]?.currency && (
                   <p className="text-red-500 text-sm mt-1">
-                    {form.formState.errors.currency.message}
+                    {form.formState.errors?.variants?.[index]?.currency.message}
                   </p>
                 )}
               </div>
@@ -693,6 +787,11 @@ export function ProductForm({
                   {...form.register(`variants.${index}.sku`)}
                   placeholder="e.g., PROD-001-LG"
                 />
+                {form.formState.errors?.variants?.[index]?.sku && (
+                  <p className="text-sm text-red-500">
+                    {form.formState.errors.variants[index]?.sku?.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1">
@@ -707,25 +806,64 @@ export function ProductForm({
                   })}
                   placeholder="Available quantity"
                 />
+                {form.formState.errors?.variants?.[index]?.stock_quantity && (
+                  <p className="text-sm text-red-500">
+                    {
+                      form.formState.errors.variants[index]?.stock_quantity
+                        ?.message
+                    }
+                  </p>
+                )}
               </div>
 
               {/* Toggles */}
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <Switch
-                    id={`variants.${index}.is_default`}
-                    {...form.register(`variants.${index}.is_default`)}
+                  <Controller
+                    control={control}
+                    name={`variants.${index}.is_default`}
+                    render={({ field }) => (
+                      <Switch
+                        id={`variants.${index}.is_default`}
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    )}
                   />
+
                   <Label htmlFor={`variants.${index}.is_default`}>
                     Default Variant
                   </Label>
+                  {form.formState.errors?.variants?.[index]?.is_default && (
+                    <p className="text-sm text-red-500">
+                      {
+                        form.formState.errors.variants[index]?.is_default
+                          ?.message
+                      }
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Switch
-                    id={`variants.${index}.is_active`}
-                    {...form.register(`variants.${index}.is_active`)}
+                  <Controller
+                    control={control}
+                    name={`variants.${index}.is_active`}
+                    render={({ field }) => (
+                      <Switch
+                        id={`variants.${index}.is_active`}
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    )}
                   />
                   <Label htmlFor={`variants.${index}.is_active`}>Active</Label>
+                  {form.formState.errors?.variants?.[index]?.is_active && (
+                    <p className="text-sm text-red-500">
+                      {
+                        form.formState.errors.variants[index]?.is_active
+                          ?.message
+                      }
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -744,6 +882,14 @@ export function ProductForm({
                   }
                   className="cursor-pointer"
                 />
+                {form.formState.errors?.variants?.[index]?.thumbnail_file && (
+                  <p className="text-sm text-red-500">
+                    {String(
+                      form.formState.errors.variants[index]?.thumbnail_file
+                        ?.message || ""
+                    )}
+                  </p>
+                )}
 
                 {/* Thumbnail Preview Section */}
                 {form.watch(`variants.${index}.thumbnail_url`) && (
@@ -808,6 +954,14 @@ export function ProductForm({
                   }
                   className="cursor-pointer"
                 />
+                {form.formState.errors?.variants?.[index]?.digital_file && (
+                  <p className="text-sm text-red-500">
+                    {String(
+                      form.formState.errors.variants[index]?.digital_file
+                        ?.message
+                    )}
+                  </p>
+                )}
 
                 {/* Digital File Display - NOW WITH VISIBLE TRASH ICON */}
                 {(form.watch(`variants.${index}.digital_file_url`) ||
@@ -819,8 +973,11 @@ export function ProductForm({
                       {/* Added flex-1 and min-w-0 for text truncation */}
                       <span className="text-sm truncate block">
                         {form.getValues(`variants.${index}.digital_file`)
-                          ?.name ||
-                          form.watch(`variants.${index}.digital_file_url`)}
+                          ?.name ??
+                          form
+                            .watch(`variants.${index}.digital_file_url`)
+                            ?.split("/")
+                            .pop()}
                       </span>
                       {form.getValues(`variants.${index}.digital_file`) && (
                         <span className="text-xs text-muted-foreground block">
@@ -860,7 +1017,9 @@ export function ProductForm({
               type="button"
               variant="destructive"
               size="sm"
-              onClick={() => remove(index)}
+              key={`remove-${field.id}`}
+              disabled={removingIndex}
+              onClick={() => handleRemoveVariant(index)}
               className="mt-2"
             >
               <TrashIcon className="h-4 w-4 mr-2" />

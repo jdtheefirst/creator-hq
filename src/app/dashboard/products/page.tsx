@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ProductFilters from "@/components/ProductFilters";
 import { createClient } from "@/lib/supabase/server";
+import ProductActions from "@/components/ui/actions";
 
 interface ProductsPageProps {
   searchParams: {
@@ -154,22 +155,7 @@ export default async function ProductsPage({
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-4">
-                        <Link
-                          href={`/dashboard/products/${product.id}/edit`}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          Edit
-                        </Link>
-                        <button
-                          onClick={() => {
-                            // Handle delete
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                      <ProductActions productId={product.id} />
                     </td>
                   </tr>
                 ))}

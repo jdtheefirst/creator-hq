@@ -47,3 +47,17 @@ export const getCurrencyOptions = () => {
     label: `${code} - ${formatter.of(code)}`,
   }));
 };
+
+export const cleanObject = (obj: any) =>
+  JSON.parse(
+    JSON.stringify(obj, (key, value) => {
+      if (
+        value === undefined ||
+        value === null ||
+        (typeof File !== "undefined" && value instanceof File)
+      ) {
+        return undefined;
+      }
+      return value;
+    })
+  );

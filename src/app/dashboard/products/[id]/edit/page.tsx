@@ -14,17 +14,18 @@ export default async function EditProductPage({
 }: EditProductPageProps) {
   const supabase = await createClient();
   const currencyOptions = getCurrencyOptions();
+  const { id } = await params;
 
   const { data: product, error } = await supabase
     .from("products")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   const { data: variants, error: variantsError } = await supabase
     .from("product_variants")
     .select("*")
-    .eq("product_id", params.id);
+    .eq("product_id", id);
 
   if (error || !product) {
     notFound();
@@ -32,11 +33,11 @@ export default async function EditProductPage({
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4">
+      <div className="max-w-3xl mx-auto">
         <h1 className="text-4xl font-bold mb-8">Edit Product</h1>
         <ProductForm
           initialData={{ product, variants: variants || [] }}
-          onSubmit={{ update: true, id: params.id }}
+          onSubmit={{ update: true, id }}
           currencyOptions={currencyOptions}
         />
       </div>

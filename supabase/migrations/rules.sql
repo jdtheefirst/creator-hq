@@ -1,3 +1,4 @@
+-- videos example
 CREATE POLICY "Creators can manage their own video files"
   ON storage.objects FOR ALL
   USING (
@@ -32,6 +33,7 @@ CREATE POLICY "Public can view published video files"
     )
   );
 
+-- Covers and Avatars
 CREATE POLICY "Users can manage their own cover files"
   ON storage.objects FOR ALL
   USING (
@@ -73,3 +75,51 @@ CREATE POLICY "Public can view profile avatar files"
       WHERE profiles.avatar_url = storage.objects.name
     )
   );
+
+-- Products and Product Variants
+
+CREATE POLICY "Creators can manage their own products"
+  ON products
+  FOR ALL
+  TO authenticated
+  USING (
+    creator_id = auth.uid()
+  )
+  WITH CHECK (
+    creator_id = auth.uid()
+  );
+
+CREATE POLICY "Products are viewable by everyone"
+  ON products
+  FOR SELECT
+  TO public
+  USING (
+   ((status)::text = 'published'::text)
+  );
+
+CREATE POLICY "Creator can manage their own variants"
+ON product_variants
+FOR ALL
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM products
+    WHERE products.id = product_variants.product_id
+    AND products.creator_id = auth.uid()
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM products
+    WHERE products.id = product_variants.product_id
+    AND products.creator_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Product Variants are viewable by everyone"
+ON product_variants
+FOR SELECT
+TO public
+USING (true);
+
+
