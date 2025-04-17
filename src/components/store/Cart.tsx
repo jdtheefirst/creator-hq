@@ -39,7 +39,7 @@ export function Cart() {
         <p className="text-gray-500">Your cart is empty</p>
       ) : (
         <>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto max-h-96">
             {state.cart.map((item) => (
               <div
                 key={`${item.product.id}-${item.variant?.id}`}
@@ -102,6 +102,10 @@ export function Cart() {
             <div className="flex justify-between text-lg font-bold">
               <span>Total</span>
               <span>{formatCurrency(state.total)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span>Items</span>
+              <span>{state.cart.length}</span>
             </div>
             <button
               onClick={handleCheckout}

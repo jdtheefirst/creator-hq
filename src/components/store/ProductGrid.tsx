@@ -3,6 +3,7 @@
 import { Product } from "@/types/store";
 import { useStore } from "@/lib/context/StoreContext";
 import { formatCurrency } from "@/lib/utils";
+import Link from "next/link";
 
 interface ProductGridProps {
   products: Product[];
@@ -28,13 +29,16 @@ export function ProductGrid({ products }: ProductGridProps) {
           key={product.id}
           className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
         >
-          {product.thumbnail_url && (
-            <img
-              src={product.thumbnail_url}
-              alt={product.name}
-              className="w-full h-48 object-cover"
-            />
-          )}
+          <Link href={`/store/${product.id}`} className="block">
+            {product.thumbnail_url && (
+              <img
+                src={product.thumbnail_url}
+                alt={product.name}
+                className="w-full h-48 object-cover"
+              />
+            )}
+          </Link>
+
           <div className="p-4">
             <h3 className="text-lg font-semibold">{product.name}</h3>
             <p className="text-gray-600 mt-1 line-clamp-2">
