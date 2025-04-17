@@ -155,7 +155,7 @@ export default async function ProductsPage({
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <ProductActions productId={product.id} />
+                      <ProductActions product={product} />
                     </td>
                   </tr>
                 ))}

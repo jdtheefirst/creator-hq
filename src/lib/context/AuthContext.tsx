@@ -189,8 +189,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Only works in the browser (requires cookie-based auth).
    */
   const deleteFileFromSupabase = async (
-    fileUrl: string,
-    bucketName: string
+    fileUrl: string | null,
+    bucketName: string | null
   ): Promise<boolean> => {
     if (!fileUrl || !bucketName) {
       console.warn("Missing URL or bucket name.");

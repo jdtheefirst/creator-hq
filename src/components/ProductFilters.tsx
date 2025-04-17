@@ -1,6 +1,5 @@
 "use client";
 
-import { SelectIcon } from "@radix-ui/react-select";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 import {
