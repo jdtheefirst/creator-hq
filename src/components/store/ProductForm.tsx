@@ -28,6 +28,24 @@ import { FileIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cleanObject } from "@/lib/utils";
 
+const variantSchema = z.object({
+  id: z.string().optional(),
+  product_id: z.string().optional(),
+  name: z.string().min(1, "Variant name is required"),
+  price: z.number().min(0, "Price must be positive"),
+  currency: z.string().min(1, "Currency is required"),
+  sku: z.string().optional(),
+  stock_quantity: z.number().min(0).optional(),
+  is_default: z.boolean().optional(),
+  is_active: z.boolean().optional(),
+
+  affiliate_url: z.string().url().or(z.literal("")).optional().nullable(),
+  thumbnail_url: z.string().url().optional().nullable(),
+  thumbnail_file: z.any().optional().nullable(),
+  digital_file: z.any().optional().nullable(),
+  digital_file_url: z.string().url().or(z.literal("")).optional().nullable(),
+});
+
 const productSchema = z
   .object({
     id: z.string().optional(),
@@ -44,60 +62,102 @@ const productSchema = z
       .positive("Stock quantity must be a positive number")
       .optional(),
 
-    affiliate_url: z.string().url().optional().nullable(),
+    affiliate_url: z.string().url().or(z.literal("")).optional().nullable(),
     thumbnail_url: z.string().url().optional().nullable(),
     thumbnail_file: z.any().optional().nullable(),
     digital_file: z.any().optional().nullable(),
     digital_file_url: z.string().url().or(z.literal("")).optional().nullable(),
 
-    variants: z
-      .array(
-        z.object({
-          id: z.string().optional(),
-          product_id: z.string().optional(),
-          name: z.string().min(1, "Variant name is required"),
-          price: z.number().min(0, "Price must be positive"),
-          currency: z.string().min(1, "Currency is required"),
-          sku: z.string().optional(),
-          stock_quantity: z.number().min(0).optional(),
-          is_default: z.boolean().optional(),
-          is_active: z.boolean().optional(),
-          affiliate_url: z.string().url().optional().nullable(),
-          thumbnail_url: z.string().url().optional().nullable(),
-          digital_file_url: z
-            .string()
-            .url()
-            .optional()
-            .or(z.literal(""))
-            .nullable(),
-          thumbnail_file: z.any().optional().nullable(),
-          digital_file: z.any().optional().nullable(),
-        })
-      )
-      .optional(),
+    variants: z.array(variantSchema).optional(),
   })
-  .refine(
-    (data) => {
-      if (data.type === "affiliate")
-        return !!data.affiliate_url && !!data.thumbnail_url;
-      if (data.type === "digital") return !!data.digital_file_url;
-      if (data.type === "physical") return !!data.thumbnail_url;
-      return false;
-    },
-    {
-      message: "Required field missing based on product type",
-      path: ["type"], // show error on the "type" field
+  .superRefine((data, ctx) => {
+    const { type } = data;
+
+    // 🔍 Validate product-level fields by type
+    if (type === "affiliate") {
+      if (!data.affiliate_url) {
+        ctx.addIssue({
+          path: ["affiliate_url"],
+          code: z.ZodIssueCode.custom,
+          message: "Affiliate product must include affiliate URL.",
+        });
+      }
+      if (!data.thumbnail_url && !data.thumbnail_file) {
+        ctx.addIssue({
+          path: ["thumbnail_file"],
+          code: z.ZodIssueCode.custom,
+          message: "Affiliate product must include thumbnail.",
+        });
+      }
     }
-  )
-  .refine(
-    (data) =>
-      !!data.digital_file_url || !!data.thumbnail_url || !!data.affiliate_url,
-    {
-      message:
-        "At least one of thumbnail, digital file, or affiliate URL is required.",
-      path: ["thumbnail_url"], // show error under thumbnail by default
+
+    if (type === "digital") {
+      if (!data.digital_file_url && !data.digital_file) {
+        ctx.addIssue({
+          path: ["digital_file"],
+          code: z.ZodIssueCode.custom,
+          message: "Digital product must include a digital file.",
+        });
+      }
     }
-  );
+
+    if (type === "physical") {
+      if (!data.thumbnail_url && !data.thumbnail_file) {
+        ctx.addIssue({
+          path: ["thumbnail_file"],
+          code: z.ZodIssueCode.custom,
+          message: "Physical product must include a thumbnail.",
+        });
+      }
+      if (!data.stock_quantity) {
+        ctx.addIssue({
+          path: ["stock_quantity"],
+          code: z.ZodIssueCode.custom,
+          message: "Physical product must include stock quantity.",
+        });
+      }
+    }
+
+    // 🔁 Validate each variant under same rules
+    for (const [i, variant] of (data.variants ?? []).entries()) {
+      if (type === "affiliate") {
+        if (!variant.affiliate_url) {
+          ctx.addIssue({
+            path: [`variants`, i, "affiliate_url"],
+            code: z.ZodIssueCode.custom,
+            message: "Affiliate variant must include affiliate URL.",
+          });
+        }
+        if (!variant.thumbnail_url && !variant.thumbnail_file) {
+          ctx.addIssue({
+            path: [`variants`, i, "thumbnail_file"],
+            code: z.ZodIssueCode.custom,
+            message: "Affiliate variant must include a thumbnail.",
+          });
+        }
+      }
+
+      if (type === "digital") {
+        if (!variant.digital_file_url && !variant.digital_file) {
+          ctx.addIssue({
+            path: [`variants`, i, "digital_file"],
+            code: z.ZodIssueCode.custom,
+            message: "Digital variant must include a file.",
+          });
+        }
+      }
+
+      if (type === "physical") {
+        if (!variant.thumbnail_url && !variant.thumbnail_file) {
+          ctx.addIssue({
+            path: [`variants`, i, "thumbnail_file"],
+            code: z.ZodIssueCode.custom,
+            message: "Physical variant must include a thumbnail.",
+          });
+        }
+      }
+    }
+  });
 
 interface ProductFormProps {
   initialData?: {
@@ -573,6 +633,13 @@ export function ProductForm({
               handleImageChange("thumbnail_file", e);
             }}
           />
+          {form.formState.errors.thumbnail_file && (
+            <p className="text-sm text-red-500">
+              {String(form.formState.errors.thumbnail_file?.message || "")}
+            </p>
+          )}
+
+          {/* Thumbnail Preview Section */}
 
           {(form.watch("thumbnail_url") ||
             form.getValues("thumbnail_file")) && (
@@ -608,43 +675,43 @@ export function ProductForm({
                     Current: {form.watch("thumbnail_url")?.split("/").pop()}
                   </span>
                 )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8"
-                  onClick={async () => {
-                    const thumbnailUrl = form.getValues("thumbnail_url");
-
-                    // If it's a real Supabase URL
-                    if (thumbnailUrl && thumbnailUrl.startsWith("https://")) {
-                      const deleted = await debouncedDelete(
-                        thumbnailUrl!,
-                        "products"
-                      );
-                      if (deleted) {
-                        toast.success("Thumbnail deleted!");
-                      } else {
-                        toast.error("Failed to delete thumbnail");
-                      }
-                    }
-                    // If it's a blob URL, revoke it
-                    if (thumbnailUrl?.startsWith("blob:")) {
-                      URL.revokeObjectURL(thumbnailUrl);
-                    }
-                    // Clear form values
-                    form.setValue("thumbnail_url", null);
-                    form.setValue("thumbnail_file", null);
-                    // Clear file input value
-                    const fileInput = document.getElementById(
-                      "main-thumbnail-upload"
-                    ) as HTMLInputElement;
-                    if (fileInput) fileInput.value = "";
-                  }}
-                >
-                  <TrashIcon className="h-4 w-4 text-destructive" />
-                </Button>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={async () => {
+                  const thumbnailUrl = form.getValues("thumbnail_url");
+
+                  // If it's a real Supabase URL
+                  if (thumbnailUrl && thumbnailUrl.startsWith("https://")) {
+                    const deleted = await debouncedDelete(
+                      thumbnailUrl!,
+                      "products"
+                    );
+                    if (deleted) {
+                      toast.success("Thumbnail deleted!");
+                    } else {
+                      toast.error("Failed to delete thumbnail");
+                    }
+                  }
+                  // If it's a blob URL, revoke it
+                  if (thumbnailUrl?.startsWith("blob:")) {
+                    URL.revokeObjectURL(thumbnailUrl);
+                  }
+                  // Clear form values
+                  form.setValue("thumbnail_url", null);
+                  form.setValue("thumbnail_file", null);
+                  // Clear file input value
+                  const fileInput = document.getElementById(
+                    "main-thumbnail-upload"
+                  ) as HTMLInputElement;
+                  if (fileInput) fileInput.value = "";
+                }}
+              >
+                <TrashIcon className="h-4 w-4 text-destructive" />
+              </Button>
             </div>
           )}
         </div>
@@ -662,6 +729,11 @@ export function ProductForm({
               handleDigitalChange("digital_file", e, 10);
             }}
           />
+          {form.formState.errors.digital_file && (
+            <p className="text-sm text-red-500">
+              {String(form.formState.errors.digital_file?.message || "")}
+            </p>
+          )}
 
           {/* Digital File Display */}
           {(form.watch("digital_file_url") || form.watch("digital_file")) && (
@@ -956,9 +1028,12 @@ export function ProductForm({
                     placeholder="Enter affiliate URL"
                     className="w-full"
                   />
-                  {form.formState.errors.affiliate_url && (
+                  {form.formState.errors.variants?.[index]?.affiliate_url && (
                     <p className="text-red-500 text-sm mt-1">
-                      {form.formState.errors.affiliate_url.message}
+                      {
+                        form.formState.errors.variants?.[index]?.affiliate_url
+                          .message
+                      }
                     </p>
                   )}
                 </div>
@@ -987,7 +1062,8 @@ export function ProductForm({
                   )}
 
                   {/* Thumbnail Preview Section */}
-                  {form.watch(`variants.${index}.thumbnail_url`) && (
+                  {(form.watch(`variants.${index}.thumbnail_url`) ||
+                    form.getValues(`variants.${index}.thumbnail_file`)) && (
                     <div className="mt-2 flex items-center gap-2">
                       <img
                         src={form.watch(`variants.${index}.thumbnail_url`)!}
@@ -995,59 +1071,63 @@ export function ProductForm({
                         className="w-16 h-16 object-cover rounded border"
                       />
                       <div className="flex flex-col gap-1">
-                        {form.getValues(`variants.${index}.thumbnail_file`) && (
-                          <span className="text-xs text-muted-foreground">
-                            {(
-                              form.getValues(`variants.${index}.thumbnail_file`)
-                                ?.size /
-                              1024 /
-                              1024
-                            ).toFixed(2)}{" "}
-                            MB
-                          </span>
-                        )}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-fit"
-                          onClick={async () => {
-                            const thumbUrl = form.getValues(
-                              `variants.${index}.thumbnail_url`
-                            );
-                            // If it's a real Supabase URL
-                            if (thumbUrl && thumbUrl.startsWith("https://")) {
-                              const deleted = await debouncedDelete(
-                                thumbUrl!,
-                                "products"
-                              );
-                              if (deleted) {
-                                toast.success("Thumbnail deleted!");
-                              } else {
-                                toast.error("Failed to delete thumbnail");
-                              }
-                            }
-                            if (thumbUrl?.startsWith("blob:")) {
-                              URL.revokeObjectURL(thumbUrl);
-                            }
-                            form.setValue(
-                              `variants.${index}.thumbnail_url`,
-                              ""
-                            );
-                            form.setValue(
-                              `variants.${index}.thumbnail_file`,
-                              null
-                            );
-                            (
-                              document.getElementById(
-                                `variant-thumbnail-${index}`
-                              ) as HTMLInputElement
-                            ).value = "";
-                          }}
-                        >
-                          <TrashIcon className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <span className="text-sm truncate block">
+                          {form.getValues(`variants.${index}.thumbnail_file`)
+                            ?.name ??
+                            form
+                              .watch(`variants.${index}.thumbnail_url`)
+                              ?.split("/")
+                              .pop()}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {(
+                            form.getValues(`variants.${index}.thumbnail_file`)
+                              ?.size /
+                            1024 /
+                            1024
+                          ).toFixed(2)}{" "}
+                          MB
+                        </span>
                       </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-fit"
+                        onClick={async () => {
+                          const thumbUrl = form.getValues(
+                            `variants.${index}.thumbnail_url`
+                          );
+                          // If it's a real Supabase URL
+                          if (thumbUrl && thumbUrl.startsWith("https://")) {
+                            const deleted = await debouncedDelete(
+                              thumbUrl!,
+                              "products"
+                            );
+                            if (deleted) {
+                              toast.success("Thumbnail deleted!");
+                            } else {
+                              toast.error("Failed to delete thumbnail");
+                            }
+                          }
+                          if (thumbUrl?.startsWith("blob:")) {
+                            URL.revokeObjectURL(thumbUrl);
+                          }
+                          form.setValue(`variants.${index}.thumbnail_url`, "");
+                          form.setValue(
+                            `variants.${index}.thumbnail_file`,
+                            null
+                          );
+                          (
+                            document.getElementById(
+                              `variant-thumbnail-${index}`
+                            ) as HTMLInputElement
+                          ).value = "";
+                        }}
+                      >
+                        <TrashIcon className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
                   )}
                 </div>
