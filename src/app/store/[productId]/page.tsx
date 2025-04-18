@@ -58,6 +58,19 @@ export default async function ProductPage({ params }: Props) {
               <p className="text-sm text-gray-500">
                 Stock: {product.stock_quantity}
               </p>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  product.rating
+                    ? product.rating >= 4.5
+                      ? "bg-green-100 text-green-800"
+                      : product.rating >= 3.5
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                Rating: {product.rating || "N/A"}
+              </span>
             </div>
             <div className="flex items-center justify-end mt-3">
               <AddToCartButton product={product} />
@@ -68,9 +81,7 @@ export default async function ProductPage({ params }: Props) {
         {/* Variants Section */}
         {variants && variants.length > 0 && (
           <div className="lg:w-1/3 space-y-4">
-            <h2 className="text-xl sm:text-2xl font-semibold">
-              Choose a Variant
-            </h2>
+            <h2 className="text-xl sm:text-2xl font-semibold">Variants</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
               {variants.map((variant) => (
                 <div

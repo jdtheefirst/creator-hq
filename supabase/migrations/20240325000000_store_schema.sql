@@ -15,6 +15,7 @@ CREATE TABLE products (
     currency VARCHAR(3) NOT NULL,
     type VARCHAR(20) NOT NULL CHECK (type IN ('physical', 'digital', 'affiliate')),
     status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+    variants_count INTEGER DEFAULT 0,
     thumbnail_url TEXT,
     affiliate_url TEXT,
     digital_file_url TEXT,
@@ -101,6 +102,8 @@ CREATE INDEX products_vip_idx ON products(vip);
 CREATE INDEX products_sales_count_idx ON products(sales_count);
 CREATE INDEX products_review_count_idx ON products(review_count);
 CREATE INDEX products_rating_idx ON products(rating);
+CREATE INDEX products_price_idx ON products(price);
+CREATE INDEX products_variants_count_idx ON products(variants_count);
 
 CREATE INDEX orders_user_id_idx ON orders(user_id);
 CREATE INDEX orders_creator_id_idx ON orders(creator_id);
@@ -153,3 +156,59 @@ CREATE POLICY "Users can view their own order items"
             AND orders.user_id = auth.uid()
         )
     );
+
+-- update the variants_count in products table when product_variants are inserted, deleted or updated
+CREATE OR REPLACE FUNCTION update_variants_count()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- On INSERT
+  IF TG_OP = 'INSERT' THEN
+    UPDATE products
+    SET variants_count = variants_count + 1
+    WHERE id = NEW.product_id;
+
+  -- On DELETE
+  ELSIF TG_OP = 'DELETE' THEN
+    UPDATE products
+    SET variants_count = variants_count - 1
+    WHERE id = OLD.product_id;
+
+  -- On UPDATE (if product_id is changed)
+  ELSIF TG_OP = 'UPDATE' AND NEW.product_id != OLD.product_id THEN
+    -- Decrement old product
+    UPDATE products
+    SET variants_count = variants_count - 1
+    WHERE id = OLD.product_id;
+
+    -- Increment new product
+    UPDATE products
+    SET variants_count = variants_count + 1
+    WHERE id = NEW.product_id;
+  END IF;
+
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- TRIGGERS
+-- Trigger to update variants_count in products table when product_variants are inserted, deleted or updated
+CREATE TRIGGER trg_variants_after_insert
+AFTER INSERT ON product_variants
+FOR EACH ROW
+EXECUTE FUNCTION update_variants_count();
+
+-- Trigger to update variants_count in products table when product_variants are deleted
+-- This trigger will only fire if the product_id changes
+CREATE TRIGGER trg_variants_after_delete
+AFTER DELETE ON product_variants
+FOR EACH ROW
+EXECUTE FUNCTION update_variants_count();
+
+-- Trigger to update variants_count in products table when product_variants are updated
+-- This trigger will only fire if the product_id changes
+CREATE TRIGGER trg_variants_after_update
+AFTER UPDATE OF product_id ON product_variants
+FOR EACH ROW
+WHEN (OLD.product_id IS DISTINCT FROM NEW.product_id)
+EXECUTE FUNCTION update_variants_count();
+

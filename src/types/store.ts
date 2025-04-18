@@ -12,6 +12,11 @@ export interface Product {
   currency: string;
   type: ProductType;
   status: ProductStatus;
+  variants_count: number | 0;
+  is_active: boolean | null;
+  is_default: boolean | null;
+  weight: number | null;
+  sku: string | null;
   thumbnail_url: string | null;
   affiliate_url: string | null;
   digital_file_url: string | null;

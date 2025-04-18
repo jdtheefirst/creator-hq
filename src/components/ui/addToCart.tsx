@@ -15,7 +15,6 @@ type AddToCartButtonProps = {
 
 export const AddToCartButton = ({
   product,
-  variant,
   quantity = 1,
   className = "",
   children,
@@ -27,7 +26,6 @@ export const AddToCartButton = ({
       type: "ADD_TO_CART",
       payload: {
         product,
-        variant,
         quantity,
       },
     });
