@@ -4,7 +4,8 @@ import Stripe from "stripe";
 import { Resend } from "resend";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia",
+  apiVersion: "2025-03-31.basil",
+  typescript: true,
 });
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const metadata = session.metadata || {};
-      const shipping = session.shipping_details?.address || null;
+      const shipping = session.customer_details?.address || null;
       const type = metadata.type;
 
       if (type === "order") {
