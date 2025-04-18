@@ -12,11 +12,11 @@ type StoreAction =
   | { type: "ADD_TO_CART"; payload: CartItem }
   | {
       type: "REMOVE_FROM_CART";
-      payload: { productId: string; variantId?: string };
+      payload: { productId: string };
     }
   | {
       type: "UPDATE_QUANTITY";
-      payload: { productId: string; variantId?: string; quantity: number };
+      payload: { productId: string; quantity: number };
     }
   | { type: "CLEAR_CART" };
 
@@ -34,9 +34,7 @@ function storeReducer(state: StoreState, action: StoreAction): StoreState {
   switch (action.type) {
     case "ADD_TO_CART": {
       const existingItemIndex = state.cart.findIndex(
-        (item) =>
-          item.product.id === action.payload.product.id &&
-          item.variant?.id === action.payload.variant?.id
+        (item) => item.product.id === action.payload.product.id
       );
 
       let newCart;
@@ -59,11 +57,7 @@ function storeReducer(state: StoreState, action: StoreAction): StoreState {
 
     case "REMOVE_FROM_CART": {
       const newCart = state.cart.filter(
-        (item) =>
-          !(
-            item.product.id === action.payload.productId &&
-            item.variant?.id === action.payload.variantId
-          )
+        (item) => !(item.product.id === action.payload.productId)
       );
 
       return {
@@ -75,10 +69,7 @@ function storeReducer(state: StoreState, action: StoreAction): StoreState {
 
     case "UPDATE_QUANTITY": {
       const newCart = state.cart.map((item) => {
-        if (
-          item.product.id === action.payload.productId &&
-          item.variant?.id === action.payload.variantId
-        ) {
+        if (item.product.id === action.payload.productId) {
           return { ...item, quantity: action.payload.quantity };
         }
         return item;
@@ -105,7 +96,7 @@ function storeReducer(state: StoreState, action: StoreAction): StoreState {
 
 function calculateTotal(cart: CartItem[]): number {
   return cart.reduce((total, item) => {
-    const price = item.variant?.price || item.product.price;
+    const price = item.product.price;
     return total + price * item.quantity;
   }, 0);
 }

@@ -99,6 +99,11 @@ export function ProductGrid({ products }: ProductGridProps) {
                 width={300}
                 height={300}
                 loading="lazy"
+                priority={false}
+                placeholder="blur"
+                blurDataURL={
+                  product.thumbnail_url! || product.digital_file_url!
+                }
                 src={product.thumbnail_url! || product.digital_file_url!}
                 alt={product.name}
                 className="w-full h-48 object-cover"
@@ -161,7 +166,12 @@ export function ProductGrid({ products }: ProductGridProps) {
                   </a>
                 ) : (
                   <button
-                    onClick={() => handleAddToCart(product)}
+                    onClick={() =>
+                      handleAddToCart({
+                        ...product,
+                        purchasable_type: "product",
+                      })
+                    }
                     className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/90"
                   >
                     Add to Cart

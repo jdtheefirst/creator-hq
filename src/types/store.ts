@@ -26,6 +26,8 @@ export interface Product {
   review_count: number | null;
   created_at: string;
   updated_at: string;
+  purchasable_type: string | null;
+  purchasable_id: string | null;
   variants?: ProductVariant[];
 }
 

@@ -61,18 +61,25 @@ CREATE TABLE orders (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- ORDER ITEMS
+-- ORDER ITEMS (Polymorphic)
+-- This is a flexible polymorphic reference to allow for different types of purchasable items
 CREATE TABLE order_items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
-    product_id UUID REFERENCES products(id),
-    variant_id UUID REFERENCES product_variants(id),
-    product_variant_id UUID REFERENCES product_variants(id);
-    quantity INTEGER NOT NULL,
+    -- Flexible polymorphic reference
+    purchasable_type TEXT NOT NULL CHECK (purchasable_type IN ('product', 'variant')),
+    purchasable_id UUID NOT NULL,
+    -- Snapshot info (important for historical accuracy)
+    name TEXT NOT NULL,
+    thumbnail_url TEXT,
     unit_price DECIMAL(10,2) NOT NULL,
     currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+    quantity INTEGER NOT NULL DEFAULT 1,
+    -- Optional details
+    metadata JSONB,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- FUNCTION
 CREATE OR REPLACE FUNCTION update_updated_at_column()

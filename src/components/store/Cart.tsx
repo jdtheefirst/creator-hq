@@ -14,20 +14,16 @@ export function Cart() {
     router.push("/checkout");
   };
 
-  const updateQuantity = (
-    productId: string,
-    variantId: string | undefined,
-    quantity: number
-  ) => {
+  const updateQuantity = (productId: string, quantity: number) => {
     if (quantity < 1) {
       dispatch({
         type: "REMOVE_FROM_CART",
-        payload: { productId, variantId },
+        payload: { productId },
       });
     } else {
       dispatch({
         type: "UPDATE_QUANTITY",
-        payload: { productId, variantId, quantity },
+        payload: { productId, quantity },
       });
     }
   };
@@ -42,7 +38,7 @@ export function Cart() {
           <div className="space-y-4 overflow-y-auto max-h-96">
             {state.cart.map((item) => (
               <div
-                key={`${item.product.id}-${item.variant?.id}`}
+                key={`${item.product.id}`}
                 className="flex items-center justify-between border-b pb-4"
               >
                 <div className="flex items-center space-x-4">
@@ -55,15 +51,10 @@ export function Cart() {
                   )}
                   <div>
                     <h3 className="font-semibold">{item.product.name}</h3>
-                    {item.variant && (
-                      <p className="text-sm text-gray-500">
-                        {item.variant.name}
-                      </p>
-                    )}
                     <p className="text-primary font-medium">
                       {formatCurrency(
-                        item.variant?.price || item.product.price,
-                        item.variant?.currency || item.product.currency
+                        item.product.price,
+                        item.product.currency
                       )}
                     </p>
                   </div>
@@ -71,11 +62,7 @@ export function Cart() {
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() =>
-                      updateQuantity(
-                        item.product.id,
-                        item.variant?.id,
-                        item.quantity - 1
-                      )
+                      updateQuantity(item.product.id, item.quantity - 1)
                     }
                     className="text-gray-500 hover:text-gray-700"
                   >
@@ -84,11 +71,7 @@ export function Cart() {
                   <span className="w-8 text-center">{item.quantity}</span>
                   <button
                     onClick={() =>
-                      updateQuantity(
-                        item.product.id,
-                        item.variant?.id,
-                        item.quantity + 1
-                      )
+                      updateQuantity(item.product.id, item.quantity + 1)
                     }
                     className="text-gray-500 hover:text-gray-700"
                   >

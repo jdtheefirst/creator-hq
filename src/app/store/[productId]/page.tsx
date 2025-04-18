@@ -73,7 +73,9 @@ export default async function ProductPage({ params }: Props) {
               </span>
             </div>
             <div className="flex items-center justify-end mt-3">
-              <AddToCartButton product={product} />
+              <AddToCartButton
+                product={{ ...product, purchasable_type: "product" }}
+              />
             </div>
           </div>
         </div>
@@ -139,7 +141,9 @@ export default async function ProductPage({ params }: Props) {
                       </div>
                     </div>
                     <div className="flex items-center justify-end mt-3">
-                      <AddToCartButton product={variant} />
+                      <AddToCartButton
+                        product={{ ...variant, purchasable_type: "variant" }}
+                      />
                     </div>
                   </div>
                 </div>

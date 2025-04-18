@@ -20,12 +20,104 @@ export async function POST(request: Request) {
       process.env.STRIPE_WEBHOOK_SECRET!
     );
 
-    switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        const { bookingId, creator_id } = session.metadata!;
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const metadata = session.metadata || {};
+      const shipping = session.shipping_details?.address || null;
+      const type = metadata.type;
 
-        // Update booking payment status
+      if (type === "order") {
+        const userId = metadata.userId;
+        const rawCart = metadata.cart;
+
+        if (!userId || !rawCart) {
+          console.error("Missing required metadata for order", {
+            userId,
+            rawCart,
+          });
+          return NextResponse.json(
+            { error: "Invalid order metadata" },
+            { status: 400 }
+          );
+        }
+
+        let cart;
+        try {
+          cart = JSON.parse(rawCart);
+        } catch (err) {
+          console.error("Invalid cart JSON:", err);
+          return NextResponse.json(
+            { error: "Malformed cart" },
+            { status: 400 }
+          );
+        }
+
+        const { data: order, error: orderError } = await supabase
+          .from("orders")
+          .insert({
+            user_id: userId,
+            creator_id: process.env.NEXT_PUBLIC_CREATOR_UID,
+            stripe_session_id: session.id,
+            total: session.amount_total! / 100,
+            status: "paid",
+            shipping_address: shipping
+              ? {
+                  line1: shipping.line1,
+                  city: shipping.city,
+                  postal_code: shipping.postal_code,
+                  country: shipping.country,
+                }
+              : null,
+          })
+          .select()
+          .single();
+
+        if (orderError) {
+          console.error("Order insert failed:", orderError);
+          return NextResponse.json(
+            { error: "Order insert failed" },
+            { status: 500 }
+          );
+        }
+
+        const items = cart.map((item: any) => ({
+          order_id: order.id,
+          purchasable_type: item.product.purchasable_type,
+          purchasable_id: item.product.id,
+          thumbnail_url:
+            item.product.thumbnail_url || item.product.digital_file_url,
+          name: item.product.name,
+          quantity: item.quantity,
+          unit_price: item.product.price,
+          total_price: item.product.price * item.quantity,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from("order_items")
+          .insert(items);
+
+        if (itemsError) {
+          console.error("Order items insert failed:", itemsError);
+
+          // Optional rollback to keep DB clean
+          await supabase.from("orders").delete().eq("id", order.id);
+
+          return NextResponse.json(
+            { error: "Items insert failed" },
+            { status: 500 }
+          );
+        }
+      } else if (type === "booking") {
+        const { bookingId, creator_id } = metadata;
+
+        if (!bookingId || !creator_id) {
+          console.error("Missing booking metadata", metadata);
+          return NextResponse.json(
+            { error: "Missing booking info" },
+            { status: 400 }
+          );
+        }
+
         await supabase
           .from("bookings")
           .update({
@@ -35,24 +127,21 @@ export async function POST(request: Request) {
           .eq("id", bookingId)
           .eq("creator_id", creator_id);
 
-        // Fetch booking and creator details
         const { data: booking } = await supabase
           .from("bookings")
-          .select(
-            `
-            *,
-            profiles!creator_id (
-              full_name,
-              contact_email
-            )
-          `
-          )
+          .select(`*, profiles!creator_id ( full_name, contact_email )`)
           .eq("id", bookingId)
           .single();
 
-        // Send confirmation emails
+        if (!booking) {
+          console.error("Booking not found after update:", bookingId);
+          return NextResponse.json(
+            { error: "Booking not found" },
+            { status: 404 }
+          );
+        }
+
         await Promise.all([
-          // Client confirmation
           resend.emails.send({
             from: "bookings@yourdomain.com",
             to: booking.client_email,
@@ -60,7 +149,6 @@ export async function POST(request: Request) {
             html: `
               <h1>Payment Confirmed</h1>
               <p>Your payment for the booking with ${booking.profiles.full_name} has been confirmed.</p>
-              <p>Booking details:</p>
               <ul>
                 <li>Service: ${booking.service_type}</li>
                 <li>Date: ${new Date(booking.booking_date).toLocaleString()}</li>
@@ -68,7 +156,6 @@ export async function POST(request: Request) {
               </ul>
             `,
           }),
-          // Creator notification
           resend.emails.send({
             from: "bookings@yourdomain.com",
             to: booking.profiles.contact_email,
@@ -81,23 +168,26 @@ export async function POST(request: Request) {
           }),
         ]);
 
-        // Update analytics
         await supabase.rpc("update_revenue_metrics", {
           p_creator_id: creator_id,
           p_amount: session.amount_total! / 100,
           p_date: new Date().toISOString(),
         });
-
-        break;
-      }
-
-      case "charge.refunded": {
-        const charge = event.data.object as Stripe.Charge;
-        const session = await stripe.checkout.sessions.retrieve(
-          charge.payment_intent as string
+      } else {
+        console.warn("Unknown metadata.type:", type);
+        return NextResponse.json(
+          { error: "Unknown session type" },
+          { status: 400 }
         );
-        const { bookingId, creator_id } = session.metadata!;
+      }
+    } else if (event.type === "charge.refunded") {
+      const charge = event.data.object as Stripe.Charge;
+      const session = await stripe.checkout.sessions.retrieve(
+        charge.payment_intent as string
+      );
+      const { bookingId, creator_id } = session.metadata || {};
 
+      if (bookingId && creator_id) {
         await supabase
           .from("bookings")
           .update({
@@ -106,8 +196,6 @@ export async function POST(request: Request) {
           })
           .eq("id", bookingId)
           .eq("creator_id", creator_id);
-
-        break;
       }
     }
 

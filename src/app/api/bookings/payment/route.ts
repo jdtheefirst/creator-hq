@@ -39,11 +39,37 @@ export async function POST(request: Request) {
         },
       ],
       mode: "payment",
-      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/bookings/${bookingId}/success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/dashboard/bookings/${bookingId}/cancel`,
+      shipping_address_collection: {
+        allowed_countries: ["US", "CA", "KE", "GB"], // Add more countries as needed
+      },
+      shipping_options: [
+        {
+          shipping_rate_data: {
+            type: "fixed_amount",
+            fixed_amount: {
+              amount: 0,
+              currency: "usd",
+            },
+            display_name: "Free shipping",
+            delivery_estimate: {
+              minimum: {
+                unit: "business_day",
+                value: 5,
+              },
+              maximum: {
+                unit: "business_day",
+                value: 7,
+              },
+            },
+          },
+        },
+      ],
+      success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/${bookingId}/success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/${bookingId}/cancel`,
       metadata: {
         bookingId,
         creator_id,
+        type: "booking",
       },
     });
 
