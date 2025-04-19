@@ -78,13 +78,22 @@ export async function POST(req: Request) {
           },
         },
       ],
-      automatic_tax: { enabled: true },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/cart`,
+      automatic_tax: { enabled: false },
+      success_url: `http://localhost:3000//success`,
+      cancel_url: `http://localhost:3000/cart`,
       metadata: {
         userId: user.id, // Replace with actual auth user
         type: "order",
-        cart: JSON.stringify(body.cart),
+        cart: JSON.stringify(
+          body.cart.map((item: any) => ({
+            id: item.product.id,
+            quantity: item.quantity,
+            unit_price: item.product.price,
+            name: item.product.name,
+            currency: item.product.currency,
+            purchasable_type: item.product.purchasable_type,
+          }))
+        ),
       },
     });
 

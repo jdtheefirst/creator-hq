@@ -186,13 +186,23 @@ export function ProductGrid({ products }: ProductGridProps) {
       {/* Infinite Scroll trigger */}
       <div ref={loadMoreRef} className="h-12" />
 
-      {visibleCount < filteredProducts.length ? (
+      {filteredProducts.length === 0 ? (
+        <div className="flex text-center text-sm text-gray-400 mt-4 gap-4">
+          <p> No products available at the moment.</p>
+          <a href="/" className="inline-block text-blue-500 hover:underline">
+            Go back home
+          </a>
+        </div>
+      ) : visibleCount < filteredProducts.length ? (
         <div className="text-center text-sm text-gray-500 mt-4">
           Loading more...
         </div>
       ) : (
-        <div className="text-center text-sm text-gray-400 mt-4">
-          No more products
+        <div className="flex text-center text-sm text-gray-400 mt-4 gap-4">
+          <p> No more products</p>
+          <a href="/" className="inline-block text-blue-500 hover:underline">
+            Go back home
+          </a>
         </div>
       )}
     </>

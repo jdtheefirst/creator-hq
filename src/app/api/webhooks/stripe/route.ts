@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/utils";
 import Stripe from "stripe";
 import { Resend } from "resend";
 
@@ -10,7 +10,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
   const body = await request.text();
   const signature = request.headers.get("stripe-signature")!;
 
@@ -26,6 +25,8 @@ export async function POST(request: Request) {
       const metadata = session.metadata || {};
       const shipping = session.customer_details?.address || null;
       const type = metadata.type;
+      console.log("Session metadata:", metadata);
+      console.log("Session shipping:", shipping, "type:", type);
 
       if (type === "order") {
         const userId = metadata.userId;
@@ -53,13 +54,14 @@ export async function POST(request: Request) {
           );
         }
 
-        const { data: order, error: orderError } = await supabase
+        const { data: order, error: orderError } = await supabaseAdmin
           .from("orders")
           .insert({
             user_id: userId,
             creator_id: process.env.NEXT_PUBLIC_CREATOR_UID,
             stripe_session_id: session.id,
-            total: session.amount_total! / 100,
+            currency: session.currency,
+            total_amount: session.amount_total! / 100,
             status: "paid",
             shipping_address: shipping
               ? {
@@ -73,6 +75,9 @@ export async function POST(request: Request) {
           .select()
           .single();
 
+        // Log the order data for debugging
+        console.log("Order created:", order);
+
         if (orderError) {
           console.error("Order insert failed:", orderError);
           return NextResponse.json(
@@ -83,17 +88,17 @@ export async function POST(request: Request) {
 
         const items = cart.map((item: any) => ({
           order_id: order.id,
-          purchasable_type: item.product.purchasable_type,
-          purchasable_id: item.product.id,
-          thumbnail_url:
-            item.product.thumbnail_url || item.product.digital_file_url,
-          name: item.product.name,
+          purchasable_type: item.purchasable_type,
+          purchasable_id: item.id,
+          name: item.name,
           quantity: item.quantity,
-          unit_price: item.product.price,
-          total_price: item.product.price * item.quantity,
+          unit_price: item.price,
+          currency: item.currency,
         }));
+        // Log the items to be inserted for debugging
+        console.log("Items to insert:", items);
 
-        const { error: itemsError } = await supabase
+        const { error: itemsError } = await supabaseAdmin
           .from("order_items")
           .insert(items);
 
@@ -101,7 +106,7 @@ export async function POST(request: Request) {
           console.error("Order items insert failed:", itemsError);
 
           // Optional rollback to keep DB clean
-          await supabase.from("orders").delete().eq("id", order.id);
+          await supabaseAdmin.from("orders").delete().eq("id", order.id);
 
           return NextResponse.json(
             { error: "Items insert failed" },
@@ -119,7 +124,7 @@ export async function POST(request: Request) {
           );
         }
 
-        await supabase
+        await supabaseAdmin
           .from("bookings")
           .update({
             payment_status: "paid",
@@ -128,7 +133,7 @@ export async function POST(request: Request) {
           .eq("id", bookingId)
           .eq("creator_id", creator_id);
 
-        const { data: booking } = await supabase
+        const { data: booking } = await supabaseAdmin
           .from("bookings")
           .select(`*, profiles!creator_id ( full_name, contact_email )`)
           .eq("id", bookingId)
@@ -144,7 +149,7 @@ export async function POST(request: Request) {
 
         await Promise.all([
           resend.emails.send({
-            from: "bookings@yourdomain.com",
+            from: "jngatia045@gmail.com",
             to: booking.client_email,
             subject: "Payment Confirmed",
             html: `
@@ -158,7 +163,7 @@ export async function POST(request: Request) {
             `,
           }),
           resend.emails.send({
-            from: "bookings@yourdomain.com",
+            from: "jngatia045@gmail.com",
             to: booking.profiles.contact_email,
             subject: "Payment Received",
             html: `
@@ -169,7 +174,7 @@ export async function POST(request: Request) {
           }),
         ]);
 
-        await supabase.rpc("update_revenue_metrics", {
+        await supabaseAdmin.rpc("update_revenue_metrics", {
           p_creator_id: creator_id,
           p_amount: session.amount_total! / 100,
           p_date: new Date().toISOString(),
@@ -189,7 +194,7 @@ export async function POST(request: Request) {
       const { bookingId, creator_id } = session.metadata || {};
 
       if (bookingId && creator_id) {
-        await supabase
+        await supabaseAdmin
           .from("bookings")
           .update({
             payment_status: "refunded",

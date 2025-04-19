@@ -72,7 +72,13 @@ export default async function ProductPage({ params }: Props) {
                 Rating: {product.rating || "N/A"}
               </span>
             </div>
-            <div className="flex items-center justify-end mt-3">
+            <div className="flex items-center justify-between mt-3">
+              <a
+                href="/store"
+                className="inline-block text-gray-400 hover:underline py-2"
+              >
+                Go back to Store
+              </a>
               <AddToCartButton
                 product={{ ...product, purchasable_type: "product" }}
               />

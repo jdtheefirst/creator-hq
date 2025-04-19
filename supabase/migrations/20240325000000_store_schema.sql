@@ -72,7 +72,7 @@ CREATE TABLE order_items (
     -- Snapshot info (important for historical accuracy)
     name TEXT NOT NULL,
     thumbnail_url TEXT,
-    unit_price DECIMAL(10,2) NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL, --
     currency VARCHAR(3) NOT NULL DEFAULT 'USD',
     quantity INTEGER NOT NULL DEFAULT 1,
     -- Optional details
