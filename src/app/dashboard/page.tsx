@@ -1,5 +1,7 @@
 import Link from "next/link";
 import ContentManagementLinks from "@/components/dashboard/ContentManagementLinks";
+import { createClient } from "@/lib/supabase/server";
+import { format, formatDate } from "date-fns";
 
 // Temporary dashboard data
 const stats = [
@@ -33,10 +35,19 @@ const recentBookings = [
   },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  // Fetch recent bookings from Supabase
+  const supabase = await createClient();
+
+  const { data: sessions } = await supabase
+    .from("checkout_sessions")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
   return (
     <div className="min-h-screen bg-gray-50 py-12">
-      <div className="container mx-auto px-4">
+      <div className="max-w-3xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">Dashboard</h1>
         </div>
@@ -65,40 +76,122 @@ export default function DashboardPage() {
               View all
             </Link>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="w-full overflow-x-auto">
+            <table className="min-w-[700px] table-auto">
               <thead>
                 <tr className="text-left border-b">
-                  <th className="pb-3">Name</th>
-                  <th className="pb-3">Date</th>
-                  <th className="pb-3">Service</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3">Actions</th>
+                  <th className="pb-3 whitespace-nowrap">Name</th>
+                  <th className="pb-3 whitespace-nowrap">Date</th>
+                  <th className="pb-3 whitespace-nowrap">Service</th>
+                  <th className="pb-3 whitespace-nowrap">Status</th>
+                  <th className="pb-3 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {recentBookings.map((booking) => (
                   <tr key={booking.id} className="border-b">
-                    <td className="py-3">{booking.name}</td>
-                    <td className="py-3">{booking.date}</td>
-                    <td className="py-3">{booking.service}</td>
-                    <td className="py-3">
+                    <td className="py-3 whitespace-nowrap">{booking.name}</td>
+                    <td className="py-3 whitespace-nowrap">{booking.date}</td>
+                    <td className="py-3 whitespace-nowrap">
+                      {booking.service}
+                    </td>
+                    <td className="py-3 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 rounded-full text-sm ${
                           booking.status === "Confirmed"
                             ? "bg-green-100 text-green-800"
                             : booking.status === "Pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-gray-100 text-gray-800"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         {booking.status}
                       </span>
                     </td>
-                    <td className="py-3">
-                      <button className="text-blue-600 hover:text-blue-700">
+                    <td className="py-3 whitespace-nowrap">
+                      <a
+                        href={`/dashboard/booking/${booking.id}`}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
                         View
-                      </button>
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Recent Checkout Sessions */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Recent Checkouts</h2>
+            <Link
+              href="/dashboard/checkout-sessions"
+              className="text-blue-600 hover:text-blue-700"
+            >
+              View all
+            </Link>
+          </div>
+          {!sessions?.length && (
+            <div className="p-4 text-center text-muted-foreground">
+              No checkout sessions yet.
+            </div>
+          )}
+          <div className="overflow-x-auto w-full">
+            <table className="min-w-[700px] table-auto">
+              <thead>
+                <tr className="text-left border-b">
+                  <th className="pb-3 whitespace-nowrap">Session ID</th>
+                  <th className="pb-3 whitespace-nowrap">Amount</th>
+                  <th className="pb-3 whitespace-nowrap">Type</th>
+                  <th className="pb-3 whitespace-nowrap">Status</th>
+                  <th className="pb-3 whitespace-nowrap">Created At</th>
+                  <th className="pb-3 whitespace-nowrap">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessions?.map((session) => (
+                  <tr key={session.id} className="border-b">
+                    <td className="py-3 whitespace-nowrap">
+                      {session.stripe_session_id}
+                    </td>
+                    <td className="py-3 whitespace-nowrap">
+                      {session.amount_total / 100}{" "}
+                      {session.currency.toUpperCase()}
+                    </td>
+                    <td className="py-3 whitespace-nowrap"> {session.type}</td>
+                    <td className="py-3 whitespace-nowrap">
+                      <span
+                        className={`px-2 py-1 rounded-full text-sm capitalize ${
+                          session.status === "completed"
+                            ? "bg-green-100 text-green-800"
+                            : session.status === "pending"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : session.status === "failed"
+                                ? "bg-red-100 text-red-800"
+                                : session.status === "expired"
+                                  ? "bg-gray-200 text-gray-800"
+                                  : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {session.status}
+                      </span>
+                    </td>
+                    <td className="py-3 whitespace-nowrap">
+                      {format(
+                        new Date(session.created_at),
+                        "yyyy-MM-dd HH:mm:ss"
+                      )}
+                    </td>
+                    <td className="py-3 whitespace-nowrap">
+                      <a
+                        href={`/dashboard/sessions/${session.id}`}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        View
+                      </a>
                     </td>
                   </tr>
                 ))}

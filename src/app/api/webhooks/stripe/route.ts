@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/utils";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import Stripe from "stripe";
 import { Resend } from "resend";
 
@@ -21,14 +21,16 @@ export async function POST(request: Request) {
     );
 
     if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
+      // Handle successful checkout session
+      // Check if the session is for an order or a booking
+      const session = event.data.object as unknown as Stripe.Checkout.Session;
       const metadata = session.metadata || {};
       const shipping = session.customer_details?.address || null;
       const type = metadata.type;
-      console.log("Session metadata:", metadata);
-      console.log("Session shipping:", shipping, "type:", type);
+      // const paymentStatus = session.payment_status;
 
       if (type === "order") {
+        // Handle order session
         const userId = metadata.userId;
         const rawCart = metadata.cart;
 
@@ -75,9 +77,6 @@ export async function POST(request: Request) {
           .select()
           .single();
 
-        // Log the order data for debugging
-        console.log("Order created:", order);
-
         if (orderError) {
           console.error("Order insert failed:", orderError);
           return NextResponse.json(
@@ -92,11 +91,9 @@ export async function POST(request: Request) {
           purchasable_id: item.id,
           name: item.name,
           quantity: item.quantity,
-          unit_price: item.price,
+          unit_price: item.unit_price,
           currency: item.currency,
         }));
-        // Log the items to be inserted for debugging
-        console.log("Items to insert:", items);
 
         const { error: itemsError } = await supabaseAdmin
           .from("order_items")
@@ -113,7 +110,13 @@ export async function POST(request: Request) {
             { status: 500 }
           );
         }
+
+        await supabaseAdmin
+          .from("checkout_sessions")
+          .update({ status: "completed" })
+          .eq("stripe_session_id", session.id);
       } else if (type === "booking") {
+        // Handle booking session
         const { bookingId, creator_id } = metadata;
 
         if (!bookingId || !creator_id) {
@@ -187,6 +190,7 @@ export async function POST(request: Request) {
         );
       }
     } else if (event.type === "charge.refunded") {
+      // Handle charge refunded event
       const charge = event.data.object as Stripe.Charge;
       const session = await stripe.checkout.sessions.retrieve(
         charge.payment_intent as string
@@ -202,6 +206,79 @@ export async function POST(request: Request) {
           })
           .eq("id", bookingId)
           .eq("creator_id", creator_id);
+      }
+    } else if (event.type === "checkout.session.expired") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const metadata = session.metadata || {};
+      const type = metadata.type;
+
+      if (type === "order") {
+        const userId = metadata.userId;
+        const rawCart = metadata.cart;
+
+        if (!userId || !rawCart) {
+          console.error("Missing required metadata for order", {
+            userId,
+            rawCart,
+          });
+          return NextResponse.json(
+            { error: "Invalid order metadata" },
+            { status: 400 }
+          );
+        }
+
+        let cart;
+        try {
+          cart = JSON.parse(rawCart);
+        } catch (err) {
+          console.error("Invalid cart JSON:", err);
+          return NextResponse.json(
+            { error: "Malformed cart" },
+            { status: 400 }
+          );
+        }
+
+        await supabaseAdmin
+          .from("checkout_sessions")
+          .update({ status: "expired" })
+          .eq("stripe_session_id", session.id);
+      }
+    } else if (event.type === "payment_intent.payment_failed") {
+      // Handle payment failure
+      const session = event.data.object as unknown as Stripe.Checkout.Session;
+      const metadata = session.metadata || {};
+      const type = metadata.type;
+
+      if (type === "order") {
+        const userId = metadata.userId;
+        const rawCart = metadata.cart;
+
+        if (!userId || !rawCart) {
+          console.error("Missing required metadata for order", {
+            userId,
+            rawCart,
+          });
+          return NextResponse.json(
+            { error: "Invalid order metadata" },
+            { status: 400 }
+          );
+        }
+
+        let cart;
+        try {
+          cart = JSON.parse(rawCart);
+        } catch (err) {
+          console.error("Invalid cart JSON:", err);
+          return NextResponse.json(
+            { error: "Malformed cart" },
+            { status: 400 }
+          );
+        }
+
+        await supabaseAdmin
+          .from("checkout_sessions")
+          .update({ status: "failed" })
+          .eq("stripe_session_id", session.id);
       }
     }
 

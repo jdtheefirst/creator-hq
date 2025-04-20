@@ -97,6 +97,17 @@ export async function POST(req: Request) {
       },
     });
 
+    await supabase.from("checkout_sessions").insert({
+      user_id: user.id,
+      creator_id: body.cart[0].product.creator_id, // Assuming all items have the same creator_id
+      type: "order",
+      stripe_session_id: session.id,
+      total_amount: session.amount_total! / 100,
+      currency: "USD",
+      items: JSON.stringify(line_items),
+      status: "pending",
+    });
+
     return NextResponse.json({ url: session.url });
   } catch (err: any) {
     console.error("Stripe session error:", err);

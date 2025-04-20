@@ -220,7 +220,52 @@ $$ language plpgsql;
 create trigger update_revenue_metrics_trigger
   after insert or update on bookings
   for each row
-  execute function aggregate_daily_revenue_metrics(); 
+  execute function aggregate_daily_revenue_metrics();
+
+-- Create function to aggregate order revenue metrics
+-- This function aggregates revenue metrics for each order and updates the revenue_metrics table
+create or replace function aggregate_order_revenue_metrics()
+returns trigger as $$
+begin
+  insert into revenue_metrics (
+    creator_id,
+    date,
+    total_revenue,
+    products_revenue,
+    total_products_sold,
+    average_order_value
+  )
+  select
+    new.creator_id,
+    date_trunc('day', new.created_at)::date,
+    sum(oi.unit_price * oi.quantity),
+    sum(oi.unit_price * oi.quantity),
+    sum(oi.quantity),
+    avg(oi.unit_price * oi.quantity)
+  from order_items oi
+  where oi.order_id = new.id
+  group by new.creator_id, date_trunc('day', new.created_at)::date
+  on conflict (creator_id, date) do update
+  set
+    total_revenue = revenue_metrics.total_revenue + excluded.total_revenue,
+    products_revenue = revenue_metrics.products_revenue + excluded.products_revenue,
+    total_products_sold = revenue_metrics.total_products_sold + excluded.total_products_sold,
+    average_order_value = 
+      (revenue_metrics.total_revenue + excluded.total_revenue) / 
+      (revenue_metrics.total_products_sold + excluded.total_products_sold),
+    updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+-- Create trigger to update order revenue metrics
+-- This trigger is fired after an order is inserted and calls the aggregate_order_revenue_metrics function
+create trigger update_order_revenue_metrics_trigger
+  after insert on orders
+  for each row
+  when (new.status = 'paid')
+  execute function aggregate_order_revenue_metrics();
+
 
 -- Create function to update newsletter metrics
 CREATE OR REPLACE FUNCTION update_newsletter_metrics()
