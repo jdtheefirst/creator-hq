@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/context/AuthContext";
 
 export default function BookingSuccessPage({
   params,
@@ -11,7 +11,7 @@ export default function BookingSuccessPage({
   params: { id: string };
 }) {
   const router = useRouter();
-  const supabase = createBrowserClient();
+  const { supabase } = useAuth();
 
   useEffect(() => {
     const updateBookingStatus = async () => {

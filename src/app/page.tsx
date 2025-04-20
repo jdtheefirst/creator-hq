@@ -5,7 +5,18 @@ import { useAuth } from "@/lib/context/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
 import Notification from "@/components/Notification";
-import { ShieldUser, UserRoundPen } from "lucide-react";
+import {
+  CalendarCheck,
+  Clapperboard,
+  GraduationCap,
+  Mic2,
+  Music2,
+  NotebookPen,
+  ShieldUser,
+  ShoppingBag,
+  Star,
+  UserRoundPen,
+} from "lucide-react";
 
 interface Profile {
   id: string;
@@ -408,201 +419,188 @@ export default function CreatorProfilePage() {
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link
             href="/blogs"
-            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+            className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-6 w-6 text-blue-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2.5 2.5 0 00-2.5-2.5H15"
-                  />
-                </svg>
+            <span className="absolute inset-0 bg-blue-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
+            <div className="flex items-center space-x-2">
+              <div className="w-12 h-12 flex items-center justify-center rounded-full bg-blue-500 text-white shadow-md group-hover:rotate-12 transition-transform duration-300 p-2">
+                <NotebookPen className="w-6 h-6" />
               </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Blog</h3>
-                <p className="text-sm text-gray-500">
-                  Read my latest articles, fitness, lifestyle, art, writing, and
+
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
+                  Blog
+                </h3>
+                <p className="text-sm text-gray-500 group-hover:text-gray-700">
+                  Read my latest articles: fitness, lifestyle, art, writing, and
                   more
                 </p>
               </div>
+            </div>
+            <div className="absolute bottom-2 right-4 text-xs text-blue-500 group-hover:translate-x-1 transition-transform duration-300">
+              Wordsmith energy ✍️🔥
             </div>
           </Link>
 
           <Link
             href="/videos"
-            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+            className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-6 w-6 text-red-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                  />
-                </svg>
+            <span className="absolute inset-0 bg-red-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-500 text-white shadow-md group-hover:rotate-12 transition-transform duration-300 p-2">
+                <Clapperboard className="w-6 h-6" />
               </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Videos</h3>
-                <p className="text-sm text-gray-500">
-                  Watch my latest videos, comedy, gaming, and more
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-red-600 transition-colors duration-300">
+                  Videos
+                </h3>
+                <p className="text-sm text-gray-500 group-hover:text-gray-700">
+                  Watch my latest drops — comedy, gaming, and more
                 </p>
               </div>
+            </div>
+            <div className="absolute bottom-2 right-4 text-xs text-red-500 group-hover:translate-x-1 transition-transform duration-300">
+              Lights, camera, flex 🎥💥
             </div>
           </Link>
 
           <Link
             href="/store"
-            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+            className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-6 w-6 text-green-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-                  />
-                </svg>
+            <span className="absolute inset-0 bg-green-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-500 text-white shadow-md group-hover:rotate-12 transition-transform duration-300 p-2">
+                <ShoppingBag className="w-6 h-6" />
               </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Store</h3>
-                <p className="text-sm text-gray-500">Shop my products</p>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-green-600 transition-colors duration-300">
+                  Store
+                </h3>
+                <p className="text-sm text-gray-500 group-hover:text-gray-700">
+                  Shop my products
+                </p>
               </div>
+            </div>
+            <div className="absolute bottom-2 right-4 text-xs text-green-500 group-hover:translate-x-1 transition-transform duration-300">
+              Real fans wear merch 🧢💸
             </div>
           </Link>
 
           <Link
             href="/vip"
-            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+            className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-6 w-6 text-yellow-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
-                  />
-                </svg>
+            <span className="absolute inset-0 bg-yellow-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-yellow-500 text-white shadow-md group-hover:rotate-12 transition-transform duration-300 p-2">
+                <Star className="w-6 h-6" />
               </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-yellow-600 transition-colors duration-300">
                   VIP Content
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 group-hover:text-gray-700">
                   Exclusive content for members
                 </p>
               </div>
+            </div>
+            <div className="absolute bottom-2 right-4 text-xs text-yellow-500 group-hover:translate-x-1 transition-transform duration-300">
+              Only the realest get in 🔐🔥
             </div>
           </Link>
 
           <Link
             href="/podcasts"
-            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+            className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-6 w-6 text-indigo-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                  />
-                </svg>
+            <span className="absolute inset-0 bg-indigo-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500 text-white shadow-md group-hover:rotate-12 transition-transform duration-300 p-2">
+                <Mic2 className="w-6 h-6" />
               </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Podcast</h3>
-                <p className="text-sm text-gray-500">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors duration-300">
+                  Podcasts
+                </h3>
+                <p className="text-sm text-gray-500 group-hover:text-gray-700">
                   Listen to my latest episodes
                 </p>
               </div>
+            </div>
+            <div className="absolute bottom-2 right-4 text-xs text-indigo-500 group-hover:translate-x-1 transition-transform duration-300">
+              Audio gems for your brain 🧠🎧
             </div>
           </Link>
 
           <Link
             href="/courses"
-            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+            className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-6 w-6 text-teal-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                  />
-                </svg>
+            <span className="absolute inset-0 bg-teal-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-teal-500 text-white shadow-md group-hover:rotate-12 transition-transform duration-300 p-2">
+                <GraduationCap className="w-6 h-6" />
               </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Courses</h3>
-                <p className="text-sm text-gray-500">Learn from my courses</p>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-teal-600 transition-colors duration-300">
+                  Courses
+                </h3>
+                <p className="text-sm text-gray-500 group-hover:text-gray-700">
+                  Learn from my courses
+                </p>
               </div>
+            </div>
+            <div className="absolute bottom-2 right-4 text-xs text-teal-500 group-hover:translate-x-1 transition-transform duration-300">
+              Unlock knowledge, creator style 📚💡
             </div>
           </Link>
 
           <Link
             href="/lyrics"
-            className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+            className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-6 w-6 text-purple-500"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-                  />
-                </svg>
+            <span className="absolute inset-0 bg-purple-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-purple-500 text-white shadow-md group-hover:rotate-12 transition-transform duration-300 p-2">
+                <Music2 className="w-6 h-6" />
               </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-medium text-gray-900">Music</h3>
-                <p className="text-sm text-gray-500">Read song lyrics</p>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-purple-600 transition-colors duration-300">
+                  Lyrics
+                </h3>
+                <p className="text-sm text-gray-500 group-hover:text-gray-700">
+                  Dive into verses, bars & hidden gems behind your fav tracks
+                </p>
               </div>
+            </div>
+            <div className="absolute bottom-2 right-4 text-xs text-purple-500 italic group-hover:translate-x-1 transition-transform duration-300">
+              “Every bar tells a story…” 🎤
+            </div>
+          </Link>
+
+          <Link
+            href="/bookme"
+            className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
+          >
+            <span className="absolute inset-0 bg-indigo-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-indigo-500 text-white shadow-md group-hover:rotate-12 transition-transform duration-300 p-2">
+                <CalendarCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors duration-300">
+                  Book Me
+                </h3>
+                <p className="text-sm text-gray-500 group-hover:text-gray-700">
+                  1:1s, studio sessions, collabs — set the time, let's lock it
+                  in
+                </p>
+              </div>
+            </div>
+            <div className="absolute bottom-2 right-4 text-xs text-indigo-500 group-hover:translate-x-1 transition-transform duration-300">
+              Let’s make it official 📆💼
             </div>
           </Link>
         </div>
