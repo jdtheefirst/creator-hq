@@ -38,35 +38,40 @@ CREATE POLICY "Creators can manage their blocked dates"
 -- Create function to check availability
 CREATE OR REPLACE FUNCTION check_booking_availability(
   p_creator_id UUID,
-  p_booking_date TIMESTAMP WITH TIME ZONE,
+  p_booking_date TIMESTAMPTZ, -- Must include full timestamp w/ time
   p_duration_minutes INTEGER
 ) RETURNS BOOLEAN AS $$
 DECLARE
   v_day_of_week INTEGER;
-  v_time TIME;
+  v_start_time TIME;
+  v_end_time TIME;
   v_is_available BOOLEAN;
 BEGIN
-  -- Get day of week and time
+  -- Extract time and weekday from the timestamp
+  v_start_time := p_booking_date::time;
+  v_end_time := (p_booking_date + (p_duration_minutes || ' minutes')::interval)::time;
   v_day_of_week := EXTRACT(DOW FROM p_booking_date);
-  v_time := p_booking_date::TIME;
 
-  -- Check if date is blocked
+  -- Check if date is blocked (holidays, vacations)
   IF EXISTS (
-    SELECT 1 FROM creator_blocked_dates
+    SELECT 1
+    FROM creator_blocked_dates
     WHERE creator_id = p_creator_id
-    AND p_booking_date BETWEEN start_date AND end_date
+      AND p_booking_date >= start_date
+      AND p_booking_date < end_date
   ) THEN
     RETURN FALSE;
   END IF;
 
   -- Check regular availability
   SELECT EXISTS (
-    SELECT 1 FROM creator_availability
+    SELECT 1
+    FROM creator_availability
     WHERE creator_id = p_creator_id
-    AND day_of_week = v_day_of_week
-    AND is_available = true
-    AND v_time >= start_time
-    AND (v_time + (p_duration_minutes || ' minutes')::INTERVAL) <= end_time
+      AND day_of_week = v_day_of_week
+      AND is_available = true
+      AND start_time <= v_start_time
+      AND end_time >= v_end_time
   ) INTO v_is_available;
 
   RETURN v_is_available;
@@ -76,20 +81,26 @@ $$ LANGUAGE plpgsql;
 -- Update booking conflict check to include availability
 CREATE OR REPLACE FUNCTION check_booking_conflicts()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_end_time TIMESTAMPTZ;
 BEGIN
-  -- Check availability first
+  -- Calculate end time
+  v_end_time := NEW.booking_date + (NEW.duration_minutes || ' minutes')::INTERVAL;
+
+  -- 🔍 Check availability first (day/time/block validation)
   IF NOT check_booking_availability(NEW.creator_id, NEW.booking_date, NEW.duration_minutes) THEN
     RAISE EXCEPTION 'Time slot is not available';
   END IF;
 
-  -- Check for conflicts with other bookings
+  -- 🔥 Check for conflicts with other bookings (double-booking)
   IF EXISTS (
-    SELECT 1 FROM bookings
+    SELECT 1
+    FROM bookings
     WHERE creator_id = NEW.creator_id
-    AND status != 'cancelled'
-    AND booking_date < NEW.booking_date + (NEW.duration_minutes || ' minutes')::INTERVAL
-    AND booking_date + (duration_minutes || ' minutes')::INTERVAL > NEW.booking_date
-    AND id != NEW.id
+      AND status != 'cancelled'
+      AND booking_date < v_end_time
+      AND (booking_date + (duration_minutes || ' minutes')::INTERVAL) > NEW.booking_date
+      AND id IS DISTINCT FROM NEW.id
   ) THEN
     RAISE EXCEPTION 'Booking conflicts with existing booking';
   END IF;

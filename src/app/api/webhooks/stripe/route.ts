@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import Stripe from "stripe";
 import { Resend } from "resend";
+import { ratelimit } from "@/lib/limit";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-03-31.basil",
@@ -12,6 +13,14 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function POST(request: Request) {
   const body = await request.text();
   const signature = request.headers.get("stripe-signature")!;
+
+  const ip = request.headers.get("x-forwarded-for") || "unknown";
+
+  const { success } = await ratelimit.limit(ip.toString());
+
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
 
   try {
     const event = stripe.webhooks.constructEvent(

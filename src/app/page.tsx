@@ -175,12 +175,14 @@ export default function CreatorProfilePage() {
               >
                 <UserRoundPen /> &nbsp; Profile
               </Link>
-              <Link
-                href="/dashboard"
-                className="flex px-4 py-2 text-gray-700 hover:bg-gray-100"
-              >
-                <ShieldUser /> &nbsp; Creator
-              </Link>
+              {user.role === "creator" && (
+                <Link
+                  href="/dashboard"
+                  className="flex px-4 py-2 text-gray-700 hover:bg-gray-100"
+                >
+                  <ShieldUser /> &nbsp; Creator
+                </Link>
+              )}
             </div>
           </details>
         ) : (

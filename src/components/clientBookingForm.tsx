@@ -3,11 +3,20 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { toast } from "sonner";
 import { format, addDays } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Clock, User, Mail, Info } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  User,
+  Mail,
+  Info,
+  Phone,
+  Banknote,
+} from "lucide-react";
+import "react-phone-number-input/style.css";
+import PhoneInput from "react-phone-number-input";
 import {
   Select,
   SelectContent,
@@ -15,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { BookingFormValues, BookingSchema } from "@/lib/bookingSchema";
 
 const serviceOptions = [
   {
@@ -51,25 +61,6 @@ const serviceOptions = [
   },
 ];
 
-const BookingSchema = z.object({
-  client_name: z.string().min(2, "Name must be at least 2 characters"),
-  client_email: z.string().email("Please enter a valid email"),
-  service_type: z.enum(["consultation", "workshop", "mentoring", "custom"]),
-  booking_date: z.string().refine((val) => new Date(val) > new Date(), {
-    message: "Booking date must be in the future",
-  }),
-  booking_time: z.string().refine((val) => val !== "", {
-    message: "Please select a time",
-  }),
-  duration_minutes: z.number().min(15, "Minimum booking is 15 minutes"),
-  notes: z.string().optional(),
-  agree_terms: z.boolean().refine((val) => val, {
-    message: "You must agree to the terms and conditions",
-  }),
-});
-
-type BookingFormValues = z.infer<typeof BookingSchema>;
-
 export default function PublicBookingForm() {
   const router = useRouter();
   const [selectedTab, setSelectedTab] = useState(0);
@@ -80,6 +71,7 @@ export default function PublicBookingForm() {
     register,
     handleSubmit,
     setValue,
+    getValues,
     watch,
     trigger,
     control,
@@ -88,25 +80,13 @@ export default function PublicBookingForm() {
     resolver: zodResolver(BookingSchema),
     defaultValues: {
       service_type: serviceOptions[0].value as any,
-      booking_date: format(addDays(new Date(), 1), "yyyy-MM-dd'T'10:00"),
+      booking_date: format(addDays(new Date(), 1), "yyyy-MM-dd"),
       booking_time: "10:00",
       duration_minutes: 60,
       agree_terms: false,
     },
     mode: "onChange",
   });
-
-  const selectedService =
-    serviceOptions.find((service) => service.value === watch("service_type")) ||
-    serviceOptions[0];
-
-  const calculatePrice = (duration: number, service = selectedService) => {
-    // Round to nearest 15 minutes for pricing
-    const roundedDuration = Math.ceil(duration / 15) * 15;
-    return (roundedDuration * service.pricePerMinute).toFixed(2);
-  };
-
-  const currentPrice = calculatePrice(watch("duration_minutes"));
 
   // Simulate loading available times
   useEffect(() => {
@@ -126,28 +106,45 @@ export default function PublicBookingForm() {
     fetchAvailableTimes();
   }, [watch("booking_date")]);
 
+  const selectedService =
+    serviceOptions.find((service) => service.value === watch("service_type")) ||
+    serviceOptions[0];
+
+  const calculatePrice = (duration: number, service = selectedService) => {
+    // Round to nearest 15 minutes for pricing
+    const roundedDuration = Math.ceil(duration / 15) * 15;
+    return (roundedDuration * service.pricePerMinute).toFixed(2);
+  };
+
+  const currentPrice = calculatePrice(watch("duration_minutes"));
+
   const onSubmit = async (data: BookingFormValues) => {
     const bookingData = {
       ...data,
       price: currentPrice,
-      creator_id: process.env.NEXT_PUBLIC_BOOKING_CREATOR_ID,
+      creator_id: process.env.NEXT_PUBLIC_CREATOR_UID,
       booking_date: new Date(data.booking_date).toISOString(),
       status: "pending",
     };
 
     try {
-      const res = await fetch("/api/public/bookings", {
+      const res = await fetch("/api/bookings/public", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bookingData),
       });
 
-      if (!res.ok) throw new Error("Booking failed");
+      if (!res.ok) {
+        const { error } = await res.json();
+        throw new Error(error || "Booking failed");
+      }
 
-      toast.success("Booking confirmed! Check your email for details.");
       router.push("/thanks");
-    } catch (error) {
-      toast.error("Failed to submit booking. Please try again.");
+      toast.success("Booking sent successfully.");
+    } catch (error: any) {
+      toast.error(
+        error.message || "Failed to submit booking. Please try again."
+      );
     }
   };
 
@@ -181,7 +178,7 @@ export default function PublicBookingForm() {
         </div>
         <AnimatePresence>
           <motion.div
-            className="absolute bottom-0 left-0 h-1 bg-blue-600 rounded-full"
+            className="absolute bottom-0 left-0 h-1 bg-blue-600 rounded-full hidden sm:block"
             initial={false}
             animate={{
               width: `${100 / serviceOptions.length}%`,
@@ -213,11 +210,59 @@ export default function PublicBookingForm() {
               placeholder="John Doe"
               required
             />
+
             {errors.client_name && (
               <p className="mt-1 text-sm text-red-600">
                 {errors.client_name.message}
               </p>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+              <Phone className="w-4 h-4" />
+              Phone
+            </label>
+
+            <PhoneInput
+              international
+              defaultCountry="KE" // or "US", or remove if you don’t want one pre-set
+              value={watch("phone")}
+              onChange={(value) => setValue("phone", value || "")}
+              className="react-phone-input"
+            />
+            {errors.phone && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.phone.message}
+              </p>
+            )}
+
+            <style jsx global>{`
+              .react-phone-input {
+                width: 100%;
+              }
+
+              .react-phone-input input {
+                width: 100%;
+                border-radius: 0.5rem;
+                border: 1px solid #d1d5db; /* Tailwind's gray-300 */
+                padding: 0.5rem 0.75rem;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+                outline: none;
+                transition:
+                  border 0.2s,
+                  box-shadow 0.2s;
+              }
+
+              .react-phone-input input:focus {
+                border-color: #3b82f6; /* blue-500 */
+                box-shadow: 0 0 0 1px #3b82f6;
+              }
+
+              .PhoneInputCountrySelect {
+                border-radius: 0.5rem 0 0 0.5rem;
+              }
+            `}</style>
           </div>
 
           <div>
@@ -238,9 +283,25 @@ export default function PublicBookingForm() {
               </p>
             )}
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
+              <Banknote className="w-4 h-4" />
+              Payment Method
+            </label>
+            <input
+              type="text"
+              {...register("payment_method")}
+              className="w-full rounded-lg border border-gray-300 px-4 py-2 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Preferred method – M-Pesa, Stripe.."
+            />
+            {errors.payment_method && (
+              <p className="mt-1 text-sm text-red-600">
+                {errors.payment_method.message}
+              </p>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
               <Calendar className="w-4 h-4" />
@@ -251,7 +312,8 @@ export default function PublicBookingForm() {
               {...register("booking_date", {
                 onChange: () => trigger("booking_date"),
               })}
-              min={format(new Date(), "yyyy-MM-dd")}
+              defaultValue={getValues("booking_date")}
+              min={format(addDays(new Date(), 1), "yyyy-MM-dd")}
               className="w-full rounded-lg border border-gray-300 px-4 py-2 shadow-sm focus:ring-blue-500 focus:border-blue-500"
             />
             {errors.booking_date && (
@@ -357,7 +419,13 @@ export default function PublicBookingForm() {
           <p className="text-sm text-red-600">{errors.agree_terms.message}</p>
         )}
 
-        <div className="flex justify-end">
+        <div className="flex justify-between">
+          <a
+            href="/"
+            className="inline-block text-gray-400 hover:underline py-2"
+          >
+            Go back to Homepage
+          </a>
           <motion.button
             type="submit"
             disabled={isSubmitting || !isValid}
