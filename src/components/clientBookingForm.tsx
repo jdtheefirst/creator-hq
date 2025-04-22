@@ -14,6 +14,7 @@ import {
   Info,
   Phone,
   Banknote,
+  BadgeInfo,
 } from "lucide-react";
 import "react-phone-number-input/style.css";
 import PhoneInput from "react-phone-number-input";
@@ -328,55 +329,61 @@ export default function PublicBookingForm() {
               <Clock className="w-4 h-4" />
               Time & Duration
             </label>
-            <div className="flex gap-2">
-              <Controller
-                name="booking_time"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={String(field.value)}
-                    onValueChange={field.onChange}
-                    disabled={isLoadingTimes}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Select Time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingTimes ? (
-                        <option>Loading available times...</option>
-                      ) : (
-                        availableTimes.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
+            <div>
+              <div className="flex gap-2">
+                <Controller
+                  name="booking_time"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={String(field.value)}
+                      onValueChange={field.onChange}
+                      disabled={isLoadingTimes}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Select Time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingTimes ? (
+                          <option>Loading available times...</option>
+                        ) : (
+                          availableTimes.map((time) => (
+                            <SelectItem key={time} value={time}>
+                              {time}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
 
-              <Controller
-                name="duration_minutes"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={String(field.value)}
-                    onValueChange={(val) => field.onChange(Number(val))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Duration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="15">15 min</SelectItem>
-                      <SelectItem value="30">30 min</SelectItem>
-                      <SelectItem value="60">60 min</SelectItem>
-                      <SelectItem value="90">90 min</SelectItem>
-                      <SelectItem value="120">120 min</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
+                <Controller
+                  name="duration_minutes"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={String(field.value)}
+                      onValueChange={(val) => field.onChange(Number(val))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="15">15 min</SelectItem>
+                        <SelectItem value="30">30 min</SelectItem>
+                        <SelectItem value="60">60 min</SelectItem>
+                        <SelectItem value="90">90 min</SelectItem>
+                        <SelectItem value="120">120 min</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                <BadgeInfo className="w-4 h-4" />
+                Booking may conflict or time slot missing
+              </p>
             </div>
             {errors.duration_minutes && (
               <p className="mt-1 text-sm text-red-600">
@@ -419,19 +426,20 @@ export default function PublicBookingForm() {
           <p className="text-sm text-red-600">{errors.agree_terms.message}</p>
         )}
 
-        <div className="flex justify-between">
+        <div className="flex justify-between items-center">
           <a
             href="/"
-            className="inline-block text-gray-400 hover:underline py-2"
+            className="inline-block text-xs text-gray-400 hover:underline"
           >
             Go back to Homepage
           </a>
+
           <motion.button
             type="submit"
             disabled={isSubmitting || !isValid}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg shadow-lg hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="px-2 py-2 text-xs bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-full shadow-lg hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {isSubmitting ? (
               <span className="flex items-center gap-2">
