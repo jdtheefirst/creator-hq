@@ -40,14 +40,14 @@ export default async function VipPage() {
     isVip = userProfile?.vip || false;
   }
 
-  const contentTypes = ["videos", "music", "courses", "podcasts", "blogs"];
+  const contentTypes = ["videos", "lyrics", "courses", "podcasts", "blogs"];
   const vipContent: { type: string; items: any[] }[] = [];
   const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
 
   for (const type of contentTypes) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from(type)
-      .select("id, title, thumbnail")
+      .select(`*`)
       .eq("vip", true)
       .eq("creator_id", creatorId);
 

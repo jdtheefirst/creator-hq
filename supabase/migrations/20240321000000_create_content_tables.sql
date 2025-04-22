@@ -45,7 +45,8 @@ CREATE POLICY "Creators can manage their own videos"
   USING (auth.uid() = creator_id)
   WITH CHECK (auth.uid() = creator_id);
 
--- Podcasts table
+DROP TABLE IF EXISTS podcasts;
+
 CREATE TABLE podcasts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title TEXT NOT NULL,
@@ -53,7 +54,7 @@ CREATE TABLE podcasts (
   language TEXT,
   category TEXT,
   tags TEXT[],
-  status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+  status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
   audio_url TEXT NOT NULL,
   duration INTEGER,
   episode_number INTEGER,
@@ -66,7 +67,6 @@ CREATE TABLE podcasts (
   youtube_url TEXT,
   transcript TEXT,
   guest_name TEXT,
-  tags TEXT[],
   is_published BOOLEAN DEFAULT true,
   downloadable BOOLEAN DEFAULT true,
   likes INTEGER DEFAULT 0,

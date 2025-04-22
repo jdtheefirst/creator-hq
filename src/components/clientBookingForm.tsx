@@ -140,7 +140,7 @@ export default function PublicBookingForm() {
         throw new Error(error || "Booking failed");
       }
 
-      router.push("/thanks");
+      router.push("/bookme/thanks");
       toast.success("Booking sent successfully.");
     } catch (error: any) {
       toast.error(

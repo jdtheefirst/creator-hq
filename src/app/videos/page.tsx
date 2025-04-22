@@ -27,7 +27,7 @@ export default async function VideosPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12">
       <div className="container mx-auto px-4">
-        <h1 className="text-4xl font-bold text-center mb-12">Videos</h1>
+        <h1 className="text-4xl font-bold mb-12">Videos</h1>
 
         {/* Video Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -101,9 +101,24 @@ export default async function VideosPage() {
         {/* Empty State */}
         {(!videos || videos.length === 0) && (
           <div className="text-center py-12">
-            <p className="text-gray-500">No videos available.</p>
+            <h1 className="text-xl font-bold mb-4">No Videos Available</h1>
+            <p className="text-gray-600 text-lg mb-6">
+              Looks like I haven't dropped any videos yet. But hey, the best
+              content is still loading...
+            </p>
+            <p className="text-sm text-gray-400 italic">
+              (Or maybe I'm just being mysterious 👀)
+            </p>
           </div>
         )}
+        <div className="flex-end justify-start items-center">
+          <a
+            href="/"
+            className="inline-block text-xs text-gray-400 hover:underline"
+          >
+            Go back to Homepage
+          </a>
+        </div>
       </div>
     </div>
   );
