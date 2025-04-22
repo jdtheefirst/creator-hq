@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     data: { user },
     error,
   } = await supabase.auth.getUser();
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   // Check if user is authenticated
   if (error) {
@@ -79,8 +80,8 @@ export async function POST(req: Request) {
         },
       ],
       automatic_tax: { enabled: false },
-      success_url: `http://localhost:3000//success`,
-      cancel_url: `http://localhost:3000/cart`,
+      success_url: `${siteUrl}/store/success`,
+      cancel_url: `${siteUrl}/store/cancel`,
       metadata: {
         userId: user.id, // Replace with actual auth user
         type: "order",

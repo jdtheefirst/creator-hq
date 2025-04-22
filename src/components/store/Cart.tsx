@@ -11,7 +11,7 @@ export function Cart() {
   const router = useRouter();
 
   const handleCheckout = () => {
-    router.push("/checkout");
+    router.push("/checkout/cart");
   };
 
   const updateQuantity = (productId: string, quantity: number) => {

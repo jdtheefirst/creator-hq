@@ -9,6 +9,7 @@ import RealTimeAnalytics from "@/components/analytics/RealTimeAnalytics";
 import NewsletterAnalytics from "@/components/analytics/NewsletterAnalytics";
 import VideoAnalytics from "@/components/analytics/VideoAnalytics";
 import { createClient } from "@/lib/supabase/server";
+import BookingAnalytics from "@/components/analytics/BookingAnalytics";
 
 interface AnalyticsPageProps {
   searchParams: {
@@ -244,10 +245,16 @@ export default async function AnalyticsPage({
         </div>
       </div>
 
-      {/* Video Analytics Section */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-lg font-semibold mb-4">Video Performance</h2>
-        <VideoAnalytics data={videoMetrics || []} />
+      {/* Booking & Video Analytics Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold mb-4">Video Performance</h2>
+          <VideoAnalytics data={videoMetrics || []} />
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-lg font-semibold mb-4">Booking Performance</h2>
+          <BookingAnalytics />
+        </div>
       </div>
     </div>
   );
