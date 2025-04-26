@@ -18,6 +18,7 @@ import { getSupabaseClient } from "../supabase/client";
 
 export interface CustomUser extends SupabaseUser {
   role?: string;
+  is_vip?: boolean;
 }
 
 interface AuthContextType {
@@ -107,8 +108,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }: {
       data: { subscription: { unsubscribe: () => void } };
     } = supabase.auth.onAuthStateChange((_event: String, session: Session) => {
-      console.log("Auth event:", _event, session?.user?.email);
-
       if (!mounted) return;
 
       (async () => {

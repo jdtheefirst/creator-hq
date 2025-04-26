@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import Stripe from "stripe";
 import { Resend } from "resend";
-import { ratelimit } from "@/lib/limit";
+import { secureRatelimit } from "@/lib/limit";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-03-31.basil",
@@ -11,16 +11,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: Request) {
-  const body = await request.text();
-  const signature = request.headers.get("stripe-signature")!;
-
-  const ip = request.headers.get("x-forwarded-for") || "unknown";
-
-  const { success } = await ratelimit.limit(ip.toString());
-
+  const { success } = await secureRatelimit(request);
   if (!success) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
+
+  const body = await request.text();
+  const signature = request.headers.get("stripe-signature")!;
 
   try {
     const event = stripe.webhooks.constructEvent(
@@ -41,12 +38,14 @@ export async function POST(request: Request) {
       if (type === "order") {
         // Handle order session
         const userId = metadata.userId;
+        const creatorId = metadata.creatorId;
         const rawCart = metadata.cart;
 
-        if (!userId || !rawCart) {
+        if (!userId || !rawCart || !creatorId) {
           console.error("Missing required metadata for order", {
             userId,
             rawCart,
+            creatorId,
           });
           return NextResponse.json(
             { error: "Invalid order metadata" },
@@ -69,7 +68,7 @@ export async function POST(request: Request) {
           .from("orders")
           .insert({
             user_id: userId,
-            creator_id: process.env.NEXT_PUBLIC_CREATOR_UID,
+            creator_id: creatorId,
             stripe_session_id: session.id,
             currency: session.currency,
             total_amount: session.amount_total! / 100,
@@ -120,10 +119,36 @@ export async function POST(request: Request) {
           );
         }
 
-        await supabaseAdmin
+        const { error } = await supabaseAdmin
           .from("checkout_sessions")
           .update({ status: "completed" })
           .eq("stripe_session_id", session.id);
+
+        if (error) {
+          console.error("Checkout session update failed:", error);
+          return NextResponse.json(
+            { error: "Checkout session update failed" },
+            { status: 500 }
+          );
+        }
+
+        const { error: metricsError } = await supabaseAdmin.rpc(
+          "update_revenue_metrics",
+          {
+            p_creator_id: creatorId,
+            p_amount: session.amount_total! / 100,
+            p_date: new Date().toISOString(),
+            p_source_type: "order",
+          }
+        );
+
+        if (metricsError) {
+          console.error("Metrics update failed:", metricsError);
+          return NextResponse.json(
+            { error: "Metrics update failed" },
+            { status: 500 }
+          );
+        }
       } else if (type === "booking") {
         // Handle booking session
         const { bookingId, creator_id } = metadata;
@@ -186,11 +211,86 @@ export async function POST(request: Request) {
           }),
         ]);
 
-        await supabaseAdmin.rpc("update_revenue_metrics", {
-          p_creator_id: creator_id,
-          p_amount: session.amount_total! / 100,
-          p_date: new Date().toISOString(),
-        });
+        const { error: metricsError } = await supabaseAdmin.rpc(
+          "update_revenue_metrics",
+          {
+            p_creator_id: creator_id,
+            p_amount: session.amount_total! / 100,
+            p_date: new Date().toISOString(),
+            p_source_type: "booking",
+          }
+        );
+
+        if (metricsError) {
+          console.error("Metrics update failed:", metricsError);
+          return NextResponse.json(
+            { error: "Metrics update failed" },
+            { status: 500 }
+          );
+        }
+      } else if (type === "vip") {
+        // Handle VIP session
+        const userId = metadata.userId;
+        const creatorId = metadata.creatorId;
+
+        if (!userId || !creatorId) {
+          console.error("Missing required metadata for VIP", {
+            userId,
+            creatorId,
+          });
+          return NextResponse.json(
+            { error: "Invalid VIP metadata" },
+            { status: 400 }
+          );
+        }
+
+        // Update the user to VIP status
+        const { error: userError } = await supabaseAdmin
+          .from("users")
+          .update({ is_vip: true })
+          .eq("id", userId)
+          .select()
+          .single();
+
+        if (userError) {
+          console.error("User update failed:", userError);
+          return NextResponse.json(
+            { error: "User update failed" },
+            { status: 500 }
+          );
+        }
+
+        // Update the checkout session status to completed
+        const { error } = await supabaseAdmin
+          .from("checkout_sessions")
+          .update({ status: "completed" })
+          .eq("stripe_session_id", session.id);
+
+        if (error) {
+          console.error("Checkout session insert failed:", error);
+          return NextResponse.json(
+            { error: "Checkout session insert failed" },
+            { status: 500 }
+          );
+        }
+
+        const { error: metricsError } = await supabaseAdmin.rpc(
+          "update_revenue_metrics",
+          {
+            p_creator_id: creatorId,
+            p_amount: session.amount_total! / 100,
+            p_date: new Date().toISOString(),
+            p_source_type: "vip",
+          }
+        );
+
+        if (metricsError) {
+          console.error("Metrics update failed:", metricsError);
+          return NextResponse.json(
+            { error: "Metrics update failed" },
+            { status: 500 }
+          );
+        }
       } else {
         console.warn("Unknown metadata.type:", type);
         return NextResponse.json(

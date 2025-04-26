@@ -24,22 +24,6 @@ export const metadata: Metadata = {
 export default async function VipPage() {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  let isVip: boolean = false;
-
-  if (user) {
-    const { data: userProfile } = await supabase
-      .from("users")
-      .select("vip")
-      .eq("id", user.id)
-      .single();
-
-    isVip = userProfile?.vip || false;
-  }
-
   const contentTypes = ["videos", "lyrics", "courses", "podcasts", "blogs"];
   const vipContent: { type: string; items: any[] }[] = [];
   const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
@@ -58,7 +42,7 @@ export default async function VipPage() {
 
   return (
     <div>
-      <VipPublicPage vipContent={vipContent} isVip={isVip} />
+      <VipPublicPage vipContent={vipContent} />
     </div>
   );
 }

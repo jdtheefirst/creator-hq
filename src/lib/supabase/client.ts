@@ -16,13 +16,3 @@ export function getSupabaseClient() {
   }
   return supabase;
 }
-
-export type UserRole = "creator" | "public";
-
-export interface User {
-  id: string;
-  email: string;
-  role: UserRole;
-  created_at: string;
-  updated_at: string;
-}

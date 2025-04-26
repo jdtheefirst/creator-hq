@@ -85,6 +85,7 @@ export async function POST(req: Request) {
       metadata: {
         userId: user.id, // Replace with actual auth user
         type: "order",
+        creatorId: body.cart[0].product.creator_id, // Assuming all items have the same creator_id
         cart: JSON.stringify(
           body.cart.map((item: any) => ({
             id: item.product.id,

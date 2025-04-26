@@ -46,11 +46,10 @@ export async function POST(req: Request) {
 
   try {
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
       mode: "payment",
       line_items: [
         {
-          price: process.env.STRIPE_VIP_PRICE_ID,
+          price: process.env.STRIPE_VIP_PRICE_ID!,
           quantity: 1,
         },
       ],
@@ -59,13 +58,14 @@ export async function POST(req: Request) {
       cancel_url: `${siteUrl}/vip/cancel`,
       metadata: {
         userId: user.id,
+        creatorId: creatorId!,
         type: "vip",
       },
     });
 
     await supabase.from("checkout_sessions").insert({
       user_id: user.id,
-      creator_id: creatorId, // Assuming all items have the same creator_id
+      creator_id: creatorId,
       type: "vip",
       stripe_session_id: session.id,
       total_amount: session.amount_total! / 100,

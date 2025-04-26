@@ -6,6 +6,7 @@ CREATE TABLE public.users (
   id UUID REFERENCES auth.users ON DELETE CASCADE,
   email TEXT NOT NULL,
   role user_role NOT NULL DEFAULT 'public',
+  is_vip BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   PRIMARY KEY (id)

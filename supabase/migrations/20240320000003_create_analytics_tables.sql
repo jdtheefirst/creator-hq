@@ -25,6 +25,7 @@ create table user_engagement (
 );
 
 -- Create revenue_metrics table
+-- This table will store daily revenue metrics for each creator
 create table revenue_metrics (
   id uuid default uuid_generate_v4() primary key,
   creator_id uuid references auth.users(id) on delete cascade not null,
@@ -32,13 +33,16 @@ create table revenue_metrics (
   total_revenue decimal(10,2) not null default 0,
   bookings_revenue decimal(10,2) not null default 0,
   products_revenue decimal(10,2) not null default 0,
+  vip_revenue decimal(10,2) not null default 0, -- <<<<< NEW
   total_bookings integer not null default 0,
   total_products_sold integer not null default 0,
+  total_vip_sales integer not null default 0, -- <<<<< NEW
   average_order_value decimal(10,2) not null default 0,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
   unique(creator_id, date)
 );
+
 
 -- Create newsletter metrics table
 CREATE TABLE newsletter_metrics (
@@ -315,3 +319,64 @@ CREATE TRIGGER update_newsletter_metrics_on_subscriber
 CREATE TRIGGER update_newsletter_metrics_on_campaign
   AFTER INSERT OR UPDATE ON newsletter_campaigns
   FOR EACH ROW EXECUTE FUNCTION update_newsletter_metrics();
+
+-- Create function to update revenue metrics
+-- This function updates the revenue metrics for a creator based on the provided parameters
+-- It takes the amount, creator ID, date, and source type as input
+-- and updates the revenue metrics table accordingly
+CREATE OR REPLACE FUNCTION update_revenue_metrics(
+  p_amount numeric,
+  p_creator_id uuid,
+  p_date timestamp with time zone,
+  p_source_type text
+)
+RETURNS void AS $$
+BEGIN
+  INSERT INTO revenue_metrics (
+    creator_id,
+    date,
+    total_revenue,
+    bookings_revenue,
+    products_revenue,
+    vip_revenue,
+    total_bookings,
+    total_products_sold,
+    total_vip_sales,
+    average_order_value
+  )
+  VALUES (
+    p_creator_id,
+    date_trunc('day', p_date)::date,
+    p_amount,
+    CASE WHEN p_source_type = 'booking' THEN p_amount ELSE 0 END,
+    CASE WHEN p_source_type = 'order' THEN p_amount ELSE 0 END,
+    CASE WHEN p_source_type = 'vip' THEN p_amount ELSE 0 END,
+    CASE WHEN p_source_type = 'booking' THEN 1 ELSE 0 END,
+    CASE WHEN p_source_type = 'order' THEN 1 ELSE 0 END,
+    CASE WHEN p_source_type = 'vip' THEN 1 ELSE 0 END,
+    p_amount
+  )
+  ON CONFLICT (creator_id, date) DO UPDATE
+  SET
+    total_revenue = revenue_metrics.total_revenue + p_amount,
+    bookings_revenue = revenue_metrics.bookings_revenue + 
+      CASE WHEN p_source_type = 'booking' THEN p_amount ELSE 0 END,
+    products_revenue = revenue_metrics.products_revenue + 
+      CASE WHEN p_source_type = 'order' THEN p_amount ELSE 0 END,
+    vip_revenue = revenue_metrics.vip_revenue +
+      CASE WHEN p_source_type = 'vip' THEN p_amount ELSE 0 END,
+    total_bookings = revenue_metrics.total_bookings + 
+      CASE WHEN p_source_type = 'booking' THEN 1 ELSE 0 END,
+    total_products_sold = revenue_metrics.total_products_sold + 
+      CASE WHEN p_source_type = 'order' THEN 1 ELSE 0 END,
+    total_vip_sales = revenue_metrics.total_vip_sales + 
+      CASE WHEN p_source_type = 'vip' THEN 1 ELSE 0 END,
+    average_order_value = 
+      (revenue_metrics.total_revenue + p_amount) / 
+      NULLIF(
+        revenue_metrics.total_bookings + revenue_metrics.total_products_sold + revenue_metrics.total_vip_sales + 1,
+        0
+      ),
+    updated_at = NOW();
+END;
+$$ LANGUAGE plpgsql;
