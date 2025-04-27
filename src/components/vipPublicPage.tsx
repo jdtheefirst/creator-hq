@@ -47,9 +47,7 @@ export default function VipPublicPage({
   >({});
 
   const { user } = useAuth();
-  const isVip = false;
-
-  console.log("User:", user);
+  const isVip = user?.is_vip || false;
 
   const toggleSection = (type: string) => {
     setExpandedSections((prev) => ({

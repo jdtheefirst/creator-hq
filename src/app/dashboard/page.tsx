@@ -39,6 +39,12 @@ export default async function DashboardPage() {
   // Fetch recent bookings from Supabase
   const supabase = await createClient();
 
+  const { data: bookings } = await supabase
+    .from("bookings")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
   const { data: sessions } = await supabase
     .from("checkout_sessions")
     .select("*")
@@ -80,24 +86,31 @@ export default async function DashboardPage() {
             <table className="min-w-[700px] table-auto">
               <thead>
                 <tr className="text-left border-b">
-                  <th className="pb-3 whitespace-nowrap">Name</th>
-                  <th className="pb-3 whitespace-nowrap">Date</th>
-                  <th className="pb-3 whitespace-nowrap">Service</th>
-                  <th className="pb-3 whitespace-nowrap">Status</th>
-                  <th className="pb-3 whitespace-nowrap">Actions</th>
+                  <th className="pb-3 px-4 whitespace-nowrap">Name</th>
+                  <th className="pb-3 px-4 whitespace-nowrap">Date</th>
+                  <th className="pb-3 px-4 whitespace-nowrap">Service</th>
+                  <th className="pb-3 px-4 whitespace-nowrap">Status</th>
+                  <th className="pb-3 px-4 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {recentBookings.map((booking) => (
+                {bookings?.map((booking) => (
                   <tr key={booking.id} className="border-b">
-                    <td className="py-3 whitespace-nowrap">{booking.name}</td>
-                    <td className="py-3 whitespace-nowrap">{booking.date}</td>
-                    <td className="py-3 whitespace-nowrap">
-                      {booking.service}
+                    <td
+                      className="py-3 px-4 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap"
+                      title={booking.id}
+                    >
+                      {booking.client_name}
                     </td>
-                    <td className="py-3 whitespace-nowrap">
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {format(new Date(booking.booking_date), "yyyy-MM-dd")}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {booking.service_type}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <span
-                        className={`px-2 py-1 rounded-full text-sm ${
+                        className={`px-2 py-1 rounded-full capitalize text-sm ${
                           booking.status === "Confirmed"
                             ? "bg-green-100 text-green-800"
                             : booking.status === "Pending"
@@ -110,7 +123,7 @@ export default async function DashboardPage() {
                     </td>
                     <td className="py-3 whitespace-nowrap">
                       <a
-                        href={`/dashboard/booking/${booking.id}`}
+                        href={`/dashboard/bookings/${booking.id}`}
                         className="text-blue-600 hover:text-blue-700"
                       >
                         View
@@ -143,26 +156,31 @@ export default async function DashboardPage() {
             <table className="min-w-[700px] table-auto">
               <thead>
                 <tr className="text-left border-b">
-                  <th className="pb-3 whitespace-nowrap">Session ID</th>
-                  <th className="pb-3 whitespace-nowrap">Amount</th>
-                  <th className="pb-3 whitespace-nowrap">Type</th>
-                  <th className="pb-3 whitespace-nowrap">Status</th>
-                  <th className="pb-3 whitespace-nowrap">Created At</th>
-                  <th className="pb-3 whitespace-nowrap">Actions</th>
+                  <th className="pb-3 px-4 whitespace-nowrap">Session ID</th>
+                  <th className="pb-3 px-4 whitespace-nowrap">Amount</th>
+                  <th className="pb-3 px-4 whitespace-nowrap">Type</th>
+                  <th className="pb-3 px-4 whitespace-nowrap">Status</th>
+                  <th className="pb-3 px-4 whitespace-nowrap">Created At</th>
+                  <th className="pb-3 px-4 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 {sessions?.map((session) => (
                   <tr key={session.id} className="border-b">
-                    <td className="py-3 whitespace-nowrap">
+                    <td
+                      className="py-3 px-4 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap"
+                      title={session.stripe_session_id}
+                    >
                       {session.stripe_session_id}
                     </td>
-                    <td className="py-3 whitespace-nowrap">
-                      {session.amount_total / 100}{" "}
-                      {session.currency.toUpperCase()}
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {session.total_amount} {session.currency.toUpperCase()}
                     </td>
-                    <td className="py-3 whitespace-nowrap"> {session.type}</td>
-                    <td className="py-3 whitespace-nowrap">
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      {session.type}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 rounded-full text-sm capitalize ${
                           session.status === "completed"
@@ -179,13 +197,13 @@ export default async function DashboardPage() {
                         {session.status}
                       </span>
                     </td>
-                    <td className="py-3 whitespace-nowrap">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       {format(
                         new Date(session.created_at),
                         "yyyy-MM-dd HH:mm:ss"
                       )}
                     </td>
-                    <td className="py-3 whitespace-nowrap">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <a
                         href={`/dashboard/sessions/${session.id}`}
                         className="text-blue-600 hover:text-blue-700"

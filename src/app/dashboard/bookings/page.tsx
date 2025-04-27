@@ -1,11 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import Link from "next/link";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface Booking {
   id: string;
@@ -17,13 +42,18 @@ interface Booking {
   status: "pending" | "confirmed" | "completed" | "cancelled";
   price: number;
   payment_status: "pending" | "paid" | "refunded";
+  meeting_link?: string;
+  note?: string;
 }
 
 export default function BookingsPage() {
-  const { user } = useAuth();
-  const supabase = createBrowserClient();
+  const { user, supabase } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [meetingLink, setMeetingLink] = useState("");
+  const [note, setNote] = useState("");
+  const router = useRouter();
+  const [showMeetingFields, setShowMeetingFields] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -80,6 +110,65 @@ export default function BookingsPage() {
     }
   };
 
+  const handleRequestPayment = async (bookingId: string) => {
+    try {
+      const { data, error } = await supabase.rpc("generate_payment_link", {
+        booking_id: bookingId,
+      });
+      if (error) throw error;
+
+      await fetch("/api/send-payment-link", {
+        method: "POST",
+        body: JSON.stringify({ bookingId, paymentUrl: data.payment_url, note }),
+      });
+
+      toast.success("Payment link sent 🎯");
+    } catch (err) {
+      toast.error("Failed to send payment request");
+      console.error(err);
+    }
+  };
+
+  const handleConfirm = async (bookingId: string) => {
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          status: "confirmed",
+          meeting_link: meetingLink,
+        })
+        .eq("id", bookingId);
+
+      if (error) throw error;
+
+      await fetch("/api/send-meeting-link", {
+        method: "POST",
+        body: JSON.stringify({ bookingId, meetingLink, note }),
+      });
+
+      toast.success("Meeting link sent and booking confirmed 🚀");
+    } catch (err) {
+      toast.error("Failed to confirm");
+      console.error(err);
+    }
+  };
+
+  const handleCancel = async (bookingId: string) => {
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({ status: "cancelled" })
+        .eq("id", bookingId);
+
+      if (error) throw error;
+
+      toast.success("Booking cancelled 🛑");
+    } catch (err) {
+      toast.error("Failed to cancel booking");
+      console.error(err);
+    }
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -91,14 +180,6 @@ export default function BookingsPage() {
           <p className="mt-2 text-sm text-gray-700">
             Manage your bookings and appointments
           </p>
-        </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-          <Link
-            href="/dashboard/bookings/new"
-            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-          >
-            Add Booking
-          </Link>
         </div>
       </div>
 
@@ -143,7 +224,7 @@ export default function BookingsPage() {
                       scope="col"
                       className="relative py-3.5 pl-3 pr-4 sm:pr-6"
                     >
-                      <span className="sr-only">Actions</span>
+                      Actions
                     </th>
                   </tr>
                 </thead>
@@ -189,28 +270,134 @@ export default function BookingsPage() {
                           {booking.payment_status}
                         </span>
                       </td>
-                      <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                        <select
-                          value={booking.status}
-                          onChange={(e) =>
+                      <td className="relative flex justify-center whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                        {/* Manual Status Select */}
+                        <Select
+                          defaultValue={booking.status}
+                          onValueChange={(value) =>
                             updateBookingStatus(
                               booking.id,
-                              e.target.value as Booking["status"]
+                              value as Booking["status"]
                             )
                           }
-                          className="rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500"
+                          value={booking.status}
                         >
-                          <option value="pending">Pending</option>
-                          <option value="confirmed">Confirmed</option>
-                          <option value="completed">Completed</option>
-                          <option value="cancelled">Cancelled</option>
-                        </select>
-                        <Link
-                          href={`/dashboard/bookings/${booking.id}/edit`}
-                          className="text-blue-600 hover:text-blue-900 ml-4"
-                        >
-                          Edit
-                        </Link>
+                          <SelectTrigger className="w-32">
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        {/* Manage Button */}
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <button className="text-blue-600 hover:text-blue-900 ml-4">
+                              Manage
+                            </button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Manage Booking</DialogTitle>
+                              <DialogDescription className="text-sm text-gray-500">
+                                Manage this booking quickly with the options
+                                below.
+                              </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="space-y-4 mt-4">
+                              {/* Payment Request */}
+                              <Button
+                                variant="outline"
+                                className="w-full"
+                                disabled={booking.payment_status === "paid"}
+                                onClick={() => handleRequestPayment(booking.id)}
+                              >
+                                Request Payment
+                              </Button>
+
+                              {/* Toggle for Meeting Link + Note */}
+                              <Collapsible
+                                open={showMeetingFields}
+                                onOpenChange={setShowMeetingFields}
+                              >
+                                <CollapsibleTrigger asChild>
+                                  <Button variant="default" className="w-full">
+                                    {showMeetingFields
+                                      ? "Hide Meeting Link Input"
+                                      : "Confirm & Send Meeting Link"}
+                                  </Button>
+                                </CollapsibleTrigger>
+
+                                <CollapsibleContent className="space-y-4 mt-4">
+                                  <Input
+                                    placeholder="Enter meeting link"
+                                    value={meetingLink}
+                                    onChange={(e) =>
+                                      setMeetingLink(e.target.value)
+                                    }
+                                  />
+
+                                  <Textarea
+                                    placeholder="Optional note to include in email..."
+                                    value={note}
+                                    onChange={(e) => setNote(e.target.value)}
+                                  />
+
+                                  <Button
+                                    variant="default"
+                                    className="w-full"
+                                    onClick={() => handleConfirm(booking.id)}
+                                  >
+                                    Send Meeting Link Now
+                                  </Button>
+                                </CollapsibleContent>
+                              </Collapsible>
+
+                              {/* Reschedule */}
+                              <div className="flex justify-between space-x-2 mt-4">
+                                <Button
+                                  variant="secondary"
+                                  onClick={() =>
+                                    router.push(
+                                      `/dashboard/bookings/${booking.id}/edit`
+                                    )
+                                  }
+                                >
+                                  Reschedule Booking
+                                </Button>
+
+                                {/* Cancel */}
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => handleCancel(booking.id)}
+                                >
+                                  Cancel Booking
+                                </Button>
+                              </div>
+                            </div>
+
+                            <DialogFooter className="pt-4">
+                              <DialogClose asChild>
+                                <Button
+                                  onClick={() => {
+                                    setMeetingLink("");
+                                    setNote("");
+                                    setShowMeetingFields(false);
+                                  }}
+                                  variant="ghost"
+                                  type="button"
+                                >
+                                  Close
+                                </Button>
+                              </DialogClose>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                       </td>
                     </tr>
                   ))}
