@@ -1,23 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/context/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { CalendarIcon, Copy, Loader2 } from "lucide-react";
+import { CalendarIcon, Copy } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "./ui/dialog";
+
 import { Button } from "./ui/button";
-import { Label } from "./ui/label";
-import { Input } from "./ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
 import { Calendar } from "./ui/calendar";
@@ -44,37 +33,38 @@ const stripePromise = loadStripe(
 );
 
 export function ManageBooking({ booking }: BookingProps) {
-  const [openEdit, setOpenEdit] = useState(false);
-  const [openReschedule, setOpenReschedule] = useState(false);
   const [newTime, setNewTime] = useState<Date | null>(
     booking?.booking_date ? new Date(booking.booking_date) : null
   );
   const [date, setDate] = React.useState<Date>();
-  const [meetingLink, setMeetingLink] = useState(booking?.meeting_link || "");
 
   const formattedDate = booking?.booking_date
     ? format(new Date(booking.booking_date), "PPPP p")
     : "Date not available";
 
-  async function handleStatusUpdate(bookingId: string, newStatus: string) {
-    try {
-      // Call your API endpoint here
-      console.log("Updating status...", bookingId, newStatus);
-      // toast.success('Status updated!');
-    } catch (err) {
-      console.error(err);
-      // toast.error('Failed to update status.');
+  async function handleSave(id: string | undefined, newTime: Date | null) {
+    if (!id || !newTime) {
+      toast.error("Booking ID or new time is missing.");
+      return;
     }
-  }
 
-  async function handleRequestPayment(bookingId: string) {
     try {
-      // Trigger payment request API here
-      console.log("Requesting payment...", bookingId);
-      // toast.success('Payment link sent!');
-    } catch (err) {
-      console.error(err);
-      // toast.error('Failed to request payment.');
+      const response = await fetch(`/api/bookings/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ booking_date: newTime.toISOString() }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update booking.");
+      }
+
+      toast.success("Booking date updated successfully!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update booking date.");
     }
   }
 
@@ -150,35 +140,6 @@ export function ManageBooking({ booking }: BookingProps) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Dialog open={openEdit} onOpenChange={setOpenEdit}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              Edit Details
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Booking Details</DialogTitle>
-              <DialogDescription>
-                Update the booking details below.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-2">
-              <Label htmlFor="meetingLink">Meeting Link</Label>
-              <Input
-                id="meetingLink"
-                type="url"
-                placeholder="https://your-meeting-link.com"
-                value={meetingLink}
-                onChange={(e) => setMeetingLink(e.target.value)}
-              />
-            </div>
-            <Button type="submit" className="w-full">
-              Save
-            </Button>
-          </DialogContent>
-        </Dialog>
-
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -204,18 +165,14 @@ export function ManageBooking({ booking }: BookingProps) {
         </Popover>
 
         <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleStatusUpdate(booking?.id!, "completed")}
+          variant={"default"}
+          onClick={() => {
+            handleSave(booking?.id, newTime);
+          }}
+          className="w-[280px]"
         >
-          Mark as Completed
+          Save
         </Button>
-
-        {booking?.payment_status === "pending" && (
-          <Button size="sm" onClick={() => handleRequestPayment(booking.id)}>
-            Request Payment
-          </Button>
-        )}
       </div>
     </div>
   );

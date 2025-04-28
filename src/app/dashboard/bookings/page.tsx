@@ -52,6 +52,8 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true);
   const [meetingLink, setMeetingLink] = useState("");
   const [note, setNote] = useState("");
+  const [reason, setReason] = useState("");
+  const [showReason, setShowReason] = useState(false);
   const router = useRouter();
   const [showMeetingFields, setShowMeetingFields] = useState(false);
 
@@ -157,7 +159,7 @@ export default function BookingsPage() {
     try {
       const { error } = await supabase
         .from("bookings")
-        .update({ status: "cancelled" })
+        .update({ status: "cancelled", cancellation_reason: reason })
         .eq("id", bookingId);
 
       if (error) throw error;
@@ -302,7 +304,7 @@ export default function BookingsPage() {
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
-                              <DialogTitle>Manage Booking</DialogTitle>
+                              <DialogTitle>Quick Actions</DialogTitle>
                               <DialogDescription className="text-sm text-gray-500">
                                 Manage this booking quickly with the options
                                 below.
@@ -374,10 +376,54 @@ export default function BookingsPage() {
                                 {/* Cancel */}
                                 <Button
                                   variant="destructive"
-                                  onClick={() => handleCancel(booking.id)}
+                                  onClick={() => setShowReason(true)}
                                 >
                                   Cancel Booking
                                 </Button>
+
+                                <Dialog
+                                  open={showReason}
+                                  onOpenChange={setShowReason}
+                                >
+                                  <DialogContent>
+                                    <DialogHeader>
+                                      <DialogTitle>
+                                        Cancellation Reason
+                                      </DialogTitle>
+                                      <DialogDescription className="text-sm text-gray-500">
+                                        Please provide a reason for
+                                        cancellation.
+                                      </DialogDescription>
+                                    </DialogHeader>
+
+                                    <Textarea
+                                      placeholder="Enter reason for cancellation"
+                                      value={reason}
+                                      onChange={(e) =>
+                                        setReason(e.target.value)
+                                      }
+                                    />
+
+                                    <div className="flex justify-end mt-4">
+                                      <Button
+                                        variant="default"
+                                        onClick={() => setShowReason(false)}
+                                      >
+                                        Cancel
+                                      </Button>
+                                      <Button
+                                        variant="destructive"
+                                        onClick={() => {
+                                          handleCancel(booking.id);
+                                          setShowReason(false);
+                                        }}
+                                        className="ml-2"
+                                      >
+                                        Confirm Cancellation
+                                      </Button>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
                               </div>
                             </div>
 
