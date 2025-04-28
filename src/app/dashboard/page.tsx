@@ -121,9 +121,9 @@ export default async function DashboardPage() {
                         {booking.status}
                       </span>
                     </td>
-                    <td className="py-3 whitespace-nowrap">
+                    <td className="py-3 px-4 whitespace-nowrap">
                       <a
-                        href={`/dashboard/bookings/${booking.id}`}
+                        href={`/dashboard/bookings/${booking.id}/edit`}
                         className="text-blue-600 hover:text-blue-700"
                       >
                         View
