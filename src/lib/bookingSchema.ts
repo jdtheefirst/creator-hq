@@ -1,7 +1,12 @@
+import { id } from "date-fns/locale";
 import parsePhoneNumberFromString from "libphonenumber-js";
 import { z } from "zod";
 
 export const BookingSchema = z.object({
+  id: z.string().optional(),
+  creator_id: z.string().optional(),
+  price: z.number().optional(),
+  payment_status: z.enum(["pending", "paid", "refunded"]).optional(),
   client_name: z.string().min(2, "Name must be at least 2 characters"),
   client_email: z.string().email("Please enter a valid email"),
   phone: z.string().refine(

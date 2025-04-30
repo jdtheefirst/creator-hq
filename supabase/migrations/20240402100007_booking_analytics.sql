@@ -38,7 +38,7 @@ BEGIN
     COUNT(*) FILTER (WHERE status = 'completed') AS completed,
     COUNT(*) FILTER (WHERE status = 'pending') AS pending,
     COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
-    COALESCE(AVG(avg_duration_minutes), 0) AS avg_duration,
+    COALESCE(AVG(duration_minutes), 0) AS avg_duration_minutes,
     COALESCE(SUM(price) FILTER (WHERE payment_status = 'paid'), 0) AS revenue
   INTO _total, _completed, _pending, _cancelled, _avg_duration_minutes, _revenue_generated
   FROM bookings

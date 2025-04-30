@@ -1,12 +1,10 @@
-import { ratelimit } from "@/lib/limit";
+import { secureRatelimit } from "@/lib/limit";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   const creatorId = new URL(req.url).searchParams.get("creatorId");
-  const ip = req.headers.get("x-forwarded-for") || "unknown";
-
-  const { success } = await ratelimit.limit(ip.toString());
+  const { success } = await secureRatelimit(req);
 
   if (!success) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });

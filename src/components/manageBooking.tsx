@@ -3,21 +3,26 @@
 import React, { useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { CalendarIcon, Copy } from "lucide-react";
+import { CalendarIcon, Copy, Notebook } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cn } from "@/lib/utils";
 import { Calendar } from "./ui/calendar";
+import { useAuth } from "@/lib/context/AuthContext";
+import { Textarea } from "./ui/textarea";
+import { useRouter } from "next/navigation";
 
 interface BookingProps {
   booking?: {
     id: string;
     client_name: string;
     client_email: string;
+    phone?: string;
     service_type: "consultation" | "workshop" | "mentoring" | "other";
     booking_date: string;
+    booking_time: string;
     duration_minutes: number;
     status: "pending" | "confirmed" | "completed" | "cancelled";
     price: number;
@@ -32,14 +37,29 @@ const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
 
+export function formatDateWithOrdinal(dateString: string): string {
+  const date = new Date(dateString);
+  const day = date.getDate();
+  const monthYear = format(date, "MMMM yyyy");
+
+  // Get ordinal suffix
+  const ordinal = (n: number) => {
+    const s = ["th", "st", "nd", "rd"];
+    const v = n % 100;
+    return s[(v - 20) % 10] || s[v] || s[0];
+  };
+
+  return `${day}${ordinal(day)} ${monthYear}`;
+}
+
 export function ManageBooking({ booking }: BookingProps) {
-  const [newTime, setNewTime] = useState<Date | null>(
-    booking?.booking_date ? new Date(booking.booking_date) : null
-  );
+  const { supabase, user } = useAuth();
   const [date, setDate] = React.useState<Date>();
+  const [note, setNote] = useState<string>("");
+  const router = useRouter();
 
   const formattedDate = booking?.booking_date
-    ? format(new Date(booking.booking_date), "PPPP p")
+    ? formatDateWithOrdinal(booking.booking_date)
     : "Date not available";
 
   async function handleSave(id: string | undefined, newTime: Date | null) {
@@ -49,19 +69,22 @@ export function ManageBooking({ booking }: BookingProps) {
     }
 
     try {
-      const response = await fetch(`/api/bookings/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ booking_date: newTime.toISOString() }),
-      });
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          booking_date: newTime.toISOString(),
+          notes: note,
+        })
+        .eq("id", id)
+        .eq("creator_id", user?.id)
+        .single();
 
-      if (!response.ok) {
-        throw new Error("Failed to update booking.");
+      if (error) {
+        throw new Error("Failed to update booking.", error);
       }
 
       toast.success("Booking date updated successfully!");
+      router.back();
     } catch (error) {
       console.error(error);
       toast.error("Failed to update booking date.");
@@ -87,6 +110,30 @@ export function ManageBooking({ booking }: BookingProps) {
             Copy
           </button>
         </div>
+        {booking?.notes && (
+          <div className="flex items-center gap-2">
+            <Notebook />
+            <p className="text-sm text-muted-foreground">"{booking?.notes}"</p>
+          </div>
+        )}
+        {booking?.phone && (
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">Phone:</p>
+            <p className="text-muted-foreground">{booking.phone}</p>
+            <button
+              onClick={() => {
+                if (booking?.phone) {
+                  navigator.clipboard.writeText(booking.phone);
+                  toast.success("Phone number copied to clipboard!");
+                }
+              }}
+              className="flex items-center gap-1"
+            >
+              <Copy className="w-4 h-4" />
+              Copy
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-2">
@@ -95,6 +142,9 @@ export function ManageBooking({ booking }: BookingProps) {
         </p>
         <p>
           <strong>Date:</strong> {formattedDate}
+        </p>
+        <p>
+          <strong>Start:</strong> {booking?.booking_time} hrs
         </p>
         <p>
           <strong>Duration:</strong> {booking?.duration_minutes} min
@@ -146,12 +196,16 @@ export function ManageBooking({ booking }: BookingProps) {
               variant={"outline"}
               className={cn(
                 "w-[280px] justify-start text-left font-normal",
-                !newTime && "text-muted-foreground"
+                !date && "text-muted-foreground"
               )}
               size="sm"
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {newTime ? format(newTime, "PPP") : <span>Pick a date</span>}
+              {date ? (
+                format(date, "PPP")
+              ) : (
+                <span>Pick a date to reschedule to</span>
+              )}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0">
@@ -163,11 +217,24 @@ export function ManageBooking({ booking }: BookingProps) {
             />
           </PopoverContent>
         </Popover>
-
+      </div>
+      <div>
+        <label htmlFor="note" className="block text-sm font-medium mb-1">
+          Optional message to client
+        </label>
+        <Textarea
+          id="note"
+          placeholder="Let the client know why you're rescheduling..."
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+      </div>
+      <div className="flex items-center justify-end gap-2">
         <Button
           variant={"default"}
+          size="sm"
           onClick={() => {
-            handleSave(booking?.id, newTime);
+            handleSave(booking?.id, date!);
           }}
           className="w-[280px]"
         >

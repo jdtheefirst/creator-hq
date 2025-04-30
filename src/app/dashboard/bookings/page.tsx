@@ -31,6 +31,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Badge, BadgeAlert } from "lucide-react";
 
 interface Booking {
   id: string;
@@ -38,6 +39,8 @@ interface Booking {
   client_email: string;
   service_type: string;
   booking_date: string;
+  booking_time: string;
+  cancellation_reason?: string;
   duration_minutes: number;
   status: "pending" | "confirmed" | "completed" | "cancelled";
   price: number;
@@ -131,22 +134,33 @@ export default function BookingsPage() {
     }
   };
 
-  const handleConfirm = async (bookingId: string) => {
+  const handleConfirm = async (booking: Booking) => {
     try {
       const { error } = await supabase
         .from("bookings")
         .update({
           status: "confirmed",
           meeting_link: meetingLink,
+          notes: note,
         })
-        .eq("id", bookingId);
+        .eq("id", booking.id)
+        .eq("creator_id", user?.id)
+        .single();
 
       if (error) throw error;
 
-      await fetch("/api/send-meeting-link", {
+      const response = await fetch("/api/creator/meeting-link", {
         method: "POST",
-        body: JSON.stringify({ bookingId, meetingLink, note }),
+        body: JSON.stringify({
+          booking,
+          meetingLink,
+          note,
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to send meeting link");
+      }
 
       toast.success("Meeting link sent and booking confirmed 🚀");
     } catch (err) {
@@ -170,6 +184,16 @@ export default function BookingsPage() {
       console.error(err);
     }
   };
+
+  const isValidUrl = (url: string) => {
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const isValidMeetingLink = meetingLink && isValidUrl(meetingLink);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -291,7 +315,9 @@ export default function BookingsPage() {
                             <SelectItem value="pending">Pending</SelectItem>
                             <SelectItem value="confirmed">Confirmed</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                            <SelectItem value="cancelled" disabled>
+                              Cancelled
+                            </SelectItem>
                           </SelectContent>
                         </Select>
 
@@ -326,6 +352,7 @@ export default function BookingsPage() {
                               <Collapsible
                                 open={showMeetingFields}
                                 onOpenChange={setShowMeetingFields}
+                                disabled={booking.meeting_link !== null}
                               >
                                 <CollapsibleTrigger asChild>
                                   <Button variant="default" className="w-full">
@@ -338,6 +365,7 @@ export default function BookingsPage() {
                                 <CollapsibleContent className="space-y-4 mt-4">
                                   <Input
                                     placeholder="Enter meeting link"
+                                    type="url"
                                     value={meetingLink}
                                     onChange={(e) =>
                                       setMeetingLink(e.target.value)
@@ -353,11 +381,18 @@ export default function BookingsPage() {
                                   <Button
                                     variant="default"
                                     className="w-full"
-                                    onClick={() => handleConfirm(booking.id)}
+                                    onClick={() => handleConfirm(booking)}
+                                    disabled={!isValidMeetingLink}
                                   >
                                     Send Meeting Link Now
                                   </Button>
                                 </CollapsibleContent>
+                                {booking.meeting_link && (
+                                  <footer className="text-sm text-gray-500 mt-2">
+                                    A meeting link has already been sent to the
+                                    client.
+                                  </footer>
+                                )}
                               </Collapsible>
 
                               {/* Reschedule */}
@@ -377,6 +412,7 @@ export default function BookingsPage() {
                                 <Button
                                   variant="destructive"
                                   onClick={() => setShowReason(true)}
+                                  disabled={booking.status === "cancelled"}
                                 >
                                   Cancel Booking
                                 </Button>
@@ -391,8 +427,31 @@ export default function BookingsPage() {
                                         Cancellation Reason
                                       </DialogTitle>
                                       <DialogDescription className="text-sm text-gray-500">
-                                        Please provide a reason for
-                                        cancellation.
+                                        <span>
+                                          Please provide a reason for
+                                          cancellation.
+                                        </span>
+
+                                        <span className="text-sm text-muted-foreground mb-2">
+                                          <BadgeAlert /> Clients will
+                                          automatically be notified by email
+                                          when you cancel.
+                                          <br />
+                                          <span className="text-red-500 font-medium">
+                                            This feature is not available in
+                                            your current plan.
+                                          </span>{" "}
+                                          You can{" "}
+                                          <a
+                                            href="mailto:jngatia045@gmail.com?subject=Upgrade%20Request%20for%20Email%20Notifications&body=Hey%20team%2C%20I'd%20like%20to%20enable%20automated%20client%20email%20notifications%20when%20I%20reschedule%20bookings.%20Please%20let%20me%20know%20how%20to%20upgrade."
+                                            className="underline text-blue-600"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                          >
+                                            contact support
+                                          </a>{" "}
+                                          to enable this feature.
+                                        </span>
                                       </DialogDescription>
                                     </DialogHeader>
 

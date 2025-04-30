@@ -54,27 +54,3 @@ create policy "Creators can update their own bookings"
 create policy "Creators can delete their own bookings"
   on bookings for delete
   using (auth.uid() = creator_id);
-
--- Create function to check for booking conflicts
-create or replace function check_booking_conflicts()
-returns trigger as $$
-begin
-  if exists (
-    select 1 from bookings
-    where creator_id = new.creator_id
-    and status != 'cancelled'
-    and booking_date < new.booking_date + (new.duration_minutes || ' minutes')::interval
-    and booking_date + (duration_minutes || ' minutes')::interval > new.booking_date
-    and id != new.id
-  ) then
-    raise exception 'Booking conflicts with existing booking';
-  end if;
-  return new;
-end;
-$$ language plpgsql;
-
--- Create trigger to check for booking conflicts
-create trigger check_booking_conflicts_trigger
-  before insert or update on bookings
-  for each row
-  execute function check_booking_conflicts(); 
