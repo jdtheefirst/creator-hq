@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -31,7 +31,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Badge, BadgeAlert } from "lucide-react";
+import { Badge, BadgeAlert, Info } from "lucide-react";
 
 interface Booking {
   id: string;
@@ -53,6 +53,10 @@ export default function BookingsPage() {
   const { user, supabase } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [update, setUpdate] = useState(false);
+  const [link, setLink] = useState(false);
+  const [request, setRequest] = useState(false);
+  const [cancel, setCancel] = useState(false);
   const [meetingLink, setMeetingLink] = useState("");
   const [note, setNote] = useState("");
   const [reason, setReason] = useState("");
@@ -66,13 +70,13 @@ export default function BookingsPage() {
     }
   }, [user]);
 
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("bookings")
         .select("*")
         .eq("creator_id", user?.id)
-        .order("booking_date", { ascending: false });
+        .order("updated_at", { ascending: true });
 
       if (error) throw error;
       setBookings(data || []);
@@ -82,9 +86,10 @@ export default function BookingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
   const updateBookingStatus = async (id: string, status: Booking["status"]) => {
+    setUpdate(true);
     try {
       const { error } = await supabase
         .from("bookings")
@@ -99,6 +104,8 @@ export default function BookingsPage() {
     } catch (error) {
       toast.error("Failed to update booking status");
       console.error(error);
+    } finally {
+      setUpdate(false);
     }
   };
 
@@ -115,24 +122,25 @@ export default function BookingsPage() {
     }
   };
 
-  const handleRequestPayment = async (bookingId: string) => {
+  const handleRequestPayment = async (booking: Booking) => {
+    setRequest(true);
     try {
       const res = await fetch("/api/checkout/request-payment", {
         method: "POST",
-        body: JSON.stringify({ bookingId, note }),
+        body: JSON.stringify({ booking, note }),
       });
 
-      const { paymentUrl } = await res.json();
-      console.log("Payment URL:", paymentUrl);
-
       toast.success("Payment link sent to client 🎯");
-    } catch (err) {
-      toast.error("Failed to send payment request");
+    } catch (err: any) {
+      toast.error(err.error || "Failed to send payment request");
       console.error(err);
+    } finally {
+      setRequest(false);
     }
   };
 
   const handleConfirm = async (booking: Booking) => {
+    setLink(true);
     try {
       const { error } = await supabase
         .from("bookings")
@@ -164,10 +172,13 @@ export default function BookingsPage() {
     } catch (err) {
       toast.error("Failed to confirm");
       console.error(err);
+    } finally {
+      setLink(false);
     }
   };
 
   const handleCancel = async (bookingId: string) => {
+    setCancel(true);
     try {
       const { error } = await supabase
         .from("bookings")
@@ -180,6 +191,8 @@ export default function BookingsPage() {
     } catch (err) {
       toast.error("Failed to cancel booking");
       console.error(err);
+    } finally {
+      setCancel(false);
     }
   };
 
@@ -304,6 +317,7 @@ export default function BookingsPage() {
                               value as Booking["status"]
                             )
                           }
+                          disabled={update}
                           value={booking.status}
                         >
                           <SelectTrigger className="w-32">
@@ -340,8 +354,10 @@ export default function BookingsPage() {
                               <Button
                                 variant="outline"
                                 className="w-full"
-                                disabled={booking.payment_status === "paid"}
-                                onClick={() => handleRequestPayment(booking.id)}
+                                disabled={
+                                  booking.payment_status === "paid" || request
+                                }
+                                onClick={() => handleRequestPayment(booking)}
                               >
                                 Request Payment
                               </Button>
@@ -380,16 +396,19 @@ export default function BookingsPage() {
                                     variant="default"
                                     className="w-full"
                                     onClick={() => handleConfirm(booking)}
-                                    disabled={!isValidMeetingLink}
+                                    disabled={!isValidMeetingLink || link}
                                   >
                                     Send Meeting Link Now
                                   </Button>
                                 </CollapsibleContent>
                                 {booking.meeting_link && (
-                                  <footer className="text-sm text-gray-500 mt-2">
-                                    A meeting link has already been sent to the
-                                    client.
-                                  </footer>
+                                  <div className="flex items-center space-y-2 gap-2">
+                                    <Info className="h-4 w-4 text-blue-500" />
+                                    <footer className="text-xs text-gray-500">
+                                      A meeting link has already been sent to
+                                      the client.
+                                    </footer>
+                                  </div>
                                 )}
                               </Collapsible>
 
@@ -474,6 +493,7 @@ export default function BookingsPage() {
                                           handleCancel(booking.id);
                                           setShowReason(false);
                                         }}
+                                        disabled={cancel}
                                         className="ml-2"
                                       >
                                         Confirm Cancellation

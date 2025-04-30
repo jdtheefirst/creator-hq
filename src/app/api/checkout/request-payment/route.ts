@@ -25,15 +25,9 @@ export async function POST(req: Request) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   try {
-    const { bookingId, note } = await req.json();
+    const { booking, note } = await req.json();
 
-    const { data: booking, error } = await supabaseAdmin
-      .from("bookings")
-      .select("*")
-      .eq("id", bookingId)
-      .single();
-
-    if (error || !booking) {
+    if (!booking) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
@@ -77,23 +71,54 @@ export async function POST(req: Request) {
     await supabaseAdmin
       .from("bookings")
       .update({ payment_link: session.url })
-      .eq("id", bookingId);
+      .eq("id", booking.id);
 
     // Send email with payment link
-    await resend.emails.send({
+    const res = await resend.emails.send({
       from: "jngatia045@gmail.com",
       to: booking.client_email,
       subject: "Complete Your Payment 💳",
       html: `
-        <h2>Hey ${booking.client_name},</h2>
-        <p>Your booking is almost confirmed! Just one last step:</p>
-        <p><strong>Service:</strong> ${booking.service_type}</p>
-        <p><strong>Price:</strong> $${booking.price}</p>
-        <p><a href="${session.url}">👉 Click here to complete your payment</a></p>
-        ${note ? `<p><strong>Note from creator:</strong> ${note}</p>` : ""}
-        <p>Thanks for booking 🙌</p>
-      `,
+  <div style="font-family: sans-serif; color: #111; line-height: 1.6; max-width: 600px; margin: auto;">
+    <h2 style="color: #000;">Hey ${booking.client_name},</h2>
+    
+    <p>Your booking is almost locked in! Just one last step to secure your spot:</p>
+    
+    <p><strong>Service:</strong> ${booking.service_type}</p>
+    <p><strong>Price:</strong> $${booking.price}</p>
+    
+    <p>
+      <a href="${session.url}" 
+         style="display: inline-block; padding: 12px 20px; background-color: #000; color: #fff; text-decoration: none; border-radius: 6px;">
+        👉 Complete Your Payment
+      </a>
+    </p>
+
+    ${note ? `<p><strong>Note from creator:</strong> ${note}</p>` : ""}
+
+    <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;" />
+
+    <p style="font-size: 0.9em; color: #555;">
+      This booking experience is powered by <strong>Creator-HQ</strong> — your creator’s digital home for bookings, content, and exclusive fan access. 
+    </p>
+    <p style="font-size: 0.9em; color: #555;">
+      Are you a content creator? <a href="https://creatorhq.com" style="color: #000; text-decoration: underline;">Join Creator-HQ</a> and build your own branded HQ today.
+    </p>
+
+    <p style="font-size: 0.8em; color: #999; margin-top: 40px;">
+      Questions? Just reply to this email and someone will hit you up.
+    </p>
+  </div>
+`,
     });
+
+    if (res.error) {
+      console.error("Error sending email:", res.error);
+      return NextResponse.json(
+        { error: "Failed to send confirmation email" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ paymentUrl: session.url });
   } catch (err) {

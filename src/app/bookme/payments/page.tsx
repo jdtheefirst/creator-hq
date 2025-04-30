@@ -5,13 +5,15 @@ export const metadata: Metadata = {
   title: "Payment Status - CreatorHQ",
 };
 
-export default function PaymentStatusPage({
+export default async function PaymentStatusPage({
   searchParams,
 }: {
   searchParams: { status?: string };
 }) {
-  const isSuccess = searchParams.status === "success";
-  const isCancelled = searchParams.status === "cancelled";
+  const { status } = await searchParams;
+
+  const isSuccess = status === "success";
+  const isCancelled = status === "cancelled";
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4 py-24">

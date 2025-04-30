@@ -291,6 +291,71 @@ export async function POST(request: Request) {
             { status: 500 }
           );
         }
+      } else if (type === "payment_link") {
+        // Handle payment link session
+        const booking_id = metadata.booking_id;
+        const creatorId = metadata.creatorId;
+
+        if (!booking_id || !creatorId) {
+          console.error("Missing required metadata for payment link", {
+            booking_id,
+            creatorId,
+          });
+          return NextResponse.json(
+            { error: "Invalid payment link metadata" },
+            { status: 400 }
+          );
+        }
+
+        // update booking status to paid
+        const { error: bookingError } = await supabaseAdmin
+          .from("bookings")
+          .update({
+            payment_status: "paid",
+            status: "confirmed",
+          })
+          .eq("id", booking_id)
+          .eq("creator_id", creatorId);
+
+        if (bookingError) {
+          console.error("Booking update failed:", bookingError);
+          return NextResponse.json(
+            { error: "Booking update failed" },
+            { status: 500 }
+          );
+        }
+
+        // Update the checkout session status to completed
+        const { error } = await supabaseAdmin
+          .from("checkout_sessions")
+          .update({ status: "completed" })
+          .eq("stripe_session_id", session.id);
+
+        if (error) {
+          console.error("Checkout session insert failed:", error);
+          return NextResponse.json(
+            { error: "Checkout session insert failed" },
+            { status: 500 }
+          );
+        }
+
+        const { error: metricsError } = await supabaseAdmin.rpc(
+          "update_revenue_metrics",
+          {
+            p_creator_id: creatorId,
+            p_amount: session.amount_total! / 100,
+            p_date: new Date().toISOString(),
+            p_source_type: "payment_link",
+          }
+        );
+
+        if (metricsError) {
+          console.error("Metrics update failed:", metricsError);
+          return NextResponse.json(
+            { error: "Metrics update failed" },
+            { status: 500 }
+          );
+        }
       } else {
         console.warn("Unknown metadata.type:", type);
         return NextResponse.json(
