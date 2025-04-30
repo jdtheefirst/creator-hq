@@ -117,17 +117,15 @@ export default function BookingsPage() {
 
   const handleRequestPayment = async (bookingId: string) => {
     try {
-      const { data, error } = await supabase.rpc("generate_payment_link", {
-        booking_id: bookingId,
-      });
-      if (error) throw error;
-
-      await fetch("/api/send-payment-link", {
+      const res = await fetch("/api/checkout/request-payment", {
         method: "POST",
-        body: JSON.stringify({ bookingId, paymentUrl: data.payment_url, note }),
+        body: JSON.stringify({ bookingId, note }),
       });
 
-      toast.success("Payment link sent 🎯");
+      const { paymentUrl } = await res.json();
+      console.log("Payment URL:", paymentUrl);
+
+      toast.success("Payment link sent to client 🎯");
     } catch (err) {
       toast.error("Failed to send payment request");
       console.error(err);
