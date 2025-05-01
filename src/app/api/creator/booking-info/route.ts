@@ -1,36 +1,31 @@
 import { secureRatelimit } from "@/lib/limit";
-import { createClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   const creatorId = new URL(req.url).searchParams.get("creatorId");
   const { success } = await secureRatelimit(req);
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
 
-  if (!success || userError || !user) {
+  if (!success || !creatorId) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
   const [availability, blocked, bookings] = await Promise.all([
-    supabase
+    supabaseAdmin
       .from("creator_availability")
       .select("day_of_week, start_time, end_time")
-      .eq("creator_id", user.id)
+      .eq("creator_id", creatorId)
       .eq("is_available", true),
 
-    supabase
+    supabaseAdmin
       .from("creator_blocked_dates")
       .select("start_date, end_date, reason")
-      .eq("creator_id", user.id),
+      .eq("creator_id", creatorId),
 
-    supabase
+    supabaseAdmin
       .from("bookings")
       .select("client_name, booking_date, duration_minutes, status")
-      .eq("creator_id", user.id)
+      .eq("creator_id", creatorId)
       .in("status", ["pending", "confirmed"])
       .order("booking_date", { ascending: true }),
   ]);

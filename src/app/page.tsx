@@ -17,6 +17,7 @@ import {
   Star,
   UserRoundPen,
 } from "lucide-react";
+import NewsletterForm from "@/components/NewsletterForm";
 
 interface Profile {
   id: string;
@@ -171,6 +172,7 @@ export default function CreatorProfilePage() {
             <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-2 z-50">
               <Link
                 href="/profile"
+                rel="noopener noreferrer"
                 className="flex px-4 py-2 text-gray-700 hover:bg-gray-100"
               >
                 <UserRoundPen /> &nbsp; Profile
@@ -188,6 +190,7 @@ export default function CreatorProfilePage() {
         ) : (
           <Link
             href="/login"
+            rel="noopener noreferrer"
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
           >
             Sign In
@@ -421,6 +424,7 @@ export default function CreatorProfilePage() {
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link
             href="/blogs"
+            rel="noopener noreferrer"
             className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
             <span className="absolute inset-0 bg-blue-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
@@ -446,6 +450,7 @@ export default function CreatorProfilePage() {
 
           <Link
             href="/videos"
+            rel="noopener noreferrer"
             className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
             <span className="absolute inset-0 bg-red-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
@@ -469,6 +474,7 @@ export default function CreatorProfilePage() {
 
           <Link
             href="/store"
+            rel="noopener noreferrer"
             className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
             <span className="absolute inset-0 bg-green-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
@@ -492,6 +498,7 @@ export default function CreatorProfilePage() {
 
           <Link
             href="/vip"
+            rel="noopener noreferrer"
             className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
             <span className="absolute inset-0 bg-yellow-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
@@ -515,6 +522,7 @@ export default function CreatorProfilePage() {
 
           <Link
             href="/podcasts"
+            rel="noopener noreferrer"
             className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
             <span className="absolute inset-0 bg-indigo-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
@@ -538,6 +546,7 @@ export default function CreatorProfilePage() {
 
           <Link
             href="/courses"
+            rel="noopener noreferrer"
             className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
             <span className="absolute inset-0 bg-teal-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
@@ -561,6 +570,7 @@ export default function CreatorProfilePage() {
 
           <Link
             href="/lyrics"
+            rel="noopener noreferrer"
             className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
             <span className="absolute inset-0 bg-purple-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
@@ -584,6 +594,7 @@ export default function CreatorProfilePage() {
 
           <Link
             href="/bookme"
+            rel="noopener noreferrer"
             className="group relative overflow-hidden bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow transition-all duration-300 hover:shadow-xl hover:scale-[1.02]"
           >
             <span className="absolute inset-0 bg-indigo-100 opacity-0 group-hover:opacity-30 transition-opacity duration-300 pointer-events-none" />
@@ -682,98 +693,7 @@ export default function CreatorProfilePage() {
                 Subscribe to my newsletter to get the latest updates, exclusive
                 content, and behind-the-scenes insights.
               </p>
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  const email = formData.get("email") as string;
-
-                  // Email validation
-                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                  if (!emailRegex.test(email)) {
-                    setNotification({
-                      message: "Please enter a valid email address",
-                      type: "error",
-                    });
-                    return;
-                  }
-
-                  // Rate limiting (5 seconds between submissions)
-                  const now = Date.now();
-                  if (now - lastSubmissionTime < 5000) {
-                    setNotification({
-                      message: "Please wait a moment before trying again",
-                      type: "info",
-                    });
-                    return;
-                  }
-
-                  setIsSubmitting(true);
-                  try {
-                    const { error } = await supabase
-                      .from("newsletter_subscribers")
-                      .insert([{ email }]);
-
-                    if (error) throw error;
-
-                    setNotification({
-                      message: "Thank you for subscribing!",
-                      type: "success",
-                    });
-                    e.currentTarget.reset();
-                    setLastSubmissionTime(now);
-                  } catch (error: any) {
-                    if (error.code === "23505") {
-                      setNotification({
-                        message: "You're already subscribed!",
-                        type: "info",
-                      });
-                    } else {
-                      setNotification({
-                        message: "Something went wrong. Please try again.",
-                        type: "error",
-                      });
-                    }
-                  } finally {
-                    setIsSubmitting(false);
-                  }
-                }}
-                className="mt-8 sm:flex justify-center"
-              >
-                <div className="min-w-0 flex-1">
-                  <label htmlFor="email" className="sr-only">
-                    Email address
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    className="block w-full rounded-md border border-gray-300 px-4 py-3 text-base placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500 sm:flex-1"
-                    placeholder="Enter your email"
-                    disabled={isSubmitting}
-                  />
-                </div>
-                <div className="mt-3 sm:mt-0 sm:ml-3">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={`block w-full rounded-md border border-transparent bg-blue-600 px-4 py-3 font-medium text-white shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:px-10 ${
-                      isSubmitting ? "opacity-75 cursor-not-allowed" : ""
-                    }`}
-                  >
-                    {isSubmitting ? (
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></div>
-                        Subscribing...
-                      </div>
-                    ) : (
-                      "Subscribe"
-                    )}
-                  </button>
-                </div>
-              </form>
+              <NewsletterForm />
             </div>
           </div>
         </div>

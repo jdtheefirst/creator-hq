@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
-import { Link2, Upload, X, Youtube } from "lucide-react";
+import { Link2, Upload, X } from "lucide-react";
 import axios from "axios";
 import {
   Select,
@@ -74,15 +74,8 @@ export default function VideoUploader({
         headers: { "Content-Type": thumbnail.type },
       });
 
-      // 🔹 Step 4: Get Public URLs (Fix Destructuring)
-      const videoUrl = supabase.storage.from("videos").getPublicUrl(filePath)
-        .data.publicUrl;
-      const thumbnailUrl = supabase.storage
-        .from("videos")
-        .getPublicUrl(thumbnailPath).data.publicUrl;
-
       // 🔹 Step 5: Notify Completion
-      onUploadComplete(videoUrl, thumbnailUrl);
+      onUploadComplete(filePath, thumbnailPath);
       toast.success("Video uploaded successfully!");
     } catch (error) {
       console.error("Error uploading video:", error);

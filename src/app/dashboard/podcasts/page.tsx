@@ -99,14 +99,14 @@ export default async function PodcastsPage() {
                         >
                           Edit
                         </Link>
-                        <button
+                        {/* <button
                           onClick={() => {
                             // Handle delete
                           }}
                           className="text-red-600 hover:text-red-900"
                         >
                           Delete
-                        </button>
+                        </button> */}
                       </div>
                     </td>
                   </tr>

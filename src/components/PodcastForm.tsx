@@ -1,31 +1,56 @@
-// src/components/dashboard/podcasts/PodcastForm.tsx
 "use client";
 
-import { Resolver, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { v4 as uuidv4 } from "uuid";
 import { useAuth } from "@/lib/context/AuthContext";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
+import TagsInput from "./ui/tagsInput";
+import { useRouter } from "next/navigation";
 
-const podcastSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().min(1, "Description is required"),
-  season_number: z.coerce.number().min(1),
-  episode_number: z.coerce.number().min(1),
-  duration: z.coerce.number().min(1),
-  audio_file: z.any().optional(), // Will be a File
-  cover_image_url: z.string().optional(),
-  youtube_url: z.string().url().optional(),
-  transcript: z.string().optional(),
-  guest_name: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  downloadable: z.boolean().default(true),
-  is_published: z.boolean().default(true),
+const basePodcastSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1, "Title is required").max(100),
+  description: z.string().min(1, "Description is required").max(2000),
+  season_number: z.coerce.number().int().positive("Must be positive"),
+  episode_number: z.coerce.number().int().positive("Must be positive"),
+  duration: z.coerce.number().int().positive("Must be positive"),
+  cover_image_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+  youtube_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+  transcript: z.string().max(10000).optional(),
+  guest_name: z.string().max(100).optional(),
+  tags: z.array(z.string().max(20)).max(10),
+  vip: z.boolean().default(false).optional(),
+  downloadable: z.boolean().default(true).optional(),
+  is_published: z.boolean().default(true).optional(),
+  audio_url: z.string().url().optional(),
 });
 
-type PodcastFormData = z.infer<typeof podcastSchema>;
+const newPodcastSchema = basePodcastSchema.extend({
+  audio_file: z
+    .any()
+    .refine((file) => file?.length > 0, "Audio file is required")
+    .refine(
+      (file) => file?.[0]?.size <= 100_000_000,
+      "File size must be less than 100MB"
+    ),
+});
+
+const editPodcastSchema = basePodcastSchema.extend({
+  audio_url: z.any().optional(), // Not required in edit mode
+});
+
+type PodcastFormData = z.infer<typeof basePodcastSchema> & {
+  audio_file?: File[];
+};
 
 export default function PodcastForm({
   mode,
@@ -34,240 +59,311 @@ export default function PodcastForm({
   mode: "new" | "edit";
   initialData?: Partial<PodcastFormData>;
 }) {
+  const podcastSchema = mode === "edit" ? editPodcastSchema : newPodcastSchema;
+  const { user } = useAuth();
+
   const {
     register,
     handleSubmit,
     formState: { errors },
     watch,
+    setValue,
+    control,
   } = useForm<PodcastFormData>({
-    resolver: zodResolver(podcastSchema) as Resolver<PodcastFormData>,
-    defaultValues: initialData,
+    resolver: zodResolver(podcastSchema),
+    defaultValues: {
+      tags: [],
+      ...initialData,
+    },
   });
-
-  const [uploading, setUploading] = useState(false);
   const audioFile = watch("audio_file");
+  const [uploading, setUploading] = useState(false);
   const { supabase } = useAuth();
+  const route = useRouter();
 
   const handleFormSubmit = async (data: PodcastFormData) => {
-    const file = data.audio_file?.[0];
-    if (!file) return alert("Audio file is required.");
-
     setUploading(true);
+    const toastId = toast.loading("Uploading podcast...");
 
     try {
-      const fileExt = file.name.split(".").pop();
-      const filePath = `podcasts/${uuidv4()}.${fileExt}`;
+      const file = data.audio_file?.[0];
 
-      const { error: uploadError } = await supabase.storage
-        .from("audios")
-        .upload(filePath, file);
+      let audioUrl = initialData?.audio_url || null;
 
-      if (uploadError) throw uploadError;
+      if (file) {
+        const fileExt = file.name.split(".").pop();
+        const filePath = `${user?.id}/podcasts/${uuidv4()}.${fileExt}`;
 
-      const { data: publicUrlData } = supabase.storage
-        .from("audios")
-        .getPublicUrl(filePath);
+        const { error: uploadError } = await supabase.storage
+          .from("audios")
+          .upload(filePath, file);
 
-      const { error: insertError } = await supabase.from("podcasts").insert({
+        if (uploadError) throw uploadError;
+
+        audioUrl = filePath;
+      }
+
+      const { error: insertError } = await supabase.from("podcasts").upsert({
+        id: initialData?.id,
         title: data.title,
         description: data.description,
         season_number: data.season_number,
         episode_number: data.episode_number,
         duration: data.duration,
-        audio_url: publicUrlData.publicUrl,
-        cover_image_url: data.cover_image_url,
-        youtube_url: data.youtube_url,
-        transcript: data.transcript,
-        guest_name: data.guest_name,
+        audio_url: audioUrl,
+        cover_image_url: data.cover_image_url || null,
+        youtube_url: data.youtube_url || null,
+        transcript: data.transcript || null,
+        guest_name: data.guest_name || null,
         tags: data.tags,
+        vip: data.vip,
         downloadable: data.downloadable,
         is_published: data.is_published,
+        updated_at: new Date().toISOString(),
       });
 
       if (insertError) throw insertError;
 
-      alert("Podcast published 🎙️🔥");
+      toast.success("Podcast published successfully!", { id: toastId });
+      route.push("/podcasts");
     } catch (err) {
       console.error("Submission error:", err);
-      alert("Something went wrong. Check console.");
+      toast.error("Failed to publish podcast", {
+        id: toastId,
+        description: err instanceof Error ? err.message : "Unknown error",
+      });
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Title</label>
-        <input
-          {...register("title")}
-          className="mt-1 block w-full border rounded p-2"
-        />
-        {errors.title && (
-          <p className="text-red-600 text-sm">{errors.title.message}</p>
-        )}
-      </div>
+    <Card className="max-w-3xl mx-auto">
+      <CardHeader>
+        <CardTitle>{mode === "new" ? "Publish" : "Edit"}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+          <div className="grid grid-cols-1 gap-6">
+            {/* Basic Info Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Basic Information</h3>
+              <div>
+                <Label htmlFor="title">Title *</Label>
+                <Input
+                  id="title"
+                  {...register("title")}
+                  placeholder="Enter podcast title"
+                />
+                {errors.title && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.title.message}
+                  </p>
+                )}
+              </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Description
-        </label>
-        <textarea
-          {...register("description")}
-          className="mt-1 block w-full border rounded p-2"
-          rows={4}
-        />
-        {errors.description && (
-          <p className="text-red-600 text-sm">{errors.description.message}</p>
-        )}
-      </div>
+              <div>
+                <Label htmlFor="description">Description *</Label>
+                <Textarea
+                  id="description"
+                  {...register("description")}
+                  placeholder="Enter podcast description"
+                  rows={4}
+                />
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Season
-          </label>
-          <input
-            type="number"
-            {...register("season_number")}
-            className="mt-1 block w-full border rounded p-2"
-          />
-          {errors.season_number && (
-            <p className="text-red-600 text-sm">
-              {errors.season_number.message}
-            </p>
-          )}
-        </div>
+                {errors.description && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.description.message}
+                  </p>
+                )}
+              </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Episode
-          </label>
-          <input
-            type="number"
-            {...register("episode_number")}
-            className="mt-1 block w-full border rounded p-2"
-          />
-          {errors.episode_number && (
-            <p className="text-red-600 text-sm">
-              {errors.episode_number.message}
-            </p>
-          )}
-        </div>
-      </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="season_number">Season *</Label>
+                  <Input
+                    id="season_number"
+                    type="number"
+                    {...register("season_number")}
+                    placeholder="1"
+                  />
+                  {errors.season_number && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.season_number.message}
+                    </p>
+                  )}
+                </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Duration (seconds)
-        </label>
-        <input
-          type="number"
-          {...register("duration")}
-          className="mt-1 block w-full border rounded p-2"
-        />
-        {errors.duration && (
-          <p className="text-red-600 text-sm">{errors.duration.message}</p>
-        )}
-      </div>
+                <div>
+                  <Label htmlFor="episode_number">Episode *</Label>
+                  <Input
+                    id="episode_number"
+                    type="number"
+                    {...register("episode_number")}
+                    placeholder="1"
+                  />
+                  {errors.episode_number && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.episode_number.message}
+                    </p>
+                  )}
+                </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Audio File
-        </label>
-        <input
-          type="file"
-          accept="audio/*"
-          {...register("audio_file")}
-          className="mt-1 block w-full"
-        />
-        {audioFile?.[0] && (
-          <p className="text-sm text-gray-500 mt-1">
-            Selected: {audioFile[0].name}
-          </p>
-        )}
-      </div>
+                {/* Duration */}
+                <div>
+                  <Label htmlFor="duration">Duration (min) *</Label>
+                  <Input
+                    id="duration"
+                    type="number"
+                    {...register("duration")}
+                    placeholder="20"
+                  />
+                  {errors.duration && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.duration.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Cover Image URL
-        </label>
-        <input
-          type="text"
-          {...register("cover_image_url")}
-          className="mt-1 block w-full border rounded p-2"
-        />
-      </div>
+            {/* Media Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Media</h3>
+              <div>
+                <Label htmlFor="audio_file">Audio File *</Label>
+                <Input
+                  id="audio_file"
+                  type="file"
+                  accept="audio/*"
+                  {...register("audio_file")}
+                />
+                {audioFile?.[0] && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Selected: {audioFile[0].name} (
+                    {(audioFile[0].size / (1024 * 1024)).toFixed(2)} MB)
+                  </p>
+                )}
+              </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          YouTube URL
-        </label>
-        <input
-          type="text"
-          {...register("youtube_url")}
-          className="mt-1 block w-full border rounded p-2"
-        />
-      </div>
+              <div>
+                <Label htmlFor="cover_image_url">Cover Image URL</Label>
+                <Input
+                  id="cover_image_url"
+                  type="url"
+                  {...register("cover_image_url")}
+                  placeholder="https://example.com/image.jpg"
+                />
+                {errors.cover_image_url && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.cover_image_url.message}
+                  </p>
+                )}
+              </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Transcript
-        </label>
-        <textarea
-          {...register("transcript")}
-          className="mt-1 block w-full border rounded p-2"
-          rows={4}
-        />
-      </div>
+              <div>
+                <Label htmlFor="youtube_url">YouTube URL</Label>
+                <Input
+                  id="youtube_url"
+                  type="url"
+                  {...register("youtube_url")}
+                  placeholder="https://youtube.com/watch?v=..."
+                />
+                {errors.youtube_url && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.youtube_url.message}
+                  </p>
+                )}
+              </div>
+            </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Guest Name
-        </label>
-        <input
-          type="text"
-          {...register("guest_name")}
-          className="mt-1 block w-full border rounded p-2"
-        />
-      </div>
+            {/* Additional Info Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Additional Information</h3>
+              <div>
+                <Label htmlFor="transcript">Transcript</Label>
+                <Textarea
+                  id="transcript"
+                  {...register("transcript")}
+                  placeholder="Full transcript of the podcast"
+                  rows={6}
+                />
+                {errors.transcript && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.transcript.message}
+                  </p>
+                )}
+              </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">
-          Tags (comma separated)
-        </label>
-        <input
-          type="text"
-          {...register("tags")}
-          className="mt-1 block w-full border rounded p-2"
-          placeholder="e.g. technology, podcast"
-        />
-      </div>
+              <div>
+                <Label htmlFor="guest_name">Guest Name</Label>
+                <Input
+                  id="guest_name"
+                  type="text"
+                  {...register("guest_name")}
+                  placeholder="Guest name if applicable"
+                />
+                {errors.guest_name && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.guest_name.message}
+                  </p>
+                )}
+              </div>
 
-      <div>
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            {...register("downloadable")}
-            className="mr-2"
-          />
-          Downloadable
-        </label>
-      </div>
+              <TagsInput<PodcastFormData>
+                control={control}
+                name="tags"
+                label="Tags"
+                maxTags={10}
+                maxLength={20}
+              />
+            </div>
 
-      <div>
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            {...register("is_published")}
-            className="mr-2"
-          />
-          Is Published
-        </label>
-      </div>
+            {/* Settings Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Settings</h3>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="vip"
+                  checked={watch("vip")}
+                  onCheckedChange={(checked) => setValue("vip", checked)}
+                />
+                <Label htmlFor="vip">VIP Content</Label>
+              </div>
 
-      <Button type="submit" disabled={uploading}>
-        {mode === "new" ? "Publish Podcast" : "Update Podcast"}
-      </Button>
-    </form>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="downloadable"
+                  checked={watch("downloadable")}
+                  onCheckedChange={(checked) =>
+                    setValue("downloadable", checked)
+                  }
+                />
+                <Label htmlFor="downloadable">Downloadable</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="is_published"
+                  checked={watch("is_published")}
+                  onCheckedChange={(checked) =>
+                    setValue("is_published", checked)
+                  }
+                />
+                <Label htmlFor="is_published">Published</Label>
+              </div>
+            </div>
+          </div>
+
+          <Button type="submit" className="w-full" disabled={uploading}>
+            {uploading
+              ? "Processing..."
+              : mode === "new"
+                ? "Publish Podcast"
+                : "Update Podcast"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

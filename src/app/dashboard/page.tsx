@@ -38,16 +38,19 @@ const recentBookings = [
 export default async function DashboardPage() {
   // Fetch recent bookings from Supabase
   const supabase = await createClient();
+  const { data: user } = await supabase.auth.getUser();
 
   const { data: bookings } = await supabase
     .from("bookings")
     .select("*")
+    .eq("creator_id", user.user?.id)
     .order("created_at", { ascending: false })
     .limit(10);
 
   const { data: sessions } = await supabase
     .from("checkout_sessions")
     .select("*")
+    .eq("creator_id", user.user?.id)
     .order("created_at", { ascending: false })
     .limit(10);
 

@@ -234,8 +234,6 @@
   background-color: hsl(var(--accent));
 }
 
-
-
 @layer base {
   * {
     @apply border-border;

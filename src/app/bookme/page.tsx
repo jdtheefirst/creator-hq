@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { format } from "date-fns";
+import NewsletterForm from "@/components/NewsletterForm";
 
 const daysOfWeek = [
   "Sunday",
@@ -54,7 +55,21 @@ export default async function BookingLanding() {
                   </p>
                 ))
               ) : (
-                <p className="text-red-500">No availability set.</p>
+                <div className="text-gray-700 space-y-2">
+                  <p className="text-red-500 font-semibold">
+                    This creator hasn’t opened up their calendar yet.
+                  </p>
+                  <p>
+                    But don’t bounce! This just means the next booking window is
+                    cooking.{" "}
+                    <span className="font-medium">Check back soon</span> or
+                    follow their socials for real-time updates.
+                  </p>
+                  <p className="text-sm text-gray-500 italic">
+                    ⚠️ Need to lock in something urgent? DM them directly — they
+                    might open a hidden slot for you.
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -130,6 +145,20 @@ export default async function BookingLanding() {
             >
               Book a Slot
             </Link>
+          </div>
+        </div>
+        <div className="bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="max-w-3xl mx-auto text-center">
+              <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
+                Stay Updated
+              </h2>
+              <p className="mt-4 text-lg text-gray-500">
+                Subscribe to my newsletter to get the latest updates, exclusive
+                content, and behind-the-scenes insights.
+              </p>
+              <NewsletterForm />
+            </div>
           </div>
         </div>
       </div>
