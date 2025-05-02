@@ -141,7 +141,9 @@ export default function PodcastForm({
           .upload(filePath, data.audio_file[0]);
 
         if (uploadError) throw uploadError;
-
+        toast.success("Audio file uploaded", {
+          id: toastId,
+        });
         audioUrl = filePath; // Store the full path for RLS checking
       }
 

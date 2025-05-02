@@ -16,8 +16,9 @@ const storageFields: Record<string, { bucket: string; field: string }[]> = {
     { bucket: "covers", field: "cover_image_url" },
   ],
   courses: [
-    { bucket: "courses", field: "url" },
-    { bucket: "covers", field: "cover_image_url" },
+    { bucket: "audios", field: "audio_url" },
+    { bucket: "videos", field: "video_url" },
+    { bucket: "courses", field: "cover_image_url" },
   ],
   lyrics: [
     { bucket: "covers", field: "cover_image_url" },

@@ -188,3 +188,42 @@ USING (
     AND podcasts.is_published = true
   )
 );
+
+-- courses example;
+CREATE POLICY "Creators can manage their own courses files"
+  ON storage.objects FOR ALL
+  USING (
+    bucket_id = 'courses'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND EXISTS (
+      SELECT 1
+      FROM users u
+      WHERE u.id = auth.uid()
+      AND u.role = 'creator'::user_role
+    )
+  )
+  WITH CHECK (
+    bucket_id = 'courses'
+    AND (storage.foldername(name))[1] = auth.uid()::text
+    AND EXISTS (
+      SELECT 1
+      FROM users u
+      WHERE u.id = auth.uid()
+      AND u.role = 'creator'::user_role
+    )
+  );
+
+CREATE POLICY "Public can view published course files"
+  ON storage.objects FOR SELECT
+  USING (
+    bucket_id = 'courses'
+    AND EXISTS (
+      SELECT 1 FROM courses
+      WHERE courses.status = 'published'
+      AND (
+        courses.audio_url = storage.objects.name
+        OR courses.video_url = storage.objects.name
+      )
+    )
+  );
+

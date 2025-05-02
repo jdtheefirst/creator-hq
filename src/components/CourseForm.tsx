@@ -21,28 +21,87 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { v4 as uuidv4 } from "uuid";
 
-const courseSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(1, "Title is required").max(100),
-  description: z.string().min(1, "Description is required").max(2000),
-  tags: z.array(z.string().max(20)).max(10).optional(),
-  category: z.string().min(1, "Category is required"),
-  language: z.string().min(1, "Language is required"),
-  url: z.string().url("Invalid URL").optional(),
-  price: z.coerce.number().min(0, "Price must be positive"),
-  level: z.enum(["beginner", "intermediate", "advanced"]),
-  duration: z.string().min(1, "Duration is required"),
-  cover_image_url: z.string().url("Invalid URL").optional().or(z.literal("")),
-  content: z.string().max(10000).optional(),
-  status: z.enum(["draft", "published"]).default("draft").optional(),
-  comments_enabled: z.boolean().default(true).optional(),
-  course_type: z.enum(["video", "audio", "text"]),
-  course_format: z.enum(["live", "on-demand"]),
-  vip: z.boolean().default(false).optional(),
-});
+const courseSchema = z
+  .object({
+    id: z.string().optional(),
+    title: z.string().min(1, "Title is required").max(100),
+    description: z.string().min(1, "Description is required").max(2000),
+    tags: z.array(z.string().max(20)).max(10).optional(),
+    category: z.string().min(1, "Category is required"),
+    language: z.string().min(1, "Language is required"),
+    video_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+    price: z.coerce.number().min(0, "Price must be positive"),
+    level: z.enum(["beginner", "intermediate", "advanced"]),
+    duration: z.string().min(1, "Duration is required"),
+    cover_image_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+    content: z.string().max(10000).optional(),
+    status: z.enum(["draft", "published"]).default("draft").optional(),
+    comments_enabled: z.boolean().default(true).optional(),
+    course_type: z.enum(["video", "audio", "text"]),
+    course_format: z.enum(["live", "on-demand"]),
+    vip: z.boolean().default(false).optional(),
+    audio_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+    audio_file: z
+      .any()
+      .optional()
+      .refine(
+        (file) => !file || file.length === 0 || file?.[0]?.size <= 10_000_000,
+        "Cover image size must be less than 10MB"
+      ),
+    cover_file: z
+      .any()
+      .optional()
+      .refine(
+        (file) => !file || file.length === 0 || file?.[0]?.size <= 10_000_000,
+        "Cover image size must be less than 10MB"
+      ),
+    video_file: z
+      .any()
+      .optional()
+      .refine(
+        (file) => !file || file.length === 0 || file?.[0]?.size <= 10_000_000,
+        "Video file size must be less than 10MB"
+      ),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.course_type === "video" &&
+      !data.video_url &&
+      !data.video_file?.[0]
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Video file is required",
+        path: ["video_file"],
+      });
+    }
+    if (
+      data.course_type === "audio" &&
+      !data.audio_url &&
+      !data.audio_file?.[0]
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Audio file is required",
+        path: ["audio_file"],
+      });
+    }
+    if (data.course_type === "text" && !data.content) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Text content is required",
+        path: ["content"],
+      });
+    }
+  });
 
-type CourseFormData = z.infer<typeof courseSchema>;
+type CourseFormData = z.infer<typeof courseSchema> & {
+  audio_file?: File[];
+  video_file?: File[];
+  cover_file?: File[];
+};
 
 export default function CourseForm({
   mode,
@@ -64,14 +123,19 @@ export default function CourseForm({
       status: "draft",
       comments_enabled: initialData?.comments_enabled ?? true,
       vip: initialData?.vip ?? false,
+      audio_url: initialData?.audio_url ?? "",
+      video_url: initialData?.video_url ?? "",
+      cover_image_url: initialData?.cover_image_url ?? "",
       tags: [],
       ...initialData,
-    },
+    } as CourseFormData,
   });
 
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
   const { supabase, user } = useAuth();
+  const coverFile = watch("cover_file");
+  const courseType = watch("course_type");
 
   const onSubmit = async (data: CourseFormData) => {
     setSubmitting(true);
@@ -85,6 +149,87 @@ export default function CourseForm({
         creator_id: user?.id,
         updated_at: new Date().toISOString(),
       };
+      // Handle content file upload
+      if (courseData.video_file?.[0] && courseType === "video") {
+        // Delete old file if exists in edit mode
+        if (mode === "edit" && initialData?.video_url) {
+          const oldPath = initialData.video_url.split("/").pop();
+          await supabase.storage.from("videos").remove([oldPath!]);
+        }
+
+        const fileExt = courseData.video_file[0].name.split(".").pop();
+        const filePath = `${user?.id}/courses/${uuidv4()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("videos")
+          .upload(filePath, courseData.video_file[0]);
+
+        console.log("Upload error:", uploadError); // Debugging line
+        if (uploadError) throw uploadError;
+
+        toast.success("Video file uploaded", {
+          id: toastId,
+        });
+
+        courseData.video_url = filePath; // Store the full path for RLS checking
+        delete courseData.video_file; // Remove video_file from courseData
+      }
+
+      //handle audio file upload
+      if (courseData.audio_file?.[0] && courseType === "audio") {
+        // Delete old file if exists in edit mode
+        if (mode === "edit" && initialData?.audio_url) {
+          const oldPath = initialData.audio_url.split("/").pop();
+          await supabase.storage.from("audios").remove([oldPath!]);
+
+          toast.success("Old audio file deleted", {
+            id: toastId,
+          });
+        }
+
+        const fileExt = courseData.audio_file[0].name.split(".").pop();
+        const filePath = `${user?.id}/courses/${uuidv4()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("audios")
+          .upload(filePath, courseData.audio_file[0]);
+
+        console.log("Upload error:", uploadError); // Debugging line
+        if (uploadError) throw uploadError;
+
+        toast.success("Audio file uploaded", {
+          id: toastId,
+        });
+
+        courseData.audio_url = filePath; // Store the full path for RLS checking
+        delete courseData.audio_file; // Remove audio_file from courseData
+      }
+
+      // Handle course file upload
+      if (courseData.cover_file?.[0]) {
+        // Delete old file if exists in edit mode
+        if (mode === "edit" && initialData?.cover_image_url) {
+          const oldPath = initialData.cover_image_url.split("/covers/")[1];
+          await supabase.storage.from("courses").remove([oldPath]);
+
+          toast.success("Old cover image deleted", {
+            id: toastId,
+          });
+        }
+        const fileExt = courseData.cover_file[0].name.split(".").pop();
+        const filePath = `${user?.id}/courses/${uuidv4()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("courses")
+          .upload(filePath, courseData.cover_file[0]);
+
+        console.log("Upload error:", uploadError); // Debugging line
+        if (uploadError) throw uploadError;
+
+        // Add the file URL to the course data
+        courseData.cover_image_url = filePath; // Store the full path for RLS checking
+        delete courseData.cover_file; // Remove cover_file from courseData
+      }
 
       const { error } =
         mode === "new"
@@ -151,36 +296,6 @@ export default function CourseForm({
                 {errors.description && (
                   <p className="text-sm text-destructive mt-1">
                     {errors.description.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="content">Content</Label>
-                <Textarea
-                  id="content"
-                  {...register("content")}
-                  placeholder="Detailed course content"
-                  rows={6}
-                />
-                {errors.content && (
-                  <p className="text-sm text-destructive mt-1">
-                    {errors.content.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="url">Content URL</Label>
-                <Input
-                  id="url"
-                  type="url"
-                  {...register("url")}
-                  placeholder="https://example.com/course-content"
-                />
-                {errors.url && (
-                  <p className="text-sm text-destructive mt-1">
-                    {errors.url.message}
                   </p>
                 )}
               </div>
@@ -324,22 +439,83 @@ export default function CourseForm({
               <h3 className="text-lg font-medium">Media</h3>
 
               <div>
-                <Label htmlFor="cover_image_url">Cover Image URL</Label>
-                <Input
-                  id="cover_image_url"
-                  type="url"
-                  {...register("cover_image_url")}
-                  placeholder="https://example.com/image.jpg"
-                />
-                {errors.cover_image_url && (
+                <Label htmlFor="content_file">
+                  {courseType === "video"
+                    ? "Video File"
+                    : courseType === "audio"
+                      ? "Audio File"
+                      : "Text Content"}{" "}
+                  *
+                </Label>
+                {courseType === "video" && (
+                  <Input
+                    id="video_file"
+                    type="file"
+                    accept="video/*"
+                    {...register("video_file")}
+                  />
+                )}
+                {courseType === "audio" && (
+                  <Input
+                    id="audio_file"
+                    type="file"
+                    accept="audio/*"
+                    {...register("audio_file")}
+                  />
+                )}
+                {courseType === "text" && (
+                  <div>
+                    <Label htmlFor="content">Content</Label>
+                    <Textarea
+                      id="content"
+                      {...register("content")}
+                      placeholder="Detailed course content"
+                      rows={6}
+                    />
+                    {errors.content && (
+                      <p className="text-sm text-destructive mt-1">
+                        {errors.content.message}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {errors.video_file && (
                   <p className="text-sm text-destructive mt-1">
-                    {errors.cover_image_url.message}
+                    {errors.video_file?.message &&
+                      String(errors.video_file.message)}
+                  </p>
+                )}
+                {errors.audio_file && (
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.audio_file?.message &&
+                      String(errors.audio_file.message)}
                   </p>
                 )}
               </div>
 
               <div>
-                <Label htmlFor="tags">Tags</Label>
+                <Label htmlFor="cover_file">Cover Image *</Label>
+                <Input
+                  id="cover_file"
+                  type="file"
+                  accept="image/*"
+                  {...register("cover_file")}
+                />
+                {coverFile?.[0] && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Selected: {coverFile[0].name} (
+                    {(coverFile[0].size / (1024 * 1024)).toFixed(2)} MB)
+                  </p>
+                )}
+                {errors.cover_file && (
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.cover_file?.message &&
+                      String(errors.cover_file.message)}
+                  </p>
+                )}
+              </div>
+
+              <div>
                 <TagsInput<CourseFormData>
                   control={control}
                   name="tags"
