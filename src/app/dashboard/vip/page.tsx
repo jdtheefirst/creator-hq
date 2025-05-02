@@ -1,16 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
-interface VIPContent {
-  id: string;
-  title: string;
-  description: string;
-  content_type: string;
-  access_level: string;
-  price: number;
-  created_at: string;
-}
-
 export default async function VIPContentPage() {
   const supabase = await createClient();
   const { data: vipContent, error } = await supabase

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { format } from "date-fns";
+import DeleteButton from "@/components/ui/deleteButton";
 
 export default async function PostsPage() {
   const supabase = await createClient();
@@ -89,13 +90,15 @@ export default async function PostsPage() {
                     {format(new Date(post.updated_at), "MMM d, yyyy")}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 items-center">
                       <Link
                         href={`/dashboard/posts/${post.id}/edit`}
                         className="text-destructive hover:text-blue-900"
                       >
                         Edit
                       </Link>
+
+                      <DeleteButton contentType="blogs" contentId={post.id} />
                     </div>
                   </td>
                 </tr>

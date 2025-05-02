@@ -146,7 +146,8 @@ export default async function VideosPage() {
                     >
                       <Edit className="w-4 h-4" />
                     </Link>
-                    <DeleteButton videoId={video.id} />
+                    {/* Delete Button */}
+                    <DeleteButton contentType="videos" contentId={video.id} />
                   </div>
                 </div>
               </div>

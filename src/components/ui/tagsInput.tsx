@@ -25,11 +25,10 @@ export function TagsInput<T extends FieldValues>({
     fieldState: { error },
   } = useController({
     ...props,
-    defaultValue: [] as unknown as T[typeof props.name],
   });
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(props.defaultValue || "");
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if ((e.key === "Enter" || e.key === ",") && input.trim()) {
@@ -42,13 +41,12 @@ export function TagsInput<T extends FieldValues>({
     }
 
     if (e.key === "Backspace" && input === "" && value.length > 0) {
-      onChange(value.slice(0, -1)); // Remove last tag
+      onChange(value.slice(0, -1));
     }
   };
 
   const removeTag = (index: number) => {
-    const newTags = value.filter((_, i) => i !== index);
-    onChange(newTags);
+    onChange(value.filter((_, i) => i !== index));
   };
 
   return (
@@ -75,7 +73,7 @@ export function TagsInput<T extends FieldValues>({
         {value.map((tag: string, i: number) => (
           <span
             key={i}
-            className="bg-gray-200 text-sm px-2 py-1 rounded-full flex items-center gap-1"
+            className="bg-accent text-accent-foreground text-sm px-2 py-1 rounded-full flex items-center gap-1"
           >
             {tag}
             <button
@@ -91,7 +89,6 @@ export function TagsInput<T extends FieldValues>({
           <input
             ref={inputRef}
             type="text"
-            autoFocus={false}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -100,12 +97,12 @@ export function TagsInput<T extends FieldValues>({
           />
         )}
       </div>
-      {error && <p className="text-sm text-red-500 mt-1">{error.message}</p>}
+      {error && (
+        <p className="text-sm text-destructive mt-1">{error.message}</p>
+      )}
       <p className="text-sm text-muted-foreground mt-1">
         Max {maxTags} tags, {maxLength} chars each
       </p>
     </div>
   );
 }
-
-export default TagsInput;

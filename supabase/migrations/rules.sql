@@ -122,4 +122,69 @@ FOR SELECT
 TO public
 USING (true);
 
+-- Audio files policy
+CREATE POLICY "Creators can manage their own audio files"
+ON storage.objects FOR ALL
+USING (
+  bucket_id = 'audios'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+  AND EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role = 'creator'
+  )
+)
+WITH CHECK (
+  bucket_id = 'audios'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+  AND EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role = 'creator'
+  )
+);
 
+-- Cover images policy
+CREATE POLICY "Creators can manage their own cover files"
+ON storage.objects FOR ALL
+USING (
+  bucket_id = 'covers'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+  AND EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role = 'creator'
+  )
+)
+WITH CHECK (
+  bucket_id = 'covers'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+  AND EXISTS (
+    SELECT 1 FROM users
+    WHERE id = auth.uid()
+    AND role = 'creator'
+  )
+);
+
+-- Public read policies
+CREATE POLICY "Public can view published audio files"
+ON storage.objects FOR SELECT
+USING (
+  bucket_id = 'audios'
+  AND EXISTS (
+    SELECT 1 FROM podcasts
+    WHERE podcasts.audio_url = storage.objects.name
+    AND podcasts.is_published = true
+  )
+);
+
+CREATE POLICY "Public can view published cover files"
+ON storage.objects FOR SELECT
+USING (
+  bucket_id = 'covers'
+  AND EXISTS (
+    SELECT 1 FROM podcasts
+    WHERE podcasts.cover_image_url = storage.objects.name
+    AND podcasts.is_published = true
+  )
+);

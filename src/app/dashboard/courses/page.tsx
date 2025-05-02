@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import DeleteButton from "@/components/ui/deleteButton";
 
 interface Course {
   id: string;
@@ -92,21 +93,17 @@ export default async function CoursesPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-4">
+                      <div className="flex gap-4 items-center">
                         <Link
                           href={`/dashboard/courses/${course.id}/edit`}
                           className="text-blue-600 hover:text-blue-900"
                         >
                           Edit
                         </Link>
-                        <button
-                          onClick={() => {
-                            // Handle delete
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
-                        </button>
+                        <DeleteButton
+                          contentType="courses"
+                          contentId={course.id}
+                        />
                       </div>
                     </td>
                   </tr>

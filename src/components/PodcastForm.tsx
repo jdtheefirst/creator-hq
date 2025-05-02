@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import TagsInput from "./ui/tagsInput";
+import { TagsInput } from "./ui/tagsInput";
 import { useRouter } from "next/navigation";
 
 const basePodcastSchema = z.object({
@@ -23,8 +23,13 @@ const basePodcastSchema = z.object({
   season_number: z.coerce.number().int().positive("Must be positive"),
   episode_number: z.coerce.number().int().positive("Must be positive"),
   duration: z.coerce.number().int().positive("Must be positive"),
-  cover_image_url: z.string().url("Invalid URL").optional().or(z.literal("")),
-  youtube_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+  cover_image_url: z.string().optional().or(z.literal("")),
+  youtube_url: z
+    .string()
+    .url("Invalid URL")
+    .optional()
+    .or(z.literal(""))
+    .nullable(),
   transcript: z.string().max(10000).optional(),
   guest_name: z.string().max(100).optional(),
   tags: z.array(z.string().max(20)).max(10),
@@ -39,17 +44,39 @@ const newPodcastSchema = basePodcastSchema.extend({
     .any()
     .refine((file) => file?.length > 0, "Audio file is required")
     .refine(
-      (file) => file?.[0]?.size <= 100_000_000,
-      "File size must be less than 100MB"
+      (file) => file?.[0]?.size <= 10_000_000,
+      "File size must be less than 10MB"
+    ),
+  cover_file: z
+    .any()
+    .refine((file) => file?.length > 0, "Cover file is required")
+    .refine(
+      (file) => file?.[0]?.size <= 10_000_000,
+      "File size must be less than 10MB"
     ),
 });
 
 const editPodcastSchema = basePodcastSchema.extend({
-  audio_url: z.any().optional(), // Not required in edit mode
+  audio_url: z.any().optional(),
+  audio_file: z
+    .any()
+    .optional()
+    .refine(
+      (file) => !file || file.length === 0 || file?.[0]?.size <= 10_000_000,
+      "Cover image size must be less than 10MB"
+    ),
+  cover_file: z
+    .any()
+    .optional()
+    .refine(
+      (file) => !file || file.length === 0 || file?.[0]?.size <= 10_000_000,
+      "Cover image size must be less than 10MB"
+    ),
 });
 
 type PodcastFormData = z.infer<typeof basePodcastSchema> & {
   audio_file?: File[];
+  cover_file?: File[];
 };
 
 export default function PodcastForm({
@@ -77,60 +104,105 @@ export default function PodcastForm({
     },
   });
   const audioFile = watch("audio_file");
+  const coverFile = watch("cover_file");
   const [uploading, setUploading] = useState(false);
   const { supabase } = useAuth();
   const route = useRouter();
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   const handleFormSubmit = async (data: PodcastFormData) => {
+    if (!user) {
+      toast.error("User not authenticated");
+      return;
+    }
+
     setUploading(true);
-    const toastId = toast.loading("Uploading podcast...");
+    const toastId = toast.loading(
+      mode === "edit" ? "Updating podcast..." : "Creating podcast..."
+    );
 
     try {
-      const file = data.audio_file?.[0];
+      let audioUrl = initialData?.audio_url;
+      let coverUrl = initialData?.cover_image_url;
 
-      let audioUrl = initialData?.audio_url || null;
+      // Handle audio file upload
+      if (data.audio_file?.[0]) {
+        // Delete old file if exists in edit mode
+        if (mode === "edit" && initialData?.audio_url) {
+          const oldPath = initialData.audio_url.split("/audios/")[1];
+          await supabase.storage.from("audios").remove([oldPath]);
+        }
 
-      if (file) {
-        const fileExt = file.name.split(".").pop();
-        const filePath = `${user?.id}/podcasts/${uuidv4()}.${fileExt}`;
+        const fileExt = data.audio_file[0].name.split(".").pop();
+        const filePath = `${user.id}/audios/${uuidv4()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from("audios")
-          .upload(filePath, file);
+          .upload(filePath, data.audio_file[0]);
 
         if (uploadError) throw uploadError;
 
-        audioUrl = filePath;
+        audioUrl = filePath; // Store the full path for RLS checking
       }
 
-      const { error: insertError } = await supabase.from("podcasts").upsert({
-        id: initialData?.id,
+      // Handle cover file upload
+      if (data.cover_file?.[0]) {
+        // Delete old file if exists in edit mode
+        if (mode === "edit" && initialData?.cover_image_url) {
+          const oldPath = initialData.cover_image_url.split("/covers/")[1];
+          await supabase.storage.from("covers").remove([oldPath]);
+          toast.success("Old cover image deleted", {
+            id: toastId,
+          });
+        }
+
+        const coverExt = data.cover_file[0].name.split(".").pop();
+        const coverPath = `${user.id}/covers/${uuidv4()}.${coverExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("covers")
+          .upload(coverPath, data.cover_file[0]);
+
+        if (uploadError) throw uploadError;
+        toast.success("Cover image uploaded", {
+          id: toastId,
+        });
+
+        coverUrl = coverPath; // Store the full path for RLS checking
+      }
+
+      // Upsert podcast data
+      const { error } = await supabase.from("podcasts").upsert({
+        id: initialData?.id || undefined,
+        creator_id: user.id,
         title: data.title,
         description: data.description,
         season_number: data.season_number,
         episode_number: data.episode_number,
         duration: data.duration,
         audio_url: audioUrl,
-        cover_image_url: data.cover_image_url || null,
+        cover_image_url: coverUrl,
         youtube_url: data.youtube_url || null,
         transcript: data.transcript || null,
         guest_name: data.guest_name || null,
-        tags: data.tags,
-        vip: data.vip,
-        downloadable: data.downloadable,
-        is_published: data.is_published,
+        tags: data.tags || [],
+        vip: data.vip ?? false,
+        downloadable: data.downloadable ?? true,
+        is_published: data.is_published ?? true,
         updated_at: new Date().toISOString(),
       });
 
-      if (insertError) throw insertError;
+      if (error) throw error;
 
-      toast.success("Podcast published successfully!", { id: toastId });
-      route.push("/podcasts");
-    } catch (err) {
-      console.error("Submission error:", err);
-      toast.error("Failed to publish podcast", {
+      toast.success(mode === "edit" ? "Podcast updated!" : "Podcast created!", {
         id: toastId,
-        description: err instanceof Error ? err.message : "Unknown error",
+      });
+      route.push("/dashboard/podcasts");
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Operation failed", {
+        id: toastId,
+        description: error instanceof Error ? error.message : "Unknown error",
       });
     } finally {
       setUploading(false);
@@ -230,37 +302,66 @@ export default function PodcastForm({
             {/* Media Section */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Media</h3>
+              {/* Audio File Input */}
               <div>
-                <Label htmlFor="audio_file">Audio File *</Label>
+                <Label htmlFor="audio_file">
+                  Audio File {mode === "new" ? "*" : "(Optional)"}
+                </Label>
                 <Input
                   id="audio_file"
                   type="file"
                   accept="audio/*"
                   {...register("audio_file")}
                 />
-                {audioFile?.[0] && (
+                {audioFile?.[0] ? (
                   <p className="text-sm text-muted-foreground mt-1">
                     Selected: {audioFile[0].name} (
                     {(audioFile[0].size / (1024 * 1024)).toFixed(2)} MB)
                   </p>
-                )}
-              </div>
-
-              <div>
-                <Label htmlFor="cover_image_url">Cover Image URL</Label>
-                <Input
-                  id="cover_image_url"
-                  type="url"
-                  {...register("cover_image_url")}
-                  placeholder="https://example.com/image.jpg"
-                />
-                {errors.cover_image_url && (
+                ) : initialData?.audio_url ? (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Current: {initialData.audio_url.split("/").pop()}
+                  </p>
+                ) : null}
+                {errors.audio_file && (
                   <p className="text-sm text-red-500 mt-1">
-                    {errors.cover_image_url.message}
+                    {errors.audio_file.message}
                   </p>
                 )}
               </div>
+              {/* Cover File Input */}
+              <div>
+                <Label htmlFor="cover_file">
+                  Cover Image {mode === "new" ? "*" : "(Optional)"}
+                </Label>
+                <Input
+                  id="cover_file"
+                  type="file"
+                  accept="image/*"
+                  {...register("cover_file")}
+                />
+                {coverFile?.[0] ? (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Selected: {coverFile[0].name} (
+                    {(coverFile[0].size / (1024 * 1024)).toFixed(2)} MB)
+                  </p>
+                ) : initialData?.cover_image_url ? (
+                  <div className="mt-2">
+                    <p className="text-sm text-muted-foreground">Current:</p>
+                    <img
+                      src={`${projectUrl}/storage/v1/object/public/covers/${initialData.cover_image_url}`}
+                      alt="Current cover"
+                      className="h-20 w-20 object-cover rounded"
+                    />
+                  </div>
+                ) : null}
 
+                {errors.audio_file && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.audio_file.message}
+                  </p>
+                )}
+              </div>
               <div>
                 <Label htmlFor="youtube_url">YouTube URL</Label>
                 <Input
@@ -316,6 +417,7 @@ export default function PodcastForm({
                 label="Tags"
                 maxTags={10}
                 maxLength={20}
+                defaultValue={initialData?.tags || []}
               />
             </div>
 

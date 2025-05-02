@@ -164,8 +164,9 @@ export default function ProfileForm({
   const [previewMode, setPreviewMode] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [more, setMore] = useState(false);
-  const coverUrl = `https://eofyzzhfsqwfskxstczu.supabase.co/storage/v1/object/public/covers/${formData.cover_image}`;
-  const avatarUrl = `https://eofyzzhfsqwfskxstczu.supabase.co/storage/v1/object/public/avatars/${formData.avatar_url}`;
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const coverUrl = `${projectUrl}/storage/v1/object/public/covers/${formData.cover_image}`;
+  const avatarUrl = `${projectUrl}/storage/v1/object/public/avatars/${formData.avatar_url}`;
 
   const [socialLinks, setSocialLinks] = useState<Record<string, string>>(
     initialData.social_links || {}

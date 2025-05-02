@@ -33,10 +33,6 @@ interface BookingProps {
   };
 }
 
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
-);
-
 export function formatDateWithOrdinal(dateString: string): string {
   const date = new Date(dateString);
   const day = date.getDate();
