@@ -4,9 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function CoursesPage() {
   const supabase = await createClient();
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
   const { data: courses } = await supabase
     .from("courses")
     .select("id, title, description, price, level, duration, cover_image_url")
+    .eq("published", true)
+    .eq("creator_id", creatorId)
     .order("created_at", { ascending: false });
 
   return (
@@ -17,11 +21,11 @@ export default async function CoursesPage() {
         </h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {courses?.map((course) => (
-            <Link key={course.id} href={`/app/courses/${course.id}`}>
+            <Link key={course.id} href={`/courses/${course.id}`}>
               <div className="group bg-white rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
                 <div className="relative w-full h-48">
                   <Image
-                    src={course.cover_image_url || "/placeholder.jpg"}
+                    src={`${projectUrl}/storage/v1/object/public/covers/${course.cover_image_url}`}
                     alt={course.title}
                     fill
                     className="object-cover"

@@ -7,15 +7,11 @@ import { toast } from "sonner";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { supabase } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     const handleVipCheckout = async () => {
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
         if (!user) {
           toast.info("Haven't logged in yet, redirecting to login...");
           return redirect("/login");

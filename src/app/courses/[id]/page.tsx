@@ -1,19 +1,32 @@
+import { CourseMediaToggle } from "@/components/ui/mediaToggle";
 import { createClient } from "@/lib/supabase/server";
 import Image from "next/image";
+import Link from "next/link";
 
 export default async function CourseDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
+  const { id } = await params;
   const supabase = await createClient();
-  const { data: course } = await supabase
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
+
+  const { data: user } = await supabase.auth.getUser();
+  const userId = user?.user?.id;
+
+  const { data: course, error } = await supabase
     .from("courses")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
+    .eq("creator_id", creatorId)
     .single();
 
-  if (!course) {
+  const isEnrolled = course?.students?.includes(userId);
+
+  if (!course || error) {
+    console.error("Error fetching course data:", error);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-600">Course not found</p>
@@ -25,11 +38,14 @@ export default async function CourseDetailPage({
     <div className="min-h-screen bg-white py-16 px-6">
       <div className="max-w-4xl mx-auto">
         <div className="relative w-full h-64 mb-8 rounded-xl overflow-hidden shadow-md">
-          <Image
-            src={course.cover_image_url || "/placeholder.jpg"}
-            alt={course.title}
-            fill
-            className="object-cover"
+          <CourseMediaToggle
+            coverUrl={`${projectUrl}/storage/v1/object/public/covers/${course.cover_image_url}`}
+            title={course.title}
+            videoUrl={course.video_url}
+            audioUrl={course.audio_url}
+            content={course.content}
+            courseType={course.course_type}
+            isEnrolled={isEnrolled}
           />
         </div>
         <h1 className="text-4xl font-bold mb-4">{course.title}</h1>
@@ -53,12 +69,21 @@ export default async function CourseDetailPage({
           {course.description}
         </p>
 
-        <div className="mt-12">
-          <button className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition">
-            {course.price === 0
-              ? "Enroll for Free"
-              : `Enroll for $${course.price}`}
-          </button>
+        <div className="mt-12 flex items-center gap-4">
+          {!isEnrolled && (
+            <Link
+              href={`/checkout/course?courseId=${course.id}&type=${
+                course.price === 0 ? "free" : "pay"
+              }&creatorId=${creatorId}`}
+              className="inline-block"
+            >
+              <button className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition">
+                {course.price === 0
+                  ? "Enroll for Free"
+                  : `Enroll for $${course.price}`}
+              </button>
+            </Link>
+          )}
         </div>
       </div>
     </div>

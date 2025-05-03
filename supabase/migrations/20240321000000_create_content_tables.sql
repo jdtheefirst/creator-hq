@@ -108,6 +108,7 @@ CREATE TABLE courses (
   course_type TEXT NOT NULL CHECK (course_type IN ('video', 'audio', 'text')),
   course_format TEXT NOT NULL CHECK (course_format IN ('live', 'on-demand')),
   creator_id UUID REFERENCES auth.users(id),
+  students uuid[] DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   vip BOOLEAN DEFAULT false
@@ -123,6 +124,19 @@ CREATE POLICY "Creators can manage their own courses"
   ON courses FOR ALL
   USING (auth.uid() = creator_id)
   WITH CHECK (auth.uid() = creator_id);
+
+-- Function to enroll a user in a course
+-- This function adds a user to the students array of a course if they are not already enrolled
+create or replace function enroll_user_to_course(course_id_input uuid, user_id_input uuid)
+returns void as $$
+begin
+  update courses
+  set students = array_append(students, user_id_input)
+  where id = course_id_input
+  and not students @> array[user_id_input];
+end;
+$$ language plpgsql;
+
 
 -- Lyrics table
 CREATE TABLE lyrics (

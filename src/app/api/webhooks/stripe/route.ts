@@ -356,6 +356,54 @@ export async function POST(request: Request) {
             { status: 500 }
           );
         }
+      } else if (type === "course") {
+        // Handle course session
+        const courseId = metadata.courseId;
+        const userId = metadata.userId;
+        const creatorId = metadata.creatorId;
+
+        if (!courseId || !userId || !creatorId) {
+          console.error("Missing required metadata for course", {
+            courseId,
+            userId,
+            creatorId,
+          });
+          return NextResponse.json(
+            { error: "Invalid course metadata" },
+            { status: 400 }
+          );
+        }
+
+        // Update the user to enrolled in the course
+        const { error: courseError } = await supabaseAdmin.rpc(
+          "enroll_user_to_course",
+          {
+            course_id_input: courseId,
+            user_id_input: userId,
+          }
+        );
+
+        if (courseError) {
+          console.error("Course update failed:", courseError);
+          return NextResponse.json(
+            { error: "Course update failed" },
+            { status: 500 }
+          );
+        }
+
+        // Update the checkout session status to completed
+        const { error } = await supabaseAdmin
+          .from("checkout_sessions")
+          .update({ status: "completed" })
+          .eq("stripe_session_id", session.id);
+
+        if (error) {
+          console.error("Checkout session insert failed:", error);
+          return NextResponse.json(
+            { error: "Checkout session insert failed" },
+            { status: 500 }
+          );
+        }
       } else {
         console.warn("Unknown metadata.type:", type);
         return NextResponse.json(
@@ -416,6 +464,128 @@ export async function POST(request: Request) {
           .from("checkout_sessions")
           .update({ status: "expired" })
           .eq("stripe_session_id", session.id);
+      } else if (type === "booking") {
+        const { bookingId, creator_id } = metadata;
+
+        if (!bookingId || !creator_id) {
+          console.error("Missing booking metadata", metadata);
+          return NextResponse.json(
+            { error: "Missing booking info" },
+            { status: 400 }
+          );
+        }
+
+        await supabaseAdmin
+          .from("bookings")
+          .update({
+            payment_status: "expired",
+            status: "cancelled",
+          })
+          .eq("id", bookingId)
+          .eq("creator_id", creator_id);
+
+        const { error } = await supabaseAdmin
+
+          .from("checkout_sessions")
+          .update({ status: "expired" })
+          .eq("stripe_session_id", session.id);
+
+        if (error) {
+          console.error("Checkout session insert failed:", error);
+          return NextResponse.json(
+            { error: "Checkout session insert failed" },
+            { status: 500 }
+          );
+        }
+      } else if (type === "payment_link") {
+        const { booking_id, creatorId } = metadata;
+
+        if (!booking_id || !creatorId) {
+          console.error("Missing required metadata for payment link", {
+            booking_id,
+            creatorId,
+          });
+          return NextResponse.json(
+            { error: "Invalid payment link metadata" },
+            { status: 400 }
+          );
+        }
+
+        // update booking status to expired
+        const { error: bookingError } = await supabaseAdmin
+          .from("bookings")
+          .update({
+            payment_status: "expired",
+            status: "cancelled",
+          })
+          .eq("id", booking_id)
+          .eq("creator_id", creatorId);
+
+        if (bookingError) {
+          console.error("Booking update failed:", bookingError);
+          return NextResponse.json(
+            { error: "Booking update failed" },
+            { status: 500 }
+          );
+        }
+
+        // Update the checkout session status to completed
+        const { error } = await supabaseAdmin
+          .from("checkout_sessions")
+          .update({ status: "expired" })
+          .eq("stripe_session_id", session.id);
+
+        if (error) {
+          console.error("Checkout session insert failed:", error);
+          return NextResponse.json(
+            { error: "Checkout session insert failed" },
+            { status: 500 }
+          );
+        }
+      } else if (type === "vip") {
+        const userId = metadata.userId;
+        const creatorId = metadata.creatorId;
+
+        if (!userId || !creatorId) {
+          console.error("Missing required metadata for VIP", {
+            userId,
+            creatorId,
+          });
+          return NextResponse.json(
+            { error: "Invalid VIP metadata" },
+            { status: 400 }
+          );
+        }
+
+        // Update the user to VIP status
+        const { error: userError } = await supabaseAdmin
+          .from("users")
+          .update({ is_vip: false })
+          .eq("id", userId)
+          .select()
+          .single();
+
+        if (userError) {
+          console.error("User update failed:", userError);
+          return NextResponse.json(
+            { error: "User update failed" },
+            { status: 500 }
+          );
+        }
+
+        // Update the checkout session status to completed
+        const { error } = await supabaseAdmin
+          .from("checkout_sessions")
+          .update({ status: "expired" })
+          .eq("stripe_session_id", session.id);
+
+        if (error) {
+          console.error("Checkout session insert failed:", error);
+          return NextResponse.json(
+            { error: "Checkout session insert failed" },
+            { status: 500 }
+          );
+        }
       }
     } else if (event.type === "payment_intent.payment_failed") {
       // Handle payment failure
