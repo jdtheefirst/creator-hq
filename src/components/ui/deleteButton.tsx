@@ -9,7 +9,7 @@ import { toast } from "sonner";
 const storageFields: Record<string, { bucket: string; field: string }[]> = {
   videos: [
     { bucket: "videos", field: "url" },
-    { bucket: "thumbnails", field: "thumbnail_url" },
+    { bucket: "videos", field: "thumbnail_url" },
   ],
   podcasts: [
     { bucket: "audios", field: "audio_url" },
@@ -18,13 +18,13 @@ const storageFields: Record<string, { bucket: string; field: string }[]> = {
   courses: [
     { bucket: "audios", field: "audio_url" },
     { bucket: "videos", field: "video_url" },
-    { bucket: "courses", field: "cover_image_url" },
+    { bucket: "covers", field: "cover_image_url" },
   ],
   lyrics: [
     { bucket: "covers", field: "cover_image_url" },
     { bucket: "videos", field: "video_url" },
   ],
-  blogs: [{ bucket: "covers", field: "cover_image" }],
+  blogs: [{ bucket: "blog-images", field: "cover_image" }],
   products: [
     { bucket: "products", field: "thumbnail_url" },
     { bucket: "products", field: "digital_file_url" },
@@ -45,7 +45,6 @@ export default function DeleteButton({
   contentId,
 }: DeleteButtonProps) {
   const { supabase } = useAuth();
-  const router = useRouter();
 
   const handleDelete = async () => {
     const confirmDelete = confirm(

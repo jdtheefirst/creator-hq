@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { v4 as uuidv4 } from "uuid";
+import axios from "axios";
+import { Progress } from "./ui/progress";
 
 const courseSchema = z
   .object({
@@ -31,18 +33,39 @@ const courseSchema = z
     tags: z.array(z.string().max(20)).max(10).optional(),
     category: z.string().min(1, "Category is required"),
     language: z.string().min(1, "Language is required"),
-    video_url: z.string().url("Invalid URL").optional().or(z.literal("")),
     price: z.coerce.number().min(0, "Price must be positive"),
     level: z.enum(["beginner", "intermediate", "advanced"]),
     duration: z.string().min(1, "Duration is required"),
-    cover_image_url: z.string().url("Invalid URL").optional().or(z.literal("")),
     content: z.string().max(10000).optional(),
     status: z.enum(["draft", "published"]).default("draft").optional(),
     comments_enabled: z.boolean().default(true).optional(),
     course_type: z.enum(["video", "audio", "text"]),
     course_format: z.enum(["live", "on-demand"]),
     vip: z.boolean().default(false).optional(),
-    audio_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+    cover_image_url: z
+      .string()
+      .optional()
+      .or(z.literal(""))
+      .refine(
+        (val) => !val || val.startsWith("http") || val.includes("/courses/"),
+        "Invalid URL"
+      ),
+    audio_url: z
+      .string()
+      .optional()
+      .or(z.literal(""))
+      .refine(
+        (val) => !val || val.startsWith("http") || val.includes("/courses/"),
+        "Invalid URL"
+      ),
+    video_url: z
+      .string()
+      .optional()
+      .or(z.literal(""))
+      .refine(
+        (val) => !val || val.startsWith("http") || val.includes("/courses/"),
+        "Invalid URL"
+      ),
     audio_file: z
       .any()
       .optional()
@@ -110,6 +133,26 @@ export default function CourseForm({
   mode: "new" | "edit";
   initialData?: Partial<CourseFormData>;
 }) {
+  const normalizedInitialData: CourseFormData = {
+    ...initialData,
+    title: initialData?.title ?? "",
+    description: initialData?.description ?? "",
+    category: initialData?.category ?? "",
+    language: initialData?.language ?? "",
+    price: initialData?.price ?? 0,
+    level: initialData?.level ?? "beginner",
+    duration: initialData?.duration ?? "",
+    course_type: initialData?.course_type ?? "video",
+    course_format: initialData?.course_format ?? "on-demand",
+    status: initialData?.status ?? "draft",
+    comments_enabled: initialData?.comments_enabled ?? true,
+    vip: initialData?.vip ?? false,
+    audio_url: initialData?.audio_url ?? "",
+    video_url: initialData?.video_url ?? "",
+    cover_image_url: initialData?.cover_image_url ?? "",
+    tags: initialData?.tags ?? [],
+  };
+
   const {
     register,
     handleSubmit,
@@ -119,19 +162,11 @@ export default function CourseForm({
     setValue,
   } = useForm<CourseFormData>({
     resolver: zodResolver(courseSchema),
-    defaultValues: {
-      status: "draft",
-      comments_enabled: initialData?.comments_enabled ?? true,
-      vip: initialData?.vip ?? false,
-      audio_url: initialData?.audio_url ?? "",
-      video_url: initialData?.video_url ?? "",
-      cover_image_url: initialData?.cover_image_url ?? "",
-      tags: [],
-      ...initialData,
-    } as CourseFormData,
+    defaultValues: normalizedInitialData,
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState(0);
   const router = useRouter();
   const { supabase, user } = useAuth();
   const coverFile = watch("cover_file");
@@ -158,21 +193,40 @@ export default function CourseForm({
         }
 
         const fileExt = courseData.video_file[0].name.split(".").pop();
+        const fileType = courseData.video_file[0].type;
         const filePath = `${user?.id}/courses/${uuidv4()}.${fileExt}`;
 
-        const { error: uploadError } = await supabase.storage
+        // 🔹 Step 1: Generate Signed Upload URL
+        const { data, error } = await supabase.storage
           .from("videos")
-          .upload(filePath, courseData.video_file[0]);
+          .createSignedUploadUrl(filePath);
 
-        console.log("Upload error:", uploadError); // Debugging line
-        if (uploadError) throw uploadError;
+        if (error) throw error;
+
+        // 🔹 Step 2: Upload File Using Axios (Tracks Progress)
+        await axios
+          .put(data.signedUrl, courseData.video_file[0], {
+            headers: { "Content-Type": fileType },
+            onUploadProgress: (progressEvent) => {
+              if (progressEvent.total) {
+                setProgress((progressEvent.loaded / progressEvent.total) * 100);
+              }
+            },
+          })
+          .catch((error) => {
+            console.error("Upload error:", error);
+            toast.error("Upload failed", {
+              id: toastId,
+            });
+            setSubmitting(false);
+            return;
+          });
 
         toast.success("Video file uploaded", {
           id: toastId,
         });
 
         courseData.video_url = filePath; // Store the full path for RLS checking
-        delete courseData.video_file; // Remove video_file from courseData
       }
 
       //handle audio file upload
@@ -202,7 +256,6 @@ export default function CourseForm({
         });
 
         courseData.audio_url = filePath; // Store the full path for RLS checking
-        delete courseData.audio_file; // Remove audio_file from courseData
       }
 
       // Handle course file upload
@@ -210,7 +263,7 @@ export default function CourseForm({
         // Delete old file if exists in edit mode
         if (mode === "edit" && initialData?.cover_image_url) {
           const oldPath = initialData.cover_image_url.split("/covers/")[1];
-          await supabase.storage.from("courses").remove([oldPath]);
+          await supabase.storage.from("covers").remove([oldPath]);
 
           toast.success("Old cover image deleted", {
             id: toastId,
@@ -220,7 +273,7 @@ export default function CourseForm({
         const filePath = `${user?.id}/courses/${uuidv4()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
-          .from("courses")
+          .from("covers")
           .upload(filePath, courseData.cover_file[0]);
 
         console.log("Upload error:", uploadError); // Debugging line
@@ -228,8 +281,11 @@ export default function CourseForm({
 
         // Add the file URL to the course data
         courseData.cover_image_url = filePath; // Store the full path for RLS checking
-        delete courseData.cover_file; // Remove cover_file from courseData
       }
+
+      delete courseData.audio_file;
+      delete courseData.video_file;
+      delete courseData.cover_file;
 
       const { error } =
         mode === "new"
@@ -392,6 +448,8 @@ export default function CourseForm({
                       setValue("course_type", value as any)
                     }
                     defaultValue={watch("course_type")}
+                    disabled={mode === "edit"}
+                    required={mode === "new"}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select type" />
@@ -448,29 +506,60 @@ export default function CourseForm({
                   *
                 </Label>
                 {courseType === "video" && (
-                  <Input
-                    id="video_file"
-                    type="file"
-                    accept="video/*"
-                    {...register("video_file")}
-                  />
+                  <div>
+                    <Progress value={progress} className="mb-2" />
+                    <Input
+                      id="video_file"
+                      type="file"
+                      accept="video/*"
+                      {...register("video_file")}
+                      disabled={watch("video_url") !== ""}
+                    />
+                    {watch("video_url") && (
+                      <p className="text-sm text-muted-foreground mt-1 truncate">
+                        Current: {watch("video_url")}
+                      </p>
+                    )}
+                    {errors.video_file && (
+                      <p className="text-sm text-destructive mt-1">
+                        {errors.video_file.message &&
+                          String(errors.video_file.message)}
+                      </p>
+                    )}
+                  </div>
                 )}
                 {courseType === "audio" && (
-                  <Input
-                    id="audio_file"
-                    type="file"
-                    accept="audio/*"
-                    {...register("audio_file")}
-                  />
+                  <div>
+                    <Input
+                      id="audio_file"
+                      type="file"
+                      accept="audio/*"
+                      {...register("audio_url")}
+                      disabled={watch("audio_url") !== ""}
+                    />
+                    {watch("audio_url") && (
+                      <p className="text-sm text-muted-foreground mt-1 truncate">
+                        Current: {watch("audio_url")}
+                      </p>
+                    )}
+
+                    {errors.audio_file && (
+                      <p className="text-sm text-destructive mt-1">
+                        {errors.audio_file.message &&
+                          String(errors.audio_file.message)}
+                      </p>
+                    )}
+                  </div>
                 )}
                 {courseType === "text" && (
                   <div>
-                    <Label htmlFor="content">Content</Label>
                     <Textarea
                       id="content"
                       {...register("content")}
                       placeholder="Detailed course content"
                       rows={6}
+                      defaultValue={watch("content")}
+                      disabled={watch("content") !== ""}
                     />
                     {errors.content && (
                       <p className="text-sm text-destructive mt-1">
@@ -500,7 +589,13 @@ export default function CourseForm({
                   type="file"
                   accept="image/*"
                   {...register("cover_file")}
+                  disabled={watch("cover_image_url") !== ""}
                 />
+                {watch("cover_image_url") && (
+                  <p className="text-sm text-muted-foreground mt-1 truncate">
+                    Current: {watch("cover_image_url")}
+                  </p>
+                )}
                 {coverFile?.[0] && (
                   <p className="text-sm text-muted-foreground mt-1">
                     Selected: {coverFile[0].name} (

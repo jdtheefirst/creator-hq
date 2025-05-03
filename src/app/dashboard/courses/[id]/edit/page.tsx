@@ -10,6 +10,7 @@ interface EditCourseProps {
 
 export default async function EditCoursePage({ params }: EditCourseProps) {
   const supabase = await createClient();
+  const { id } = await params;
 
   let initialData = null;
 
@@ -17,7 +18,7 @@ export default async function EditCoursePage({ params }: EditCourseProps) {
     const { data, error } = await supabase
       .from("courses")
       .select("*")
-      .eq("id", params.id)
+      .eq("id", id)
       .single();
 
     if (error) throw error;
