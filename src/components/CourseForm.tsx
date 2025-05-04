@@ -278,6 +278,9 @@ export default function CourseForm({
 
         console.log("Upload error:", uploadError); // Debugging line
         if (uploadError) throw uploadError;
+        toast.success("Cover image uploaded", {
+          id: toastId,
+        });
 
         // Add the file URL to the course data
         courseData.cover_image_url = filePath; // Store the full path for RLS checking
@@ -606,9 +609,7 @@ export default function CourseForm({
             </div>
 
             {/* Settings Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Settings</h3>
-
+            <div className="flex flex-wrap gap-4 sm:gap-6 md:gap-8">
               <div className="flex items-center space-x-2">
                 <Switch
                   id="status"

@@ -74,9 +74,8 @@ export default function CreatorProfilePage() {
   const [notification, setNotification] = useState<NotificationState | null>(
     null
   );
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastSubmissionTime, setLastSubmissionTime] = useState<number>(0);
   const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   useEffect(() => {
     async function fetchProfileData() {
@@ -141,8 +140,9 @@ export default function CreatorProfilePage() {
       </div>
     );
   }
-  const coverUrl = `https://eofyzzhfsqwfskxstczu.supabase.co/storage/v1/object/public/covers/${profile.cover_image}`;
-  const avatarUrl = `https://eofyzzhfsqwfskxstczu.supabase.co/storage/v1/object/public/avatars/${profile.avatar_url}`;
+
+  const coverUrl = `${projectUrl}/storage/v1/object/public/covers/${profile.cover_image}`;
+  const avatarUrl = `${projectUrl}/storage/v1/object/public/avatars/${profile.avatar_url}`;
 
   return (
     <div className="min-h-screen bg-gray-50">
