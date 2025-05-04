@@ -19,6 +19,13 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { CalendarIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { Select } from "@radix-ui/react-select";
+import {
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 const lyricsSchema = z.object({
   id: z.string().optional(),
@@ -30,6 +37,9 @@ const lyricsSchema = z.object({
   album: z.string().optional(),
   release_date: z.date().optional().nullable(),
   video_url: z.string().url("Invalid URL").optional().or(z.literal("")),
+  video_source: z
+    .enum(["youtube", "vimeo", "twitch", "facebook", "custom"])
+    .optional(),
   tags: z.array(z.string().max(20)).max(10).optional(),
   status: z.enum(["draft", "published"]).default("draft").optional(),
   comments_enabled: z.boolean().default(true).optional(),
@@ -74,6 +84,8 @@ export default function LyricsForm({
     comments_enabled: initialData?.comments_enabled ?? true,
     vip: initialData?.vip ?? false,
     video_url: initialData?.video_url ?? "",
+    video_source: initialData?.video_source ?? "youtube",
+    genre: initialData?.genre ?? "",
     cover_image_url: initialData?.cover_image_url ?? "",
     tags: initialData?.tags ?? [],
   };
@@ -306,19 +318,58 @@ export default function LyricsForm({
 
             {/* Media Section */}
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="video_url">Video URL</Label>
-                <Input
-                  id="video_url"
-                  type="url"
-                  {...register("video_url")}
-                  placeholder="https://youtube.com/watch?v=..."
-                />
-                {errors.video_url && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.video_url.message}
-                  </p>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="video_source">Video Source</Label>
+                  <Select
+                    defaultValue={watch("video_source")}
+                    onValueChange={(value) =>
+                      setValue("video_source", value as any)
+                    }
+                    value={watch("video_source") || undefined}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select video source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="youtube">YouTube</SelectItem>
+                      <SelectItem value="vimeo">Vimeo</SelectItem>
+                      <SelectItem value="twitch">Twitch</SelectItem>
+                      <SelectItem value="facebook">Facebook</SelectItem>
+                      <SelectItem value="custom">Custom Embed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="video_url">
+                    {watch("video_source") === "youtube"
+                      ? "YouTube Video ID or URL"
+                      : watch("video_source") === "vimeo"
+                        ? "Vimeo Video ID or URL"
+                        : watch("video_source") === "twitch"
+                          ? "Twitch Video ID"
+                          : watch("video_source") === "facebook"
+                            ? "Facebook Video URL"
+                            : "Embed URL"}
+                  </Label>
+                  <Input
+                    id="video_url"
+                    type="text"
+                    {...register("video_url")}
+                    placeholder={
+                      watch("video_source") === "youtube"
+                        ? "https://youtu.be/..."
+                        : watch("video_source") === "vimeo"
+                          ? "https://vimeo.com/..."
+                          : watch("video_source") === "twitch"
+                            ? "v123456789"
+                            : watch("video_source") === "facebook"
+                              ? "https://facebook.com/..."
+                              : "https://..."
+                    }
+                  />
+                </div>
               </div>
 
               <div>

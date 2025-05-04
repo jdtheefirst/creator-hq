@@ -144,6 +144,7 @@ CREATE TABLE lyrics (
   title TEXT NOT NULL,
   content TEXT NOT NULL,
   video_url TEXT,
+  video_source TEXT CHECK (video_source IN ('youtube', 'vimeo', 'twitch', 'facebook', 'custom')),
   artist TEXT,
   genre TEXT,
   language TEXT,

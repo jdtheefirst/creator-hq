@@ -19,19 +19,59 @@ export function formatCurrency(
 }
 
 export function getEmbedUrl(source: string, videoIdOrUrl: string) {
+  if (!videoIdOrUrl) return "";
+
+  // Extract IDs from URLs if needed
+  let id = videoIdOrUrl;
+
   switch (source) {
     case "youtube":
-      return `https://www.youtube.com/embed/${videoIdOrUrl}`;
+      // Extract ID from various YouTube URL formats
+      const ytRegex =
+        /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      const ytMatch = videoIdOrUrl.match(ytRegex);
+      id = ytMatch && ytMatch[2].length === 11 ? ytMatch[2] : videoIdOrUrl;
+      return `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1`;
+
     case "vimeo":
-      return `https://player.vimeo.com/video/${videoIdOrUrl}`;
+      // Extract ID from Vimeo URL
+      const vimeoRegex = /(?:vimeo\.com\/|video\/)(\d+)/i;
+      const vimeoMatch = videoIdOrUrl.match(vimeoRegex);
+      id = vimeoMatch ? vimeoMatch[1] : videoIdOrUrl;
+      return `https://player.vimeo.com/video/${id}`;
+
     case "twitch":
-      return `https://player.twitch.tv/?video=${videoIdOrUrl}&parent=yourdomain.com`;
+      // Twitch video ID (v123456789)
+      const twitchRegex = /v\d+/;
+      const twitchMatch = videoIdOrUrl.match(twitchRegex);
+      id = twitchMatch ? twitchMatch[0] : videoIdOrUrl;
+      return `https://player.twitch.tv/?video=${id}&parent=${window.location.hostname}`;
+
     case "facebook":
-      return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(videoIdOrUrl)}`;
+      // Facebook URL needs to be encoded
+      return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(videoIdOrUrl)}&show_text=false`;
+
     case "custom":
-      return videoIdOrUrl; // fallback for fully custom embeds
+      return videoIdOrUrl;
+
     default:
-      return "";
+      // Try to auto-detect if source wasn't specified
+      if (
+        videoIdOrUrl.includes("youtube") ||
+        videoIdOrUrl.includes("youtu.be")
+      ) {
+        return getEmbedUrl("youtube", videoIdOrUrl);
+      }
+      if (videoIdOrUrl.includes("vimeo")) {
+        return getEmbedUrl("vimeo", videoIdOrUrl);
+      }
+      if (videoIdOrUrl.includes("twitch")) {
+        return getEmbedUrl("twitch", videoIdOrUrl);
+      }
+      if (videoIdOrUrl.includes("facebook")) {
+        return getEmbedUrl("facebook", videoIdOrUrl);
+      }
+      return videoIdOrUrl;
   }
 }
 
