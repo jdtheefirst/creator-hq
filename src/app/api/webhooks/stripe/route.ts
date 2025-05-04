@@ -404,6 +404,24 @@ export async function POST(request: Request) {
             { status: 500 }
           );
         }
+
+        const { error: metricsError } = await supabaseAdmin.rpc(
+          "update_revenue_metrics",
+          {
+            p_creator_id: creatorId,
+            p_amount: session.amount_total! / 100,
+            p_date: new Date().toISOString(),
+            p_source_type: "course",
+          }
+        );
+
+        if (metricsError) {
+          console.error("Metrics update failed:", metricsError);
+          return NextResponse.json(
+            { error: "Metrics update failed" },
+            { status: 500 }
+          );
+        }
       } else {
         console.warn("Unknown metadata.type:", type);
         return NextResponse.json(

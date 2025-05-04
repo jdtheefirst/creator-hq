@@ -84,7 +84,7 @@ const courseSchema = z
       .any()
       .optional()
       .refine(
-        (file) => !file || file.length === 0 || file?.[0]?.size <= 10_000_000,
+        (file) => !file || file.length === 0 || file?.[0]?.size <= 20_000_000,
         "Video file size must be less than 10MB"
       ),
   })
@@ -189,7 +189,7 @@ export default function CourseForm({
         // Delete old file if exists in edit mode
         if (mode === "edit" && initialData?.video_url) {
           const oldPath = initialData.video_url.split("/").pop();
-          await supabase.storage.from("videos").remove([oldPath!]);
+          await supabase.storage.from("courses").remove([oldPath!]);
         }
 
         const fileExt = courseData.video_file[0].name.split(".").pop();
@@ -198,7 +198,7 @@ export default function CourseForm({
 
         // 🔹 Step 1: Generate Signed Upload URL
         const { data, error } = await supabase.storage
-          .from("videos")
+          .from("courses")
           .createSignedUploadUrl(filePath);
 
         if (error) throw error;
@@ -234,7 +234,7 @@ export default function CourseForm({
         // Delete old file if exists in edit mode
         if (mode === "edit" && initialData?.audio_url) {
           const oldPath = initialData.audio_url.split("/").pop();
-          await supabase.storage.from("audios").remove([oldPath!]);
+          await supabase.storage.from("courses").remove([oldPath!]);
 
           toast.success("Old audio file deleted", {
             id: toastId,
@@ -245,7 +245,7 @@ export default function CourseForm({
         const filePath = `${user?.id}/courses/${uuidv4()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
-          .from("audios")
+          .from("courses")
           .upload(filePath, courseData.audio_file[0]);
 
         console.log("Upload error:", uploadError); // Debugging line
@@ -513,7 +513,6 @@ export default function CourseForm({
                       type="file"
                       accept="video/*"
                       {...register("video_file")}
-                      disabled={watch("video_url") !== ""}
                     />
                     {watch("video_url") && (
                       <p className="text-sm text-muted-foreground mt-1 truncate">
@@ -535,7 +534,6 @@ export default function CourseForm({
                       type="file"
                       accept="audio/*"
                       {...register("audio_url")}
-                      disabled={watch("audio_url") !== ""}
                     />
                     {watch("audio_url") && (
                       <p className="text-sm text-muted-foreground mt-1 truncate">
@@ -559,7 +557,6 @@ export default function CourseForm({
                       placeholder="Detailed course content"
                       rows={6}
                       defaultValue={watch("content")}
-                      disabled={watch("content") !== ""}
                     />
                     {errors.content && (
                       <p className="text-sm text-destructive mt-1">
@@ -567,18 +564,6 @@ export default function CourseForm({
                       </p>
                     )}
                   </div>
-                )}
-                {errors.video_file && (
-                  <p className="text-sm text-destructive mt-1">
-                    {errors.video_file?.message &&
-                      String(errors.video_file.message)}
-                  </p>
-                )}
-                {errors.audio_file && (
-                  <p className="text-sm text-destructive mt-1">
-                    {errors.audio_file?.message &&
-                      String(errors.audio_file.message)}
-                  </p>
                 )}
               </div>
 
@@ -589,7 +574,6 @@ export default function CourseForm({
                   type="file"
                   accept="image/*"
                   {...register("cover_file")}
-                  disabled={watch("cover_image_url") !== ""}
                 />
                 {watch("cover_image_url") && (
                   <p className="text-sm text-muted-foreground mt-1 truncate">

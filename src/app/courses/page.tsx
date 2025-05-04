@@ -4,14 +4,29 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function CoursesPage() {
   const supabase = await createClient();
-  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, ""); // Remove trailing slashes
   const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
-  const { data: courses } = await supabase
+  const { data: courses, error } = await supabase
     .from("courses")
     .select("id, title, description, price, level, duration, cover_image_url")
-    .eq("published", true)
+    .eq("status", "published")
     .eq("creator_id", creatorId)
     .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching courses:", error);
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">Failed to load courses</p>
+        <a
+          href="/courses"
+          className="inline-block bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+        >
+          Return to Courses
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-200 py-12 px-6">

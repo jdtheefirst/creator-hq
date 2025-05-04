@@ -213,17 +213,20 @@ CREATE POLICY "Creators can manage their own courses files"
     )
   );
 
-CREATE POLICY "Public can view published course files"
-  ON storage.objects FOR SELECT
+CREATE POLICY "Only enrolled students can access their course files"
+  ON storage.objects
+  FOR SELECT
   USING (
     bucket_id = 'courses'
     AND EXISTS (
-      SELECT 1 FROM courses
-      WHERE courses.status = 'published'
-      AND (
-        courses.audio_url = storage.objects.name
-        OR courses.video_url = storage.objects.name
-      )
+      SELECT 1
+      FROM courses
+      WHERE
+        courses.status = 'published'
+        AND auth.uid() = ANY(courses.students)
+        AND (
+          courses.audio_url = storage.objects.name
+          OR courses.video_url = storage.objects.name
+        )
     )
   );
-

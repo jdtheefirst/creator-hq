@@ -14,9 +14,8 @@ export default function CheckoutPage() {
     const handleCheckout = async () => {
       const courseId = searchParams.get("courseId");
       const type = searchParams.get("type"); // "free" or "pay"
-      const creatorId = searchParams.get("creatorId"); // needed for checkout session
 
-      if (!courseId || !type || !creatorId) {
+      if (!courseId || !type) {
         toast.error("Missing checkout information.");
         return router.push("/courses");
       }
@@ -48,7 +47,7 @@ export default function CheckoutPage() {
           method: "POST",
           cache: "no-cache",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ courseId, creatorId }),
+          body: JSON.stringify({ courseId }),
         });
 
         if (res.ok) {
