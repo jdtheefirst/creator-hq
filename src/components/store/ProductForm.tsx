@@ -75,6 +75,7 @@ const productSchema = z
       .default(false)
       .optional(),
     variants: z.array(variantSchema).optional(),
+    vip: z.boolean().default(false).optional(),
   })
   .superRefine((data, ctx) => {
     const { type } = data;
@@ -418,48 +419,52 @@ export function ProductForm({
 
       // 🆙 Insert or update product
       if (onSubmit.update) {
-        const { error, data: insertResult } = await supabase
+        const { error } = await supabase
           .from("products")
           .update(cleanProductData)
           .eq("id", onSubmit.id)
           .eq("creator_id", user?.id)
-          .select()
+          .select("id")
           .single();
 
         if (error) throw error;
-        productId = insertResult.id;
       } else {
-        const { error } = await supabase
+        const { error, product } = await supabase
           .from("products")
           .insert({
             ...cleanProductData,
             creator_id: user?.id,
           })
-          .select()
+          .select("id")
           .single();
 
         if (error) throw error;
+        productId = product.id;
       }
 
       const productUrl = `/store/${productId}`;
 
       if (featured) {
-        await supabase.rpc("feature_content", {
+        const { error } = await supabase.rpc("feature_content", {
           _creator_id: user?.id,
           _type: "product",
-          _title: cleanProductData.title,
-          _description: cleanProductData.title,
-          _thumbnail_url: cleanProductData.cover_image_url,
+          _title: data.name,
+          _description: data.description,
+          _thumbnail_url: data.thumbnail_url,
           _url: productUrl,
-          _is_vip: cleanProductData.vip || false,
+          _is_vip: false,
         });
+
+        if (error) throw error;
       } else {
-        await supabase
+        const { error } = await supabase
           .from("featured_content")
           .delete()
           .eq("creator_id", user?.id)
           .eq("type", "product")
           .eq("url", productUrl);
+
+        if (error) throw error;
       }
 
       // 🔁 Upsert variants if any
@@ -855,19 +860,33 @@ export function ProductForm({
           </p>
         )}
       </div>
-
-      <div className="flex items-center space-x-2">
-        <Switch
-          id="featured"
-          checked={watch("featured")}
-          onCheckedChange={(checked) => setValue("featured", checked)}
-        />
-        <Label htmlFor="featured">Featured</Label>
-        {errors.featured && (
-          <p className="text-sm text-destructive mt-1">
-            {errors.featured?.message && String(errors.featured.message)}
-          </p>
-        )}
+      <div className="flex flex-wrap gap-4 sm:gap-6 md:gap-8">
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="featured"
+            checked={watch("featured")}
+            onCheckedChange={(checked) => setValue("featured", checked)}
+          />
+          <Label htmlFor="featured">Featured</Label>
+          {errors.featured && (
+            <p className="text-sm text-destructive mt-1">
+              {errors.featured?.message && String(errors.featured.message)}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="vip"
+            checked={watch("vip")}
+            onCheckedChange={(checked) => setValue("vip", checked)}
+          />
+          <Label htmlFor="Vip">Vip Only</Label>
+          {errors.vip && (
+            <p className="text-sm text-destructive mt-1">
+              {errors.featured?.message && String(errors.vip.message)}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Variants Section */}

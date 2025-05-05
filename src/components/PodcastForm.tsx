@@ -190,30 +190,38 @@ export default function PodcastForm({
       }
 
       // Upsert podcast data
-      const { error, podcastData } = await supabase
+      const { error, data: podcastData } = await supabase
         .from("podcasts")
-        .upsert({
-          id: initialData?.id || undefined,
-          creator_id: user.id,
-          title: data.title,
-          description: data.description,
-          season_number: data.season_number,
-          episode_number: data.episode_number,
-          duration: data.duration,
-          audio_url: audioUrl,
-          cover_image_url: coverUrl,
-          youtube_url: data.youtube_url || null,
-          transcript: data.transcript || null,
-          guest_name: data.guest_name || null,
-          tags: data.tags || [],
-          vip: data.vip ?? false,
-          downloadable: data.downloadable ?? true,
-          is_published: data.is_published ?? true,
-          updated_at: new Date().toISOString(),
-        })
-        .select("id");
+        .upsert(
+          {
+            id: initialData?.id || undefined,
+            creator_id: user.id,
+            title: data.title,
+            description: data.description,
+            season_number: data.season_number,
+            episode_number: data.episode_number,
+            duration: data.duration,
+            audio_url: audioUrl,
+            cover_image_url: coverUrl,
+            youtube_url: data.youtube_url || null,
+            transcript: data.transcript || null,
+            guest_name: data.guest_name || null,
+            tags: data.tags || [],
+            vip: data.vip ?? false,
+            downloadable: data.downloadable ?? true,
+            is_published: data.is_published ?? true,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" }
+        )
+        .select("id")
+        .single();
 
       if (error) throw error;
+
+      if (!podcastData?.id) {
+        throw new Error("Upsert succeeded but no podcast ID returned.");
+      }
 
       const podUrl = `/podcasts/${podcastData.id}`;
 
@@ -465,8 +473,7 @@ export default function PodcastForm({
             </div>
 
             {/* Settings Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Settings</h3>
+            <div className="flex flex-wrap gap-4 sm:gap-6 md:gap-8">
               <div className="flex items-center space-x-2">
                 <Switch
                   id="vip"
@@ -496,6 +503,21 @@ export default function PodcastForm({
                   }
                 />
                 <Label htmlFor="is_published">Published</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="featured"
+                  checked={watch("featured")}
+                  onCheckedChange={(checked) => setValue("featured", checked)}
+                />
+                <Label htmlFor="featured">Featured</Label>
+                {errors.featured && (
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.featured?.message &&
+                      String(errors.featured.message)}
+                  </p>
+                )}
               </div>
             </div>
           </div>

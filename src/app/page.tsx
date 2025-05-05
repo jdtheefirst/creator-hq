@@ -18,6 +18,7 @@ import {
   UserRoundPen,
 } from "lucide-react";
 import NewsletterForm from "@/components/NewsletterForm";
+import { getSafeUrl } from "@/lib/utils";
 
 interface Profile {
   id: string;
@@ -638,7 +639,7 @@ export default function CreatorProfilePage() {
                 )}
                 <div className="relative h-48">
                   <Image
-                    src={content.thumbnail_url}
+                    src={getSafeUrl(content.thumbnail_url, content.type)}
                     alt={content.title}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-200"

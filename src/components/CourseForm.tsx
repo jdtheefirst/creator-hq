@@ -36,7 +36,7 @@ const courseSchema = z
     price: z.coerce.number().min(0, "Price must be positive"),
     level: z.enum(["beginner", "intermediate", "advanced"]),
     duration: z.string().min(1, "Duration is required"),
-    content: z.string().max(10000).optional(),
+    content: z.string().max(10000).optional().nullable(),
     status: z.enum(["draft", "published"]).default("draft").optional(),
     comments_enabled: z.boolean().default(true).optional(),
     course_type: z.enum(["video", "audio", "text"]),
@@ -154,6 +154,7 @@ export default function CourseForm({
     status: initialData?.status ?? "draft",
     comments_enabled: initialData?.comments_enabled ?? true,
     vip: initialData?.vip ?? false,
+    content: initialData?.content ?? "",
     featured: initialData?.featured ?? false,
     audio_url: initialData?.audio_url ?? "",
     video_url: initialData?.video_url ?? "",
@@ -607,7 +608,7 @@ export default function CourseForm({
                       {...register("content")}
                       placeholder="Detailed course content"
                       rows={6}
-                      defaultValue={watch("content")}
+                      defaultValue={watch("content") ?? ""}
                     />
                     {errors.content && (
                       <p className="text-sm text-destructive mt-1">

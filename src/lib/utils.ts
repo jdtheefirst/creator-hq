@@ -101,3 +101,25 @@ export const cleanObject = (obj: any) =>
       return value;
     })
   );
+
+const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+export function getSafeUrl(url: string, type: string = ""): string {
+  if (!url) return "#";
+
+  // If it's already a valid URL or internal route
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.includes("supabase.co/storage")
+  ) {
+    return url;
+  }
+
+  // Determine the correct bucket based on content type
+  const bucket =
+    type === "product" || type === "products" ? "products" : "covers";
+
+  // Return the full public URL from storage
+  return `${projectUrl}/storage/v1/object/public/${bucket}/${url}`;
+}
