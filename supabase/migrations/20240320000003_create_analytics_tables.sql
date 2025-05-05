@@ -16,12 +16,14 @@ create table page_views (
 create table user_engagement (
   id uuid default uuid_generate_v4() primary key,
   creator_id uuid references auth.users(id) on delete cascade not null,
-  event_type text not null check (event_type in ('view', 'click', 'scroll', 'time_spent', 'conversion')),
+  event_type text not null check (event_type in ('view', 'click', 'scroll', 'time_spent', 'conversion', 'view', 'like', 'share', 'comment', 'click', 'save')),
   event_date timestamp with time zone default timezone('utc'::text, now()) not null,
   page_path text not null,
   element_id text,
   duration_seconds integer,
-  metadata jsonb
+  metadata jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- Create revenue_metrics table

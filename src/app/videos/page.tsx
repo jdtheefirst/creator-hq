@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Play } from "lucide-react";
-import { getEmbedUrl } from "@/lib/utils";
 import VideoPlayer from "@/components/VideoPlayer";
 
 export default async function VideosPage() {
@@ -11,15 +10,7 @@ export default async function VideosPage() {
   // Only fetch published videos
   const { data: videos } = await supabase
     .from("videos")
-    .select(
-      `
-      *,
-      profiles:creator_id (
-        full_name,
-        avatar_url
-      )
-    `
-    )
+    .select("*")
     .eq("creator_id", process.env.NEXT_PUBLIC_CREATOR_UID)
     .eq("status", "published")
     .order("created_at", { ascending: false });
@@ -39,11 +30,6 @@ export default async function VideosPage() {
             >
               {/* Thumbnail with Play Button */}
               <div className="relative aspect-video">
-                <img
-                  src={video.thumbnail_url}
-                  alt={video.title}
-                  className="w-full h-full object-cover"
-                />
                 <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <Play className="w-12 h-12 text-white" />
                 </div>
@@ -65,26 +51,8 @@ export default async function VideosPage() {
                   {video.description}
                 </p>
 
-                {/* Creator Info & Stats */}
+                {/* Stats */}
                 <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-2">
-                    {video.profiles.avatar_url ? (
-                      <img
-                        src={video.profiles.avatar_url}
-                        alt={video.profiles.full_name}
-                        className="w-6 h-6 rounded-full"
-                      />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
-                        <span className="text-xs text-gray-500">
-                          {video.profiles.full_name?.[0]}
-                        </span>
-                      </div>
-                    )}
-                    <span className="text-gray-700">
-                      {video.profiles.full_name}
-                    </span>
-                  </div>
                   <div className="flex items-center space-x-3 text-gray-500">
                     <span>{video.views} views</span>
                     <span>•</span>

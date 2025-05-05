@@ -11,19 +11,65 @@ CREATE TABLE public.featured_content (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+ALTER TABLE public.featured_content
+ADD CONSTRAINT unique_creator_url UNIQUE (creator_id, url);
+
 
 -- Search & Filters (Indexes for fast filtering)
 CREATE INDEX idx_featured_content_type ON public.featured_content(type);
 CREATE INDEX idx_featured_content_created_at ON public.featured_content(created_at DESC);
+CREATE INDEX idx_featured_content_creator_id ON public.featured_content(creator_id);
 
--- Likes Table
+create or replace function feature_content(
+  _creator_id uuid,
+  _type text,
+  _title text,
+  _description text,
+  _thumbnail_url text,
+  _url text,
+  _is_vip boolean
+)
+returns void
+language plpgsql
+as $$
+begin
+  insert into featured_content (
+    creator_id,
+    type,
+    title,
+    description,
+    thumbnail_url,
+    url,
+    is_vip
+  )
+  values (
+    _creator_id,
+    _type,
+    _title,
+    _description,
+    _thumbnail_url,
+    _url,
+    _is_vip
+  )
+  on conflict (creator_id, url) do update
+  set
+    title = excluded.title,
+    description = excluded.description,
+    thumbnail_url = excluded.thumbnail_url,
+    is_vip = excluded.is_vip,
+    updated_at = timezone('utc', now());
+end;
+$$;
+
+-- Corrected likes table
 CREATE TABLE public.likes (
-  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,  -- Only one reference
   post_id UUID NOT NULL,
   post_type TEXT CHECK (post_type IN ('blog', 'product', 'video', 'podcast', 'course', 'lyrics')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   PRIMARY KEY (user_id, post_id, post_type)
 );
+
 
 -- Comments Table (Nested Replies & Moderation)
 CREATE TABLE public.comments (
@@ -37,6 +83,9 @@ CREATE TABLE public.comments (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   is_approved BOOLEAN DEFAULT false
 );
+ALTER TABLE public.comments
+ADD CONSTRAINT fk_comments_author_profile
+FOREIGN KEY (author_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 -- Enable RLS
 ALTER TABLE public.comments ENABLE ROW LEVEL SECURITY;

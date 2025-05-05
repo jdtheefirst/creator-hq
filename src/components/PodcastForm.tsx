@@ -37,6 +37,13 @@ const basePodcastSchema = z.object({
   downloadable: z.boolean().default(true).optional(),
   is_published: z.boolean().default(true).optional(),
   audio_url: z.string().url().optional(),
+  featured: z
+    .boolean({
+      required_error: "Featured is required",
+      invalid_type_error: "Featured must be a boolean",
+    })
+    .default(false)
+    .optional(),
 });
 
 const newPodcastSchema = basePodcastSchema.extend({
@@ -125,6 +132,15 @@ export default function PodcastForm({
       let audioUrl = initialData?.audio_url;
       let coverUrl = initialData?.cover_image_url;
 
+      // ✂️ Create clean course data WITHOUT 'featured'
+      const { featured, ...podDataClean } = data;
+
+      const podData = {
+        ...podDataClean,
+        creator_id: user?.id,
+        updated_at: new Date().toISOString(),
+      };
+
       // Handle audio file upload
       if (data.audio_file?.[0]) {
         // Delete old file if exists in edit mode
@@ -174,27 +190,52 @@ export default function PodcastForm({
       }
 
       // Upsert podcast data
-      const { error } = await supabase.from("podcasts").upsert({
-        id: initialData?.id || undefined,
-        creator_id: user.id,
-        title: data.title,
-        description: data.description,
-        season_number: data.season_number,
-        episode_number: data.episode_number,
-        duration: data.duration,
-        audio_url: audioUrl,
-        cover_image_url: coverUrl,
-        youtube_url: data.youtube_url || null,
-        transcript: data.transcript || null,
-        guest_name: data.guest_name || null,
-        tags: data.tags || [],
-        vip: data.vip ?? false,
-        downloadable: data.downloadable ?? true,
-        is_published: data.is_published ?? true,
-        updated_at: new Date().toISOString(),
-      });
+      const { error, podcastData } = await supabase
+        .from("podcasts")
+        .upsert({
+          id: initialData?.id || undefined,
+          creator_id: user.id,
+          title: data.title,
+          description: data.description,
+          season_number: data.season_number,
+          episode_number: data.episode_number,
+          duration: data.duration,
+          audio_url: audioUrl,
+          cover_image_url: coverUrl,
+          youtube_url: data.youtube_url || null,
+          transcript: data.transcript || null,
+          guest_name: data.guest_name || null,
+          tags: data.tags || [],
+          vip: data.vip ?? false,
+          downloadable: data.downloadable ?? true,
+          is_published: data.is_published ?? true,
+          updated_at: new Date().toISOString(),
+        })
+        .select("id");
 
       if (error) throw error;
+
+      const podUrl = `/podcasts/${podcastData.id}`;
+
+      // 🎯 Handle featured logic separately — always runs, no mutation jank
+      if (featured) {
+        await supabase.rpc("feature_content", {
+          _creator_id: user?.id,
+          _type: "podcast",
+          _title: podData.title,
+          _description: podData.description,
+          _thumbnail_url: podData.cover_image_url,
+          _url: podUrl,
+          _is_vip: podData.vip || false,
+        });
+      } else {
+        await supabase
+          .from("featured_content")
+          .delete()
+          .eq("creator_id", user?.id)
+          .eq("type", "podcast")
+          .eq("url", podUrl);
+      }
 
       toast.success(mode === "edit" ? "Podcast updated!" : "Podcast created!", {
         id: toastId,

@@ -29,6 +29,7 @@ export interface Product {
   purchasable_type: string | null;
   purchasable_id: string | null;
   variants?: ProductVariant[];
+  featured: boolean | null;
 }
 
 export interface ProductFormData {

@@ -18,6 +18,7 @@ interface VideoForm {
   comments_enabled?: boolean;
   ads_enabled?: boolean;
   vip?: boolean;
+  featured?: boolean;
 }
 
 export default function NewVideoPage() {
@@ -35,21 +36,51 @@ export default function NewVideoPage() {
     comments_enabled: true,
     ads_enabled: true,
     vip: false,
+    featured: false,
   });
+  const [initialFeatured] = useState(form.featured);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { error } = await supabase.from("videos").insert([
+      const { featured, ...rest } = form;
+      const cleanFrom = {
+        ...rest,
+        creator_id: user?.id,
+        updated_at: new Date().toISOString(),
+      };
+      const { error, data } = await supabase.from("videos").insert([
         {
-          ...form,
-          creator_id: user?.id,
+          ...cleanFrom,
         },
       ]);
 
       if (error) throw error;
+
+      const productUrl = `/videos/${data.id}`;
+
+      if (form.featured !== initialFeatured) {
+        if (form.featured) {
+          await supabase.rpc("feature_content", {
+            _creator_id: user?.id,
+            _type: "video",
+            _title: cleanFrom.title,
+            _description: cleanFrom.description,
+            _thumbnail_url: cleanFrom.thumbnail_url,
+            _url: productUrl,
+            _is_vip: data.vip || false,
+          });
+        } else {
+          await supabase
+            .from("featured_content")
+            .delete()
+            .eq("creator_id", user?.id)
+            .eq("type", "video")
+            .eq("url", productUrl);
+        }
+      }
 
       toast.success("Video created successfully");
       router.push("/dashboard/videos");
@@ -189,6 +220,21 @@ export default function NewVideoPage() {
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-600">Enable Comments</span>
+          </label>
+
+          <label className="text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={form.featured}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  featured: e.target.checked,
+                })
+              }
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="ml-2 text-sm text-gray-600">Featured</span>
           </label>
         </div>
 

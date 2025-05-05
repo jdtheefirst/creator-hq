@@ -44,6 +44,13 @@ const lyricsSchema = z.object({
   status: z.enum(["draft", "published"]).default("draft").optional(),
   comments_enabled: z.boolean().default(true).optional(),
   vip: z.boolean().default(false).optional(),
+  featured: z
+    .boolean({
+      required_error: "Featured is required",
+      invalid_type_error: "Featured must be a boolean",
+    })
+    .default(false)
+    .optional(),
   cover_image_url: z
     .string()
     .optional()
@@ -83,6 +90,7 @@ export default function LyricsForm({
     status: initialData?.status ?? "draft",
     comments_enabled: initialData?.comments_enabled ?? true,
     vip: initialData?.vip ?? false,
+    featured: initialData?.featured ?? false,
     video_url: initialData?.video_url ?? "",
     video_source: initialData?.video_source ?? "youtube",
     genre: initialData?.genre ?? "",
@@ -113,11 +121,16 @@ export default function LyricsForm({
     );
 
     try {
+      // ✂️ Create clean course data WITHOUT 'featured'
+      const { featured, ...lyricsDataClean } = data;
+
       const lyricsData = {
-        ...data,
+        ...lyricsDataClean,
         creator_id: user?.id,
         updated_at: new Date().toISOString(),
       };
+
+      let lyricsId = initialData?.id;
 
       // Handle course file upload
       if (lyricsData.cover_file?.[0]) {
@@ -149,15 +162,44 @@ export default function LyricsForm({
 
       delete lyricsData.cover_file;
 
-      const { error } =
-        mode === "new"
-          ? await supabase.from("lyrics").insert(lyricsData)
-          : await supabase
-              .from("lyrics")
-              .update(lyricsData)
-              .eq("id", initialData?.id);
+      if (mode === "new") {
+        const { error, data: insertResult } = await supabase
+          .from("lyrics")
+          .insert(lyricsData)
+          .select("id")
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
+        lyricsId = insertResult.id;
+      } else {
+        const { error } = await supabase
+          .from("lyrics")
+          .update(lyricsData)
+          .eq("id", lyricsId);
+
+        if (error) throw error;
+      }
+
+      const lyricsUrl = `/lyrics/${lyricsId}`;
+
+      if (featured) {
+        await supabase.rpc("feature_content", {
+          _creator_id: user?.id,
+          _type: "lyrics",
+          _title: lyricsData.title,
+          _description: lyricsData.title,
+          _thumbnail_url: lyricsData.cover_image_url,
+          _url: lyricsUrl,
+          _is_vip: lyricsData.vip || false,
+        });
+      } else {
+        await supabase
+          .from("featured_content")
+          .delete()
+          .eq("creator_id", user?.id)
+          .eq("type", "lyrics")
+          .eq("url", lyricsUrl);
+      }
 
       toast.success(mode === "new" ? "Lyrics created!" : "Lyrics updated!", {
         id: toastId,
@@ -441,6 +483,21 @@ export default function LyricsForm({
                   onCheckedChange={(checked) => setValue("vip", checked)}
                 />
                 <Label htmlFor="vip">VIP Content</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="featured"
+                  checked={watch("featured")}
+                  onCheckedChange={(checked) => setValue("featured", checked)}
+                />
+                <Label htmlFor="featured">Featured</Label>
+                {errors.featured && (
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.featured?.message &&
+                      String(errors.featured.message)}
+                  </p>
+                )}
               </div>
             </div>
           </div>

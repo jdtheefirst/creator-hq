@@ -23,6 +23,13 @@ const blogPostSchema = z.object({
   status: z.enum(["draft", "published"], {
     errorMap: () => ({ message: "Status is required" }),
   }),
+  featured: z
+    .boolean({
+      required_error: "Featured is required",
+      invalid_type_error: "Featured must be a boolean",
+    })
+    .default(false)
+    .optional(),
   vip: z.boolean().optional(),
   ads_enabled: z.boolean().optional(),
   comments_enabled: z.boolean().optional(),
@@ -55,7 +62,7 @@ export default function BlogForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [coverImage, setCoverImage] = useState<File | null>(null);
 
-  const handleImageUpload = async (file: File) => {
+  const handleImageUpload = async (file: File, toastId: string | number) => {
     try {
       if (!file) throw new Error("No file selected");
 
@@ -63,19 +70,25 @@ export default function BlogForm({
       const fileName = `${crypto.randomUUID()}.${fileExt}`;
       const filePath = `${user?.id}/blog-covers/${fileName}`;
 
-      const { data, error } = await supabase.storage
-        .from("blog-images")
-        .createSignedUploadUrl(filePath);
+      if (mode === "edit" && initialData?.cover_image) {
+        const oldPath = initialData.cover_image.split("/covers/")[1];
+        await supabase.storage.from("covers").remove([oldPath]);
 
-      if (error) throw error;
-
-      await axios.put(data.signedUrl, file, {
-        headers: { "Content-Type": file.type },
-      });
+        toast.success("Old cover image deleted", {
+          id: toastId,
+        });
+      }
 
       const {
+        error: uploadError,
         data: { publicUrl },
-      } = supabase.storage.from("blog-images").getPublicUrl(filePath);
+      } = await supabase.storage.from("covers").upload(filePath, file);
+
+      console.log("Upload error:", uploadError); // Debugging line
+      if (uploadError) throw uploadError;
+      toast.success("Cover image uploaded", {
+        id: toastId,
+      });
 
       return publicUrl;
     } catch (error) {
@@ -87,12 +100,15 @@ export default function BlogForm({
 
   const onSubmit = async (data: BlogPostFormData) => {
     setIsSubmitting(true);
+    const toastId = toast.loading(
+      mode === "new" ? "Creating course..." : "Updating course..."
+    );
+
     try {
       let coverImageUrl = initialData?.cover_image || undefined;
 
+      // Uploading image logic...
       if (coverImage) {
-        // 1. Delete the old image if it exists
-
         if (coverImageUrl) {
           try {
             const pathStart =
@@ -105,9 +121,9 @@ export default function BlogForm({
               .remove([filePath]);
 
             if (deleteError) {
-              toast.error("Failed to delete old image");
+              toast.error("Failed to delete old image", { id: toastId });
             } else {
-              toast.success("Old image deleted successfully");
+              toast.success("Old image deleted successfully", { id: toastId });
             }
           } catch (deleteErr) {
             console.error(
@@ -118,39 +134,75 @@ export default function BlogForm({
         }
 
         console.log("Uploading new image:", coverImage.name);
-        // 2. Upload new image
-        coverImageUrl = (await handleImageUpload(coverImage)) || undefined;
+        coverImageUrl =
+          (await handleImageUpload(coverImage, toastId)) || undefined;
         if (!coverImageUrl) throw new Error("Failed to upload cover image");
       }
 
+      // ✂️ Create clean blog data WITHOUT 'featured'
+      const { featured, ...blogDataClean } = data;
+      const blogInsertPayload = {
+        ...blogDataClean,
+        creator_id: user?.id,
+        cover_image: coverImageUrl,
+      };
+
+      let blogId = postId;
+
       if (mode === "new") {
-        const { error } = await supabase.from("blogs").insert({
-          ...data,
-          creator_id: user?.id,
-          cover_image: coverImageUrl,
+        const { error, data: insertResult } = await supabase
+          .from("blogs")
+          .insert(blogInsertPayload)
+          .select("id") // 👈 make sure to return the id
+          .single();
+
+        if (error) throw error;
+        blogId = insertResult.id;
+        toast.success("Blog post created successfully", { id: toastId });
+      } else {
+        const { error } = await supabase
+          .from("blogs")
+          .update(blogInsertPayload)
+          .eq("id", postId);
+
+        if (error) throw error;
+        toast.success("Blog post updated successfully", { id: toastId });
+      }
+
+      const blogUrl = `/blogs/${blogId}`;
+
+      // 🎯 Handle featured logic separately — always runs, no mutation jank
+      if (featured) {
+        const { error } = await supabase.rpc("feature_content", {
+          _creator_id: user?.id,
+          _type: "blog",
+          _title: data.title,
+          _description: data.excerpt,
+          _thumbnail_url: coverImageUrl,
+          _url: blogUrl,
+          _is_vip: data.vip || false,
         });
 
         if (error) throw error;
 
-        toast.success("Blog post created successfully");
+        toast.success("Blog marked as feature content", { id: toastId });
       } else {
         const { error } = await supabase
-          .from("blogs")
-          .update({
-            ...data,
-            cover_image: coverImageUrl,
-          })
-          .eq("id", postId);
+          .from("featured_content")
+          .delete()
+          .eq("creator_id", user?.id)
+          .eq("type", "blog")
+          .eq("url", blogUrl);
 
         if (error) throw error;
 
-        toast.success("Blog post updated successfully");
+        toast.success("Blog unmarked from feature content", { id: toastId });
       }
 
       router.push("/dashboard/posts");
     } catch (error) {
       console.error("Error creating/updating post:", error);
-      toast.error("Failed to create/update blog post");
+      toast.error("Failed to create/update blog post", { id: toastId });
     } finally {
       setIsSubmitting(false);
     }
@@ -298,6 +350,15 @@ export default function BlogForm({
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-600">Enable Comments</span>
+          </label>
+
+          <label className="text-sm text-gray-700">
+            <input
+              type="checkbox"
+              {...register("featured")}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="ml-2 text-sm text-gray-600">Featured</span>
           </label>
         </div>
 

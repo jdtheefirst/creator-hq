@@ -42,6 +42,13 @@ const courseSchema = z
     course_type: z.enum(["video", "audio", "text"]),
     course_format: z.enum(["live", "on-demand"]),
     vip: z.boolean().default(false).optional(),
+    featured: z
+      .boolean({
+        required_error: "Featured is required",
+        invalid_type_error: "Featured must be a boolean",
+      })
+      .default(false)
+      .optional(),
     cover_image_url: z
       .string()
       .optional()
@@ -147,6 +154,7 @@ export default function CourseForm({
     status: initialData?.status ?? "draft",
     comments_enabled: initialData?.comments_enabled ?? true,
     vip: initialData?.vip ?? false,
+    featured: initialData?.featured ?? false,
     audio_url: initialData?.audio_url ?? "",
     video_url: initialData?.video_url ?? "",
     cover_image_url: initialData?.cover_image_url ?? "",
@@ -179,17 +187,26 @@ export default function CourseForm({
     );
 
     try {
+      // ✂️ Create clean course data WITHOUT 'featured'
+      const { featured, ...courseDataClean } = data;
       const courseData = {
-        ...data,
+        ...courseDataClean,
         creator_id: user?.id,
         updated_at: new Date().toISOString(),
       };
+
+      let courseId = initialData?.id;
+
       // Handle content file upload
       if (courseData.video_file?.[0] && courseType === "video") {
         // Delete old file if exists in edit mode
         if (mode === "edit" && initialData?.video_url) {
           const oldPath = initialData.video_url.split("/").pop();
           await supabase.storage.from("courses").remove([oldPath!]);
+
+          toast.success("Old video file deleted", {
+            id: toastId,
+          });
         }
 
         const fileExt = courseData.video_file[0].name.split(".").pop();
@@ -290,19 +307,50 @@ export default function CourseForm({
       delete courseData.video_file;
       delete courseData.cover_file;
 
-      const { error } =
-        mode === "new"
-          ? await supabase.from("courses").insert(courseData)
-          : await supabase
-              .from("courses")
-              .update(courseData)
-              .eq("id", initialData?.id);
+      if (mode === "new") {
+        const { error, data: insertResult } = await supabase
+          .from("courses")
+          .insert(courseData)
+          .select("id")
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
+        courseId = insertResult.id;
+      } else {
+        const { error } = await supabase
+          .from("courses")
+          .update(courseData)
+          .eq("id", courseId);
+
+        if (error) throw error;
+      }
+
+      const courseUrl = `/courses/${courseId}`;
+
+      // 🎯 Handle featured logic separately — always runs, no mutation jank
+      if (featured) {
+        await supabase.rpc("feature_content", {
+          _creator_id: user?.id,
+          _type: "course",
+          _title: courseData.title,
+          _description: courseData.description,
+          _thumbnail_url: courseData.cover_image_url,
+          _url: courseUrl,
+          _is_vip: courseData.vip || false,
+        });
+      } else {
+        await supabase
+          .from("featured_content")
+          .delete()
+          .eq("creator_id", user?.id)
+          .eq("type", "course")
+          .eq("url", courseUrl);
+      }
 
       toast.success(mode === "new" ? "Course created!" : "Course updated!", {
         id: toastId,
       });
+
       router.push("/dashboard/courses");
       router.refresh();
     } catch (err) {
@@ -639,6 +687,21 @@ export default function CourseForm({
                   onCheckedChange={(checked) => setValue("vip", checked)}
                 />
                 <Label htmlFor="vip">VIP Course</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="featured"
+                  checked={watch("featured")}
+                  onCheckedChange={(checked) => setValue("featured", checked)}
+                />
+                <Label htmlFor="featured">Featured</Label>
+                {errors.featured && (
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.featured?.message &&
+                      String(errors.featured.message)}
+                  </p>
+                )}
               </div>
             </div>
           </div>

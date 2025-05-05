@@ -67,7 +67,13 @@ const productSchema = z
     thumbnail_file: z.any().optional().nullable(),
     digital_file: z.any().optional().nullable(),
     digital_file_url: z.string().url().or(z.literal("")).optional().nullable(),
-
+    featured: z
+      .boolean({
+        required_error: "Featured is required",
+        invalid_type_error: "Featured must be a boolean",
+      })
+      .default(false)
+      .optional(),
     variants: z.array(variantSchema).optional(),
   })
   .superRefine((data, ctx) => {
@@ -189,6 +195,7 @@ export function ProductForm({
     defaultValues: initialData
       ? {
           ...initialData.product,
+          featured: initialData.product.featured ?? false,
           stock_quantity: initialData.product.stock_quantity ?? undefined,
           thumbnail_file: null,
           digital_file: null,
@@ -223,6 +230,9 @@ export function ProductForm({
   });
 
   const { control } = form;
+  const { errors } = form.formState;
+  const { setValue } = form;
+  const { watch } = form;
   const { fields, append, remove } = useFieldArray({
     control,
     name: "variants",
@@ -354,10 +364,11 @@ export function ProductForm({
 
   const handleSubmit = async (data: z.infer<typeof productSchema>) => {
     if (isLoading || isSubmitting.current) return;
-
     try {
       setIsLoading(true);
       isSubmitting.current = true;
+
+      let productId = onSubmit?.id;
 
       // 🔼 Upload product-level files
       if (data.thumbnail_file) {
@@ -395,7 +406,7 @@ export function ProductForm({
       }
 
       // ✂️ Split product and variants
-      const { variants, ...productData } = data;
+      const { variants, featured, ...productData } = data;
       const variantsWithIds = initialData?.variants?.map((original, i) => ({
         ...original,
         ...(variants?.[i] ?? {}),
@@ -406,30 +417,56 @@ export function ProductForm({
       const cleanVariants = variantsWithIds?.map(cleanObject);
 
       // 🆙 Insert or update product
-      const { data: upsertedProduct, error: productError } = onSubmit.update
-        ? await supabase
-            .from("products")
-            .update(cleanProductData)
-            .eq("id", onSubmit.id)
-            .eq("creator_id", user?.id)
-            .select()
-            .single()
-        : await supabase
-            .from("products")
-            .insert({
-              ...cleanProductData,
-              creator_id: user?.id,
-            })
-            .select()
-            .single();
+      if (onSubmit.update) {
+        const { error, data: insertResult } = await supabase
+          .from("products")
+          .update(cleanProductData)
+          .eq("id", onSubmit.id)
+          .eq("creator_id", user?.id)
+          .select()
+          .single();
 
-      if (productError || !upsertedProduct) throw productError;
+        if (error) throw error;
+        productId = insertResult.id;
+      } else {
+        const { error } = await supabase
+          .from("products")
+          .insert({
+            ...cleanProductData,
+            creator_id: user?.id,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+      }
+
+      const productUrl = `/store/${productId}`;
+
+      if (featured) {
+        await supabase.rpc("feature_content", {
+          _creator_id: user?.id,
+          _type: "product",
+          _title: cleanProductData.title,
+          _description: cleanProductData.title,
+          _thumbnail_url: cleanProductData.cover_image_url,
+          _url: productUrl,
+          _is_vip: cleanProductData.vip || false,
+        });
+      } else {
+        await supabase
+          .from("featured_content")
+          .delete()
+          .eq("creator_id", user?.id)
+          .eq("type", "product")
+          .eq("url", productUrl);
+      }
 
       // 🔁 Upsert variants if any
       if (cleanVariants?.length) {
         const variantUpserts = cleanVariants.map((v) => ({
           ...v,
-          product_id: upsertedProduct.id,
+          product_id: productId,
         }));
 
         const { error: variantError } = await supabase
@@ -815,6 +852,20 @@ export function ProductForm({
         {form.formState.errors.status && (
           <p className="text-red-500 text-sm mt-1">
             {form.formState.errors.status.message}
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="featured"
+          checked={watch("featured")}
+          onCheckedChange={(checked) => setValue("featured", checked)}
+        />
+        <Label htmlFor="featured">Featured</Label>
+        {errors.featured && (
+          <p className="text-sm text-destructive mt-1">
+            {errors.featured?.message && String(errors.featured.message)}
           </p>
         )}
       </div>

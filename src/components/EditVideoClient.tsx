@@ -20,22 +20,57 @@ export default function EditVideoClient({ video }: { video: any }) {
     ads_enabled: video.ads_enabled,
     comments_enabled: video.comments_enabled,
     source: video.source,
+    thumbnail_url: video.thumbnail_url,
+    featured: video.featured,
   });
 
   const [saving, setSaving] = useState(false);
+  const [initialFeatured] = useState(video.featured);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
     try {
-      const { error } = await supabase
+      const { featured, ...rest } = form;
+
+      const cleanForm = {
+        ...rest,
+        thumbnail_url: form.thumbnail_url,
+        creator_id: user?.id,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error, data } = await supabase
         .from("videos")
-        .update(form)
+        .update(cleanForm)
         .eq("id", video.id)
         .eq("creator_id", user?.id);
 
       if (error) throw error;
+
+      const productUrl = `/videos/${data.id}`;
+
+      if (form.featured !== initialFeatured) {
+        if (form.featured) {
+          await supabase.rpc("feature_content", {
+            _creator_id: user?.id,
+            _type: "video",
+            _title: cleanForm.title,
+            _description: cleanForm.description,
+            _thumbnail_url: cleanForm.thumbnail_url,
+            _url: productUrl,
+            _is_vip: data.vip || false,
+          });
+        } else {
+          await supabase
+            .from("featured_content")
+            .delete()
+            .eq("creator_id", user?.id)
+            .eq("type", "video")
+            .eq("url", productUrl);
+        }
+      }
 
       toast.success("Video updated successfully");
       router.push("/dashboard/videos");
@@ -178,6 +213,21 @@ export default function EditVideoClient({ video }: { video: any }) {
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-600">Enable Comments</span>
+          </label>
+
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={form.featured}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  featured: e.target.checked,
+                })
+              }
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="ml-2 text-sm text-gray-600">Featured</span>
           </label>
         </div>
 

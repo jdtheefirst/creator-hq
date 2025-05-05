@@ -10,49 +10,19 @@ interface CommentsProps {
   postId: string;
   postType: "video" | "blog" | "product";
   creatorId: string;
+  comments: any[];
 }
 
 export default function Comments({
   postId,
   postType,
   creatorId,
+  comments,
 }: CommentsProps) {
-  const { user } = useAuth();
-  const { supabase } = useAuth();
-  const [comments, setComments] = useState<any[]>([]);
+  const { supabase, user } = useAuth();
   const [newComment, setNewComment] = useState("");
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchComments();
-  }, [postId]);
-
-  const fetchComments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("comments")
-        .select(
-          `
-          *,
-          profiles:author_id (
-            full_name,
-            avatar_url
-          )
-        `
-        )
-        .eq("post_id", postId)
-        .eq("post_type", postType)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setComments(data || []);
-    } catch (error) {
-      console.error("Error fetching comments:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,13 +39,13 @@ export default function Comments({
           post_id: postId,
           post_type: postType,
           author_id: user.id,
+          creator_id: creatorId,
         },
       ]);
 
       if (error) throw error;
 
       setNewComment("");
-      fetchComments();
       toast.success("Comment added successfully");
     } catch (error) {
       console.error("Error adding comment:", error);
@@ -84,8 +54,6 @@ export default function Comments({
       setSubmitting(false);
     }
   };
-
-  if (loading) return <div>Loading comments...</div>;
 
   return (
     <div className="space-y-6">
@@ -110,12 +78,13 @@ export default function Comments({
 
       {/* Comments List */}
       <div className="space-y-4">
+        <h1 className="font-bold">Latest Comments</h1>
         {comments.map((comment) => (
           <div key={comment.id} className="bg-white p-4 rounded-lg shadow">
             <div className="flex items-center space-x-3 mb-2">
               {comment.profiles.avatar_url ? (
                 <img
-                  src={comment.profiles.avatar_url}
+                  src={`${projectUrl}/storage/v1/object/public/avatars/${comment.profiles.avatar_url}`}
                   alt={comment.profiles.full_name}
                   className="w-8 h-8 rounded-full"
                 />

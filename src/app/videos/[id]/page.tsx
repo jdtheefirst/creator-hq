@@ -20,41 +20,21 @@ interface VideoData {
   likes: number;
   creator_id: string;
   created_at: string;
-  slug: string;
-  profiles: {
-    id: string;
-    full_name: string;
-    avatar_url: string | null;
-    bio: string | null;
-  };
-  comments: { count: number }[];
 }
 
 export default async function VideoPage({
   params,
 }: {
-  params: { slug: string };
+  params: { id: string };
 }) {
   const supabase = await createClient();
+  const { id } = await params;
 
   // Fetch video with creator details and comment count
   const { data: video, error } = await supabase
     .from("videos")
-    .select(
-      `
-      *,
-      profiles:creator_id (
-        id,
-        full_name,
-        avatar_url,
-        bio
-      ),
-      comments:id (
-        count
-      )
-    `
-    )
-    .eq("slug", params.slug)
+    .select("*")
+    .eq("id", id)
     .eq("status", "published")
     .single();
 
@@ -65,20 +45,7 @@ export default async function VideoPage({
   // Fetch related videos by the same creator
   const { data: relatedVideos } = await supabase
     .from("videos")
-    .select(
-      `
-      id,
-      title,
-      thumbnail_url,
-      views,
-      created_at,
-      slug,
-      profiles:creator_id (
-        full_name,
-        avatar_url
-      )
-    `
-    )
+    .select("*")
     .eq("creator_id", video.creator_id)
     .eq("status", "published")
     .neq("id", video.id)
@@ -87,20 +54,43 @@ export default async function VideoPage({
 
   // Check if current user has liked the video
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const { data: userLike } = session
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: userLike } = user
     ? await supabase
         .from("likes")
         .select("id")
         .eq("post_id", video.id)
         .eq("post_type", "video")
-        .eq("user_id", session.user.id)
+        .eq("user_id", user?.id)
         .single()
     : { data: null };
 
   // Increment view count
-  await supabase.rpc("increment_video_views", { video_id: video.id });
+  const { error: incrementError } = await supabase.rpc(
+    "increment_video_views",
+    {
+      video_id: video.id,
+      viewer_id: user?.id || null,
+    }
+  );
+  if (incrementError)
+    console.error("Error incrementing views:", incrementError);
+
+  const { data, error: commentsError } = await supabase
+    .from("comments")
+    .select("*, profiles(full_name, avatar_url)", { head: false })
+    // .eq("creator_id", creatorId)
+    .eq("post_id", video.id)
+    .eq("post_type", "video")
+    .order("created_at", { ascending: false })
+    .limit(6);
+
+  if (commentsError) {
+    console.log("Comments Error:", commentsError);
+  }
+
+  const comments = data?.length || 0;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -123,30 +113,9 @@ export default async function VideoPage({
               <h1 className="text-2xl font-bold">{video.title}</h1>
               <div className="flex items-center justify-between mt-2">
                 <div className="flex items-center space-x-4">
-                  <Link
-                    href={`/creators/${video.profiles.id}`}
-                    className="flex items-center space-x-2"
-                  >
-                    {video.profiles.avatar_url ? (
-                      <img
-                        src={video.profiles.avatar_url}
-                        alt={video.profiles.full_name}
-                        className="w-10 h-10 rounded-full"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                        <span className="text-lg text-gray-500">
-                          {video.profiles.full_name[0]}
-                        </span>
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-medium">{video.profiles.full_name}</p>
-                      <p className="text-sm text-gray-500">
-                        {format(new Date(video.created_at), "MMM d, yyyy")}
-                      </p>
-                    </div>
-                  </Link>
+                  <p className="text-sm text-gray-500">
+                    {format(new Date(video.created_at), "MMM d, yyyy")}
+                  </p>
                 </div>
                 <div className="flex items-center space-x-4 text-sm text-gray-500">
                   <span>{video.views.toLocaleString()} views</span>
@@ -159,7 +128,7 @@ export default async function VideoPage({
                 <VideoEngagement
                   videoId={video.id}
                   initialLikes={video.likes}
-                  initialComments={video.comments[0]?.count || 0}
+                  initialComments={comments || 0}
                   isLiked={!!userLike}
                 />
               </div>
@@ -176,6 +145,7 @@ export default async function VideoPage({
                   postId={video.id}
                   postType="video"
                   creatorId={video.creator_id}
+                  comments={data || []}
                 />
               </div>
             </div>
@@ -183,13 +153,11 @@ export default async function VideoPage({
 
           {/* Sidebar - Related Videos */}
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold">
-              More from {video.profiles.full_name}
-            </h2>
+            <h2 className="text-xl font-semibold">More:</h2>
             {relatedVideos?.map((relatedVideo) => (
               <Link
                 key={relatedVideo.id}
-                href={`/videos/${relatedVideo.slug}`}
+                href={`/videos/${relatedVideo.id}`}
                 className="flex space-x-3 group"
               >
                 <div className="relative w-40 aspect-video">
