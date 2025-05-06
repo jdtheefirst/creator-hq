@@ -15,10 +15,12 @@ import {
   ShieldUser,
   ShoppingBag,
   Star,
+  Flame,
   UserRoundPen,
 } from "lucide-react";
 import NewsletterForm from "@/components/NewsletterForm";
 import { getSafeUrl } from "@/lib/utils";
+import { CountdownTimer } from "@/components/countdownTimer";
 
 interface Profile {
   id: string;
@@ -686,7 +688,7 @@ export default function CreatorProfilePage() {
 
         {/* Newsletter Section */}
         <div className="bg-gray-50 border-t border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 border-b border-gray-200">
             <div className="max-w-3xl mx-auto text-center">
               <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
                 Stay Updated
@@ -699,6 +701,31 @@ export default function CreatorProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* countdownTimer */}
+        <section className="relative bg-black text-white text-center py-12 px-4 border-t-4 border-yellow-400 shadow-[0_-5px_25px_rgba(255,215,0,0.3)] mt-12">
+          <div className="flex justify-center items-center gap-2 mb-4">
+            <Flame className="text-yellow-400 w-6 h-6 animate-pulse" />
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+              🔥 One-Time Lifetime Deal
+            </h2>
+            <Flame className="text-yellow-400 w-6 h-6 animate-pulse" />
+          </div>
+          <p className="text-lg md:text-xl mb-6 max-w-2xl mx-auto text-gray-200">
+            CreatorHQ Monthly drops in{" "}
+            <CountdownTimer targetDate="2025-05-20T00:00:00Z" />. After that,
+            this one-time offer is gone for good.
+          </p>
+          <a
+            href="/packages"
+            className="inline-block bg-yellow-400 text-black font-semibold px-6 py-3 rounded-xl hover:bg-yellow-300 transition"
+          >
+            Get Yours Today
+          </a>
+          <p className="mt-4 text-sm text-gray-400 italic">
+            One-time payment. Lifetime access. Zero recurring fees.
+          </p>
+        </section>
       </div>
 
       {notification && (
