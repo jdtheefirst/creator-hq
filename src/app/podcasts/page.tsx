@@ -42,6 +42,7 @@ export default async function PodcastsPage() {
                       src={`${projectUrl}/storage/v1/object/public/covers/${podcast.cover_image_url}`}
                       alt={`${podcast.title} cover`}
                       fill
+                      sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 100vw"
                       className="object-cover"
                     />
                   </div>

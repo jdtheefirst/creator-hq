@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { format } from "date-fns";
 import Image from "next/image";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 interface BlogPostPageProps {
   params: {
@@ -13,6 +13,23 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { id } = await params;
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const userId = user?.id;
+
+  let isVipUser = false;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("is_vip")
+      .eq("id", userId)
+      .single();
+
+    isVipUser = !!profile?.is_vip;
+  }
+
   // Fetch published post by slug
   const { data: post } = await supabase
     .from("blogs")
@@ -23,6 +40,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   if (!post) {
     console.error("Error fetching blog post");
     notFound();
+  }
+
+  if (!isVipUser && post.vip) {
+    redirect("/vip/upgrade");
   }
 
   return (

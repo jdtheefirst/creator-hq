@@ -205,7 +205,7 @@ export default function CreatorProfilePage() {
           <Image
             src={coverUrl}
             alt="Cover"
-            sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
+            sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 100vw"
             fill
             priority
             className="object-cover"
@@ -223,7 +223,7 @@ export default function CreatorProfilePage() {
                   <Image
                     src={avatarUrl}
                     alt={profile.full_name}
-                    sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
+                    sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 100vw"
                     priority
                     fill
                     className="object-cover"
@@ -641,6 +641,7 @@ export default function CreatorProfilePage() {
                   <Image
                     src={getSafeUrl(content.thumbnail_url, content.type)}
                     alt={content.title}
+                    sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 100vw"
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-200"
                   />

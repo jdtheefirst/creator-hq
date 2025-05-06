@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { FloatingCartButton } from "@/components/ui/cartButton";
 import { AddToCartButton } from "@/components/ui/addToCart"; // You'll need this
@@ -14,6 +14,22 @@ export default async function ProductPage({ params }: Props) {
   const supabase = await createClient();
   const { productId } = await params;
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let isVipUser = false;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("is_vip")
+      .eq("id", user.id)
+      .single();
+
+    isVipUser = !!profile?.is_vip;
+  }
+
   const { data: product } = await supabase
     .from("products")
     .select("*")
@@ -21,6 +37,10 @@ export default async function ProductPage({ params }: Props) {
     .single();
 
   if (!product) return notFound();
+
+  if (!isVipUser && product.vip) {
+    redirect("/vip/upgrade");
+  }
 
   const { data: variants } = await supabase
     .from("product_variants")

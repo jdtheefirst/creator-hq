@@ -20,7 +20,7 @@ export default function NewsletterForm() {
     formState: { errors },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  const { supabase } = useAuth();
+  const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{
     message: string;
@@ -41,26 +41,28 @@ export default function NewsletterForm() {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase
-        .from("newsletter_subscribers")
-        .insert([{ email: data.email }]);
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: data.email, creatorId }),
+      });
 
-      if (error) {
-        if (error.code === "23505") {
-          setNotification({
-            message: "You already subscribed, superstar!",
-            type: "info",
-          });
-        } else {
-          throw error;
-        }
-      } else {
+      const result = await res.json();
+
+      if (res.ok) {
         setNotification({
-          message: "You're in! Watch your inbox 🎉",
+          message: result.message || "You're in! Watch your inbox 🎉",
           type: "success",
         });
         reset();
         setLastSubmissionTime(now);
+      } else {
+        setNotification({
+          message: result.error || "Whoops! Something went wrong.",
+          type: "error",
+        });
       }
     } catch (err) {
       setNotification({

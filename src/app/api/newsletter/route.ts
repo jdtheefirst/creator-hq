@@ -1,14 +1,18 @@
-import { createClient } from "@/lib/supabase/server";
+import { secureRatelimit } from "@/lib/limit";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
+  const { success } = await secureRatelimit(request);
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
 
   try {
-    const { email, creator_id } = await request.json();
+    const { email, creatorId } = await request.json();
 
     // Validate email
-    if (!email || !creator_id) {
+    if (!email || !creatorId) {
       return NextResponse.json(
         { error: "Email and creator_id are required" },
         { status: 400 }
@@ -16,12 +20,12 @@ export async function POST(request: Request) {
     }
 
     // Add subscriber
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("newsletter_subscribers")
       .insert([
         {
-          email,
-          creator_id,
+          email: email,
+          creator_id: creatorId,
           is_active: true,
         },
       ])
@@ -39,9 +43,9 @@ export async function POST(request: Request) {
     }
 
     // Track subscription event
-    await supabase.from("user_engagement").insert([
+    await supabaseAdmin.from("user_engagement").insert([
       {
-        creator_id,
+        creator_id: creatorId,
         event_type: "conversion",
         page_path: "/newsletter/subscribe",
         metadata: {
@@ -51,7 +55,10 @@ export async function POST(request: Request) {
       },
     ]);
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json(
+      { message: "Subscribed successfully" },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Newsletter subscription error:", error);
     return NextResponse.json(

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
 
 interface PodcastPageProps {
@@ -13,12 +13,37 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
   const supabase = await createClient();
   const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let isVipUser = false;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("is_vip")
+      .eq("id", user.id)
+      .single();
+
+    isVipUser = !!profile?.is_vip;
+  }
+
   const { data: podcast, error } = await supabase
     .from("podcasts")
     .select("*")
     .eq("id", id)
     .eq("creator_id", process.env.NEXT_PUBLIC_CREATOR_UID)
     .single();
+
+  if (error || !podcast) {
+    console.error("Error fetching podcast:", error);
+    notFound();
+  }
+
+  if (!isVipUser && podcast.vip) {
+    redirect("/vip/upgrade");
+  }
 
   const { data: otherSeasons } = await supabase
     .from("podcasts")
@@ -29,12 +54,7 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
     .limit(6);
 
   const audioSrc = `${projectUrl}/storage/v1/object/public/audios/${podcast.audio_url}`;
-  const coverSrc = `${projectUrl}/storage/v1/object/public/audios/${podcast.cover_image_url}`;
-
-  if (error || !podcast) {
-    console.error("Error fetching podcast:", error);
-    notFound();
-  }
+  const coverSrc = `${projectUrl}/storage/v1/object/public/covers/${podcast.cover_image_url}`;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -60,6 +80,7 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
                 src={coverSrc}
                 alt={`${podcast.title} cover`}
                 fill
+                sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 100vw"
                 className="object-cover"
               />
             </div>
@@ -112,6 +133,7 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
                           alt={episode.title}
                           fill
                           className="object-cover"
+                          sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 100vw"
                         />
                       </div>
                     ) : (

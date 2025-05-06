@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { format } from "date-fns";
 import Link from "next/link";
 import { Play } from "lucide-react";
@@ -30,6 +30,22 @@ export default async function VideoPage({
   const supabase = await createClient();
   const { id } = await params;
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let isVipUser = false;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("is_vip")
+      .eq("id", user.id)
+      .single();
+
+    isVipUser = !!profile?.is_vip;
+  }
+
   // Fetch video with creator details and comment count
   const { data: video, error } = await supabase
     .from("videos")
@@ -40,6 +56,10 @@ export default async function VideoPage({
 
   if (error || !video) {
     notFound();
+  }
+
+  if (!isVipUser && video.vip) {
+    redirect("/vip/upgrade");
   }
 
   // Fetch related videos by the same creator
@@ -53,9 +73,6 @@ export default async function VideoPage({
     .limit(6);
 
   // Check if current user has liked the video
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const { data: userLike } = user
     ? await supabase
         .from("likes")

@@ -1,6 +1,7 @@
 import { CourseMediaToggle } from "@/components/ui/mediaToggle";
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default async function CourseDetailPage({
   params,
@@ -11,8 +12,22 @@ export default async function CourseDetailPage({
   const supabase = await createClient();
   const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
 
-  const { data: user } = await supabase.auth.getUser();
-  const userId = user?.user?.id;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const userId = user?.id;
+
+  let isVipUser = false;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("is_vip")
+      .eq("id", userId)
+      .single();
+
+    isVipUser = !!profile?.is_vip;
+  }
 
   const { data: course, error } = await supabase
     .from("courses")
@@ -20,8 +35,6 @@ export default async function CourseDetailPage({
     .eq("id", id)
     .eq("creator_id", creatorId)
     .single();
-
-  const isEnrolled = course?.students?.includes(userId);
 
   if (!course || error) {
     console.error("Error fetching course data:", error);
@@ -36,6 +49,12 @@ export default async function CourseDetailPage({
         </a>
       </div>
     );
+  }
+
+  const isEnrolled = course?.students?.includes(userId);
+
+  if (!isVipUser && course.vip) {
+    redirect("/vip/upgrade");
   }
 
   return (

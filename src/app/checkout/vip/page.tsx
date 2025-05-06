@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
 
@@ -14,7 +14,7 @@ export default function CheckoutPage() {
       try {
         if (!user) {
           toast.info("Haven't logged in yet, redirecting to login...");
-          return redirect("/login");
+          return router.push("/login");
         }
         const res = await fetch("/api/checkout/vip", {
           method: "POST",

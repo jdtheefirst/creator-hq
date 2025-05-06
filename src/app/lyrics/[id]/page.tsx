@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Image from "next/image";
 import { format } from "date-fns";
@@ -13,6 +13,22 @@ export default async function LyricsDetailPage({ params }: Props) {
   const supabase = await createClient();
   const { id } = await params;
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let isVipUser = false;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("is_vip")
+      .eq("id", user.id)
+      .single();
+
+    isVipUser = !!profile?.is_vip;
+  }
+
   const { data: lyric } = await supabase
     .from("lyrics")
     .select("*")
@@ -20,6 +36,10 @@ export default async function LyricsDetailPage({ params }: Props) {
     .single();
 
   if (!lyric) notFound();
+
+  if (!isVipUser && lyric.vip) {
+    redirect("/vip/upgrade");
+  }
 
   // Extract YouTube ID if URL exists
   const embedUrl = getEmbedUrl(lyric.video_source, lyric.video_url || "");
