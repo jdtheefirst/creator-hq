@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { format } from "date-fns";
 
 const Editor = dynamic(() => import("@/components/Editor"), { ssr: false });
 
@@ -29,9 +27,8 @@ export default function CampaignEditPage({
 }: {
   params: { id: string };
 }) {
-  const { user } = useAuth();
+  const { user, supabase } = useAuth();
   const router = useRouter();
-  const supabase = createBrowserClient();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

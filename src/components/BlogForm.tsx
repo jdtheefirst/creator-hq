@@ -9,7 +9,6 @@ import { useAuth } from "@/lib/context/AuthContext";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 
 // Import Editor dynamically to avoid SSR issues
 const Editor = dynamic(() => import("@/components/Editor"), { ssr: false });

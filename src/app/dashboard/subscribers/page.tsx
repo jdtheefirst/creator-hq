@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createBrowserClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import Link from "next/link";
 
 interface Subscriber {
   id: string;
@@ -28,7 +29,7 @@ interface NewsletterCampaign {
 }
 
 export default function SubscribersPage() {
-  const { user } = useAuth();
+  const { user, supabase } = useAuth();
   const router = useRouter();
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [campaigns, setCampaigns] = useState<NewsletterCampaign[]>([]);
@@ -37,7 +38,6 @@ export default function SubscribersPage() {
   const [activeTab, setActiveTab] = useState<"subscribers" | "campaigns">(
     "subscribers"
   );
-  const supabase = createBrowserClient();
 
   useEffect(() => {
     if (!user) {
@@ -112,31 +112,6 @@ export default function SubscribersPage() {
       fetchSubscribers();
     } catch (err) {
       setError("Failed to delete subscriber");
-      console.error(err);
-    }
-  };
-
-  const createCampaign = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("newsletter_campaigns")
-        .insert([
-          {
-            creator_id: user?.id,
-            title: "New Campaign",
-            subject: "",
-            content: "",
-            status: "draft",
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
-      setCampaigns((prev) => [data, ...prev]);
-      router.push(`/dashboard/subscribers/campaigns/${data.id}`);
-    } catch (err) {
-      setError("Failed to create campaign");
       console.error(err);
     }
   };
@@ -346,12 +321,12 @@ export default function SubscribersPage() {
       {activeTab === "campaigns" && (
         <div className="mt-8">
           <div className="flex justify-end mb-4">
-            <button
-              onClick={createCampaign}
+            <Link
+              href={"/dashboard/subscribers/new"}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Create Campaign
-            </button>
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -370,10 +345,10 @@ export default function SubscribersPage() {
                         campaign.status === "draft"
                           ? "bg-gray-100 text-gray-800"
                           : campaign.status === "scheduled"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : campaign.status === "sent"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : campaign.status === "sent"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
                       }`}
                     >
                       {campaign.status.charAt(0).toUpperCase() +

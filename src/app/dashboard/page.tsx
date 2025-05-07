@@ -2,6 +2,7 @@ import Link from "next/link";
 import ContentManagementLinks from "@/components/dashboard/ContentManagementLinks";
 import { createClient } from "@/lib/supabase/server";
 import { format, formatDate } from "date-fns";
+import { AlertCircle } from "lucide-react";
 
 // Temporary dashboard data
 const stats = [
@@ -9,30 +10,6 @@ const stats = [
   { name: "Active Users", value: "1,234", change: "+8%" },
   { name: "New Bookings", value: "45", change: "+15%" },
   { name: "Blog Views", value: "8,901", change: "+23%" },
-];
-
-const recentBookings = [
-  {
-    id: 1,
-    name: "John Doe",
-    date: "2024-03-15",
-    service: "Consultation",
-    status: "Pending",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    date: "2024-03-14",
-    service: "Workshop",
-    status: "Confirmed",
-  },
-  {
-    id: 3,
-    name: "Mike Johnson",
-    date: "2024-03-13",
-    service: "Mentoring",
-    status: "Completed",
-  },
 ];
 
 export default async function DashboardPage() {
@@ -72,6 +49,22 @@ export default async function DashboardPage() {
               </div>
             </div>
           ))}
+        </div>
+        <div className="flex items-start gap-4 mb-4">
+          <AlertCircle className="text-yellow-500 mt-1" size={24} />
+          <div>
+            <h2 className="text-2xl font-bold mb-1">Not in your plan</h2>
+            <p className="text-muted-foreground">
+              Stats insights are only available to recurring clients. Your
+              one-time license keeps things simple, but not this simple.
+            </p>
+            <Link
+              href="https://www.upwork.com/freelancers/jdtheefirst"
+              className="inline-block bg-black text-white px-5 py-2 rounded-full font-semibold hover:bg-gray-900 transition"
+            >
+              Reach out to upgrade
+            </Link>
+          </div>
         </div>
 
         {/* Recent Bookings */}
@@ -144,7 +137,7 @@ export default async function DashboardPage() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Recent Checkouts</h2>
             <Link
-              href="/dashboard/checkout-sessions"
+              href="/dashboard/sessions"
               className="text-blue-600 hover:text-blue-700"
             >
               View all

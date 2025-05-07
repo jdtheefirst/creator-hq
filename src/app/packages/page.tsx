@@ -1,13 +1,18 @@
-import { Clock, BadgeCheck, Lock } from "lucide-react";
+import { CountdownTimer } from "@/components/countdownTimer";
+import { Clock, BadgeCheck, Flame } from "lucide-react";
 import Link from "next/link";
 
 export default function PackagesPage() {
   return (
     <main className="min-h-screen bg-gray-950 text-white px-6 py-16">
       <section className="max-w-5xl mx-auto text-center">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">
-          Lock In Your Personal CreatorHQ Site
-        </h1>
+        <div className="flex justify-center items-center gap-2 mb-4">
+          <Flame className="text-yellow-400 w-6 h-6 animate-pulse" />
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+            Lock In Your Personal CreatorHQ Site
+          </h2>
+          <Flame className="text-yellow-400 w-6 h-6 animate-pulse" />
+        </div>
         <p className="text-gray-400 mb-12">
           No noise, no fluff. Just your own digital HQ. Built once, owned
           forever.
@@ -41,6 +46,11 @@ export default function PackagesPage() {
                 Claim This Slot
               </span>
             </Link>
+            <p className="text-gray-400 text-sm mt-4">
+              CreatorHQ Monthly drops in{" "}
+              <CountdownTimer targetDate="2025-05-20T00:00:00Z" />. After that,
+              this one-time offer is gone for good.
+            </p>
           </div>
 
           {/* Monthly Plan Placeholder */}

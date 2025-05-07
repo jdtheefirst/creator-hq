@@ -1,3 +1,5 @@
+"use client";
+
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -35,26 +37,32 @@ export default function UserEngagementChart({
   data,
 }: UserEngagementChartProps) {
   // Group data by date and event type
-  const groupedData = data.reduce((acc, item) => {
-    const date = format(new Date(item.event_date), "MMM d");
-    if (!acc[date]) {
-      acc[date] = {
-        page_view: 0,
-        click: 0,
-        scroll: 0,
-        hover: 0,
-      };
-    }
-    if (
-      item.event_type === "page_view" ||
-      item.event_type === "click" ||
-      item.event_type === "scroll" ||
-      item.event_type === "hover"
-    ) {
-      acc[date][item.event_type]++;
-    }
-    return acc;
-  }, {} as Record<string, { page_view: number; click: number; scroll: number; hover: number }>);
+  const groupedData = data.reduce(
+    (acc, item) => {
+      const date = format(new Date(item.event_date), "MMM d");
+      if (!acc[date]) {
+        acc[date] = {
+          page_view: 0,
+          click: 0,
+          scroll: 0,
+          hover: 0,
+        };
+      }
+      if (
+        item.event_type === "page_view" ||
+        item.event_type === "click" ||
+        item.event_type === "scroll" ||
+        item.event_type === "hover"
+      ) {
+        acc[date][item.event_type]++;
+      }
+      return acc;
+    },
+    {} as Record<
+      string,
+      { page_view: number; click: number; scroll: number; hover: number }
+    >
+  );
 
   const chartData = {
     labels: Object.keys(groupedData),

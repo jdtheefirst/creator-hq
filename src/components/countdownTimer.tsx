@@ -29,7 +29,7 @@ export const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
     return <span className="text-red-500 font-bold">Offer expired.</span>;
 
   return (
-    <span className="font-mono text-yellow-400 font-bold">
+    <span className="font-mono text-red-400 font-bold">
       {timeLeft.days}d {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s
     </span>
   );

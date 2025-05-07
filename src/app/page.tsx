@@ -161,7 +161,7 @@ export default function CreatorProfilePage() {
                   sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
                   fill
                   priority
-                  className="object-cover"
+                  className="object-cover rounded-full"
                 />
               ) : (
                 <div className="h-full w-full bg-gray-200 flex items-center justify-center">
@@ -207,7 +207,7 @@ export default function CreatorProfilePage() {
           <Image
             src={coverUrl}
             alt="Cover"
-            sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 100vw"
+            sizes="(min-width: 1024px) 30vw, (min-width: 768px) 33vw, 100vw"
             fill
             priority
             className="object-cover"
@@ -216,7 +216,7 @@ export default function CreatorProfilePage() {
       </div>
 
       {/* Profile Section */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mb-6">
         <div className="relative -mt-16">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between">
             <div className="flex items-end space-x-4">
@@ -228,7 +228,7 @@ export default function CreatorProfilePage() {
                     sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 100vw"
                     priority
                     fill
-                    className="object-cover"
+                    className="object-cover rounded-full"
                   />
                 ) : (
                   <div className="h-full w-full bg-gray-200 flex items-center justify-center">
@@ -239,7 +239,7 @@ export default function CreatorProfilePage() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-400 truncate">
                   {profile.full_name}
                 </h1>
                 <p className="text-sm sm:text-base text-gray-600 line-clamp-2">
@@ -466,7 +466,7 @@ export default function CreatorProfilePage() {
                   Videos
                 </h3>
                 <p className="text-sm text-gray-500 group-hover:text-gray-700">
-                  Watch my latest drops — comedy, gaming, and more
+                  Watch my latest drops — comedy, vlogs, gaming, and more
                 </p>
               </div>
             </div>
@@ -701,31 +701,15 @@ export default function CreatorProfilePage() {
             </div>
           </div>
         </div>
-
-        {/* countdownTimer */}
-        <section className="relative bg-black text-white text-center py-12 px-4 border-t-4 border-yellow-400 shadow-[0_-5px_25px_rgba(255,215,0,0.3)] mt-12">
-          <div className="flex justify-center items-center gap-2 mb-4">
-            <Flame className="text-yellow-400 w-6 h-6 animate-pulse" />
-            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-              🔥 One-Time Lifetime Deal
-            </h2>
-            <Flame className="text-yellow-400 w-6 h-6 animate-pulse" />
-          </div>
-          <p className="text-lg md:text-xl mb-6 max-w-2xl mx-auto text-gray-200">
-            CreatorHQ Monthly drops in{" "}
-            <CountdownTimer targetDate="2025-05-20T00:00:00Z" />. After that,
-            this one-time offer is gone for good.
-          </p>
-          <a
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl z-50">
+          <Link
             href="/packages"
-            className="inline-block bg-yellow-400 text-black font-semibold px-6 py-3 rounded-xl hover:bg-yellow-300 transition"
+            className="bg-yellow-400 text-black px-4 py-2 rounded-full font-bold shadow-md hover:bg-yellow-300 transition text-sm text-center line-clamp-1"
           >
-            Get Yours Today
-          </a>
-          <p className="mt-4 text-sm text-gray-400 italic">
-            One-time payment. Lifetime access. Zero recurring fees.
-          </p>
-        </section>
+            🔥 One-time deal ends in{" "}
+            <CountdownTimer targetDate="2025-05-20T00:00:00Z" /> – Lock Yours
+          </Link>
+        </div>
       </div>
 
       {notification && (

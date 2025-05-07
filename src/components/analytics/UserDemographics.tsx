@@ -1,3 +1,5 @@
+"use client";
+
 import { Pie } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -21,16 +23,22 @@ interface UserDemographicsProps {
 
 export default function UserDemographics({ data }: UserDemographicsProps) {
   // Group data by device type
-  const deviceData = data.reduce((acc, item) => {
-    acc[item.device_type] = (acc[item.device_type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const deviceData = data.reduce(
+    (acc, item) => {
+      acc[item.device_type] = (acc[item.device_type] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   // Group data by country
-  const countryData = data.reduce((acc, item) => {
-    acc[item.country] = (acc[item.country] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const countryData = data.reduce(
+    (acc, item) => {
+      acc[item.country] = (acc[item.country] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   // Sort countries by count and get top 5
   const topCountries = Object.entries(countryData)
