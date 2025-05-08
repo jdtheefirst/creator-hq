@@ -15,12 +15,20 @@ import {
   ShieldUser,
   ShoppingBag,
   Star,
-  Flame,
   UserRoundPen,
+  Instagram,
+  Youtube,
+  Facebook,
 } from "lucide-react";
+import { FaVimeo, FaXTwitter } from "react-icons/fa6";
+import { SiTiktok, SiTwitch } from "react-icons/si";
 import NewsletterForm from "@/components/NewsletterForm";
 import { getSafeUrl } from "@/lib/utils";
 import { CountdownTimer } from "@/components/countdownTimer";
+import { CiLinkedin } from "react-icons/ci";
+import { GiSpiderWeb } from "react-icons/gi";
+import { FaDiscord, FaPinterest, FaSnapchat, FaTelegram } from "react-icons/fa";
+import { MONETIZATION_PLATFORMS } from "@/components/ProfileForm";
 
 interface Profile {
   id: string;
@@ -30,11 +38,11 @@ interface Profile {
   cover_image: string;
   follower_count: Record<string, number>;
   social_following_count: number;
+  website?: string;
   social_links: {
     twitter?: string;
     instagram?: string;
     youtube?: string;
-    website?: string;
     tiktok?: string;
     twitch?: string;
     discord?: string;
@@ -45,6 +53,18 @@ interface Profile {
     snapchat?: string;
     telegram?: string;
     vimeo?: string;
+  };
+  monetization_links: {
+    kofi?: string;
+    cashapp?: string;
+    buymeacoffee?: string;
+    paypal?: string;
+    gumroad?: string;
+    onlyfans?: string;
+    fansly?: string;
+    venmo?: string;
+    patreon?: string;
+    stripe?: string;
   };
 }
 
@@ -269,22 +289,27 @@ export default function CreatorProfilePage() {
           </div>
 
           {/* Social Links */}
-          <div className="mt-4 flex flex-wrap gap-4">
+          <div className="mt-4 flex flex-wrap gap-4 items-center">
+            {profile.social_links?.twitter && (
+              <a
+                href={profile.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-green-400 transition-colors duration-200"
+              >
+                <span className="sr-only">Website</span>
+                <GiSpiderWeb className="h-6 w-6" />
+              </a>
+            )}
             {profile.social_links?.twitter && (
               <a
                 href={profile.social_links.twitter}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-400 hover:text-blue-400 transition-colors duration-200"
+                className="text-gray-400 hover:text-black transition-colors duration-200"
               >
                 <span className="sr-only">Twitter</span>
-                <svg
-                  className="h-6 w-6"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
-                </svg>
+                <FaXTwitter className="h-6 w-6" />
               </a>
             )}
             {profile.social_links?.instagram && (
@@ -295,17 +320,18 @@ export default function CreatorProfilePage() {
                 className="text-gray-400 hover:text-pink-400 transition-colors duration-200"
               >
                 <span className="sr-only">Instagram</span>
-                <svg
-                  className="h-6 w-6"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M12.315 2c2.43 0 2.784.013 3.808.09 1.064.077 1.791.232 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.233.636.388 1.363.465 2.427.077 1.067.09 1.407.09 4.123v.08c0 2.643-.012 2.987-.09 4.043-.077 1.064-.232 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.233-1.363.388-2.427.465-1.067.077-1.407.09-4.123.09h-.08c-2.643 0-2.987-.012-4.043-.09-1.064-.077-1.791-.232-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.233-.636-.388-1.363-.465-2.427-.047-1.024-.09-1.379-.09-3.808v-.63c0-2.43.013-2.784.09-3.808.077-1.064.232-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.233 1.363-.388 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <Instagram className="h-6 w-6" />
+              </a>
+            )}
+            {profile.social_links?.facebook && (
+              <a
+                href={profile.social_links.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-blue-400 transition-colors duration-200"
+              >
+                <span className="sr-only">Facebook</span>
+                <Facebook className="h-6 w-6" />
               </a>
             )}
             {profile.social_links?.youtube && (
@@ -316,17 +342,7 @@ export default function CreatorProfilePage() {
                 className="text-gray-400 hover:text-red-400 transition-colors duration-200"
               >
                 <span className="sr-only">YouTube</span>
-                <svg
-                  className="h-6 w-6"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M19.812 5.418c.861.23 1.538.907 1.768 1.768C21.998 8.746 22 12 22 12s0 3.255-.418 4.814a2.504 2.504 0 0 1-1.768 1.768c-1.56.419-7.814.419-7.814.419s-6.255 0-7.814-.419a2.505 2.505 0 0 1-1.768-1.768C2 15.255 2 12 2 12s0-3.255.417-4.814a2.507 2.507 0 0 1 1.768-1.768C5.744 5 11.998 5 11.998 5s6.255 0 7.814.418ZM15.194 12 10 15V9l5.194 3Z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <Youtube className="h-6 w-6" />
               </a>
             )}
             {profile.social_links?.tiktok && (
@@ -337,17 +353,9 @@ export default function CreatorProfilePage() {
                 className="text-gray-400 hover:text-black transition-colors duration-200"
               >
                 <span className="sr-only">TikTok</span>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="h-6 w-6"
-                >
-                  <path d="M12 2C13.6 2 15 3.4 15 5V6.5C16.6 7.6 18.6 8 20.5 8V12C18.2 12 16 11.3 14.2 10V16C14.2 19.3 11.3 22 8 22C4.7 22 2 19.3 2 16C2 12.7 4.7 10 8 10H9V14H8C6.3 14 5 15.3 5 16.9C5 18.6 6.3 20 8 20C9.7 20 11 18.6 11 16.9V2H12Z" />
-                </svg>
+                <SiTiktok className="h-6 w-6" />
               </a>
             )}
-
             {profile.social_links?.twitch && (
               <a
                 href={profile.social_links.twitch}
@@ -356,13 +364,18 @@ export default function CreatorProfilePage() {
                 className="text-gray-400 hover:text-purple-400 transition-colors duration-200"
               >
                 <span className="sr-only">Twitch</span>
-                <svg
-                  className="h-6 w-6"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
-                </svg>
+                <SiTwitch className="h-6 w-6" />
+              </a>
+            )}
+            {profile.social_links?.linkedin && (
+              <a
+                href={profile.social_links.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-blue-400 transition-colors duration-200"
+              >
+                <span className="sr-only">Linkedin</span>
+                <CiLinkedin className="h-6 w-6" />
               </a>
             )}
             {profile.social_links?.discord && (
@@ -370,16 +383,10 @@ export default function CreatorProfilePage() {
                 href={profile.social_links.discord}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-400 hover:text-indigo-400 transition-colors duration-200"
+                className="text-gray-400 hover:text-green-400 transition-colors duration-200"
               >
                 <span className="sr-only">Discord</span>
-                <svg
-                  className="h-6 w-6"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-                </svg>
+                <FaDiscord className="h-6 w-6" />
               </a>
             )}
             {profile.social_links?.patreon && (
@@ -390,36 +397,74 @@ export default function CreatorProfilePage() {
                 className="text-gray-400 hover:text-orange-400 transition-colors duration-200"
               >
                 <span className="sr-only">Patreon</span>
-                <svg
-                  className="h-6 w-6"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M14.82 2.41c3.96 0 7.18 3.24 7.18 7.21 0 3.96-3.22 7.18-7.18 7.18-3.97 0-7.21-3.22-7.21-7.18 0-3.97 3.24-7.21 7.21-7.21M2 21.6h3.5V2.41H2V21.6z" />
-                </svg>
+                <FaDiscord className="h-6 w-6" />
               </a>
             )}
-            {profile.social_links?.website && (
+            {profile.social_links?.pinterest && (
               <a
-                href={profile.social_links.website}
+                href={profile.social_links.pinterest}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                className="text-gray-400 hover:text-red-400 transition-colors duration-200"
               >
-                <span className="sr-only">Website</span>
-                <svg
-                  className="h-6 w-6"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c5.51 0 10-4.48 10-10S17.51 2 12 2zm6.605 4.61a8.502 8.502 0 011.93 5.314c-.281-.054-3.101-.629-5.943-.271-.065-.141-.12-.293-.184-.445a25.416 25.416 0 00-.564-1.236c3.145-1.28 4.577-3.124 4.761-3.362zM12 3.475c2.17 0 4.154.813 5.662 2.148-.152.216-1.443 1.941-4.48 3.08-1.399-2.57-2.95-4.675-3.189-5A8.687 8.687 0 0112 3.475zm-3.633.803a53.896 53.896 0 013.167 4.935c-3.992 1.063-7.517 1.04-7.896 1.04a8.581 8.581 0 014.729-5.975zM3.453 12.01v-.26c.37.01 4.512.065 8.775-1.215.25.477.477.965.694 1.453-.109.033-.228.065-.336.098-4.404 1.42-6.747 5.303-6.942 5.629a8.522 8.522 0 01-2.19-5.705zM12 20.547a8.482 8.482 0 01-5.239-1.8c.152-.315 1.888-3.656 6.703-5.337.022-.01.033-.01.054-.022a35.318 35.318 0 011.823 6.475 8.4 8.4 0 01-3.341.684zm4.761-1.465c-.086-.52-.542-3.015-1.659-6.084 2.679-.423 5.022.271 5.314.369a8.468 8.468 0 01-3.655 5.715z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <span className="sr-only">Pinterest</span>
+                <FaPinterest className="h-6 w-6" />
               </a>
             )}
+            {profile.social_links?.snapchat && (
+              <a
+                href={profile.social_links.snapchat}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-yellow-400 transition-colors duration-200"
+              >
+                <span className="sr-only">Snapchat</span>
+                <FaSnapchat className="h-6 w-6" />
+              </a>
+            )}
+            {profile.social_links?.telegram && (
+              <a
+                href={profile.social_links.telegram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-blue-400 transition-colors duration-200"
+              >
+                <span className="sr-only">Telegram</span>
+                <FaTelegram className="h-6 w-6" />
+              </a>
+            )}
+            {profile.social_links?.vimeo && (
+              <a
+                href={profile.social_links.vimeo}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-gray-800 transition-colors duration-200"
+              >
+                <span className="sr-only">X</span>
+                <FaVimeo className="h-6 w-6" />
+              </a>
+            )}
+
+            {MONETIZATION_PLATFORMS.map((platform) => {
+              const link =
+                profile.monetization_links[
+                  platform.key as keyof typeof profile.monetization_links
+                ];
+
+              if (!link) return null; // Only show if user has that platform set
+
+              return (
+                <Link
+                  key={platform.key}
+                  href={link}
+                  passHref
+                  className="w-fit h-fit p-0 rounded-full text-xl transition-all hover:text-primary"
+                >
+                  <span>{platform.icon}</span>
+                  <span className="sr-only">{platform.name}</span>
+                </Link>
+              );
+            })}
           </div>
         </div>
 

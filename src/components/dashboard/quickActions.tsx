@@ -63,7 +63,7 @@ export default function QuickActions() {
           </CardHeader>
           <CardContent className="space-y-3">
             <Button variant="ghost" className="w-full justify-between" asChild>
-              <a href="/dashboard/profile">
+              <a href="/profile">
                 Profile Settings
                 <ArrowRight className="w-4 h-4" />
               </a>

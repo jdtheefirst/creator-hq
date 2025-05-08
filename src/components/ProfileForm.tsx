@@ -7,6 +7,7 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import SignOutButton from "./SignOutButton";
 import { useAuth } from "@/lib/context/AuthContext";
+import { toast } from "sonner";
 
 interface BaseProfileData {
   id: string;
@@ -150,6 +151,19 @@ type SocialPlatform =
   | "telegram"
   | "vimeo";
 
+export const MONETIZATION_PLATFORMS = [
+  { name: "Cash App", key: "cashapp", icon: "💵" },
+  { name: "Ko-Fi", key: "kofi", icon: "☕" },
+  { name: "Buy Me a Coffee", key: "buymeacoffee", icon: "🍵" },
+  { name: "PayPal", key: "paypal", icon: "💰" },
+  { name: "Gumroad", key: "gumroad", icon: "📦" },
+  { name: "OnlyFans", key: "onlyfans", icon: "🔞" },
+  { name: "Fansly", key: "fansly", icon: "🦊" },
+  { name: "Venmo", key: "venmo", icon: "💸" },
+  { name: "Patreon", key: "patreon", icon: "❤️" },
+  { name: "Stripe", key: "stripe", icon: "🏦" },
+];
+
 export default function ProfileForm({
   initialData,
   isCreator,
@@ -174,18 +188,6 @@ export default function ProfileForm({
   const getFileExtension = (file: File) => file.name.split(".").pop() || "jpg";
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const MONETIZATION_PLATFORMS = [
-    { name: "Cash App", key: "cashapp", icon: "💵" },
-    { name: "Ko-Fi", key: "kofi", icon: "☕" },
-    { name: "Buy Me a Coffee", key: "buymeacoffee", icon: "🍵" },
-    { name: "PayPal", key: "paypal", icon: "💰" },
-    { name: "Gumroad", key: "gumroad", icon: "📦" },
-    { name: "OnlyFans", key: "onlyfans", icon: "🔞" },
-    { name: "Fansly", key: "fansly", icon: "🦊" },
-    { name: "Venmo", key: "venmo", icon: "💸" },
-    { name: "Patreon", key: "patreon", icon: "❤️" },
-    { name: "Stripe", key: "stripe", icon: "🏦" },
-  ];
 
   const [monetizationLinks, setMonetizationLinks] = useState<
     Record<string, string>
@@ -233,11 +235,11 @@ export default function ProfileForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    const toastId = toast.loading("Submitting changes...");
     try {
       // Delete old avatar if a new one is being uploaded
       if (avatarFile) {
-        console.log("Uploading new avatar:", avatarFile);
-        console.log("Avatar file name:", avatarFile.name);
+        toast.info("Uploading new avatar", { id: toastId });
         const avatarExt = getFileExtension(avatarFile);
 
         const { data: avatarFiles, error: avatarFetchError } =
@@ -253,7 +255,7 @@ export default function ProfileForm({
               : null;
           if (oldAvatarPath) {
             await supabase.storage.from("avatars").remove([oldAvatarPath]);
-            console.log("Old avatar removed:", oldAvatarPath);
+            toast.info("Old avatar removed", { id: toastId });
           }
         }
 
@@ -266,18 +268,19 @@ export default function ProfileForm({
         if (avatarError) throw avatarError;
         formData.avatar_url = avatarData.path;
         console.log("New avatar uploaded:", avatarData.path);
+        toast.success("New avatar uploaded", { id: toastId });
       }
 
       // Delete old cover if a new one is being uploaded
       if (coverFile) {
-        console.log("Uploading new cover:", coverFile);
+        toast.info("Uploading new cover:", { id: toastId });
         const coverExt = getFileExtension(coverFile);
         console.log("Cover file extension:", coverExt);
         const { data: coverFiles, error: coverFetchError } =
           await supabase.storage.from("covers").list(userId);
 
         if (coverFetchError)
-          console.error("Error fetching old cover:", coverFetchError);
+          toast.error("Error fetching old cover:", { id: toastId });
 
         if ((coverFiles ?? []).length > 0) {
           console.log("Old cover files:", coverFiles);
@@ -286,7 +289,7 @@ export default function ProfileForm({
               ? `${userId}/${coverFiles[0].name}`
               : null;
           if (oldCoverPath) {
-            console.log("Removing old cover:", oldCoverPath);
+            toast.info("Removing old cover:", { id: toastId });
             await supabase.storage.from("covers").remove([oldCoverPath]);
           }
         }
@@ -299,7 +302,7 @@ export default function ProfileForm({
 
         if (coverError) throw coverError;
         formData.cover_image = coverData.path;
-        console.log("New cover uploaded:", coverData.path);
+        toast.success("New cover uploaded:", { id: toastId });
       }
 
       const updatedFollowerCounts = {
@@ -327,7 +330,9 @@ export default function ProfileForm({
         .eq("id", userId);
 
       if (error) throw error;
-
+      toast.success("Submitting changes passed", {
+        id: toastId,
+      });
       router.refresh();
     } catch (error) {
       console.error("Error updating profile:", error);
