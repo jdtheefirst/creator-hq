@@ -133,10 +133,6 @@ export default function SubscribersPage() {
     }
   };
 
-  const previewCampaign = async (id: string) => {
-    router.push(`/dashboard/subscribers/campaigns/${id}/preview`);
-  };
-
   const scheduleCampaign = async (id: string) => {
     try {
       const scheduledDate = prompt("Enter scheduled date (YYYY-MM-DD HH:mm):");
@@ -392,31 +388,25 @@ export default function SubscribersPage() {
                 </div>
 
                 <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
-                  <button
-                    onClick={() =>
-                      router.push(
-                        `/dashboard/subscribers/campaigns/${campaign.id}`
-                      )
-                    }
-                    className="text-blue-600 hover:text-blue-900"
+                  <Link
+                    href={`/dashboard/subscribers/campaigns/${campaign.id}/edit`}
+                    className="text-gray-600 hover:text-gray-900"
                   >
                     Edit
-                  </button>
+                  </Link>
+                  <Link
+                    href={`/dashboard/subscribers/campaigns/${campaign.id}/preview`}
+                    className="text-gray-600 hover:text-gray-900"
+                  >
+                    Preview
+                  </Link>
                   {campaign.status === "draft" && (
-                    <>
-                      <button
-                        onClick={() => previewCampaign(campaign.id)}
-                        className="text-gray-600 hover:text-gray-900"
-                      >
-                        Preview
-                      </button>
-                      <button
-                        onClick={() => scheduleCampaign(campaign.id)}
-                        className="text-green-600 hover:text-green-900"
-                      >
-                        Schedule
-                      </button>
-                    </>
+                    <button
+                      onClick={() => scheduleCampaign(campaign.id)}
+                      className="text-green-600 hover:text-green-900"
+                    >
+                      Schedule
+                    </button>
                   )}
                   {campaign.status === "scheduled" && (
                     <button

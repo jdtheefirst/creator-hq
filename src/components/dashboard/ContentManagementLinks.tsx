@@ -1,77 +1,89 @@
-import Link from "next/link";
-import { ChevronDown } from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  ChevronDown,
+  FileText,
+  Video,
+  Mic2,
+  BookOpen,
+  Mail,
+  ShoppingCart,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-export default function ContentManagementLinks() {
+const primaryLinks = [
+  { href: "/dashboard/posts", label: "Blog Posts", icon: FileText },
+  { href: "/dashboard/products", label: "Products", icon: ShoppingCart },
+  { href: "/dashboard/subscribers", label: "Newsletter", icon: Mail },
+];
+
+const secondaryLinks = [
+  { href: "/dashboard/videos", label: "Videos", icon: Video },
+  { href: "/dashboard/vip", label: "VIP Content", icon: BookOpen },
+  { href: "/dashboard/podcasts", label: "Podcasts", icon: Mic2 },
+  { href: "/dashboard/courses", label: "Courses", icon: BookOpen },
+  { href: "/dashboard/lyrics", label: "Lyrics", icon: FileText },
+];
+
+export default function ContentManagementCard() {
   return (
-    <div className="space-y-2">
-      <Link
-        href="/dashboard/posts"
-        className="block text-blue-600 hover:text-blue-700"
-      >
-        Manage Blog Posts
-      </Link>
-      <Link
-        href="/dashboard/products"
-        className="block text-blue-600 hover:text-blue-700"
-      >
-        Manage Products
-      </Link>
-
-      <div className="relative">
-        <input type="checkbox" id="content-toggle" className="peer hidden" />
-
-        <label
-          htmlFor="content-toggle"
-          className="flex items-center text-blue-600 hover:text-blue-700 cursor-pointer"
-        >
-          <span>See More</span>
-          <ChevronDown className="ml-1 w-4 h-4 transition-transform peer-checked:rotate-180" />
-        </label>
-
-        <div
-          className="absolute bottom-full left-0 mb-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-200 
-          opacity-0 peer-checked:opacity-100 peer-checked:pointer-events-auto 
-          transition-opacity duration-200 pointer-events-none 
-          group-hover:opacity-100 z-50"
-        >
-          <Link
-            href="/dashboard/videos"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Manage Videos
-          </Link>
-          <Link
-            href="/dashboard/vip"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            VIP Content
-          </Link>
-          <Link
-            href="/dashboard/podcasts"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Manage Podcasts
-          </Link>
-          <Link
-            href="/dashboard/courses"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Manage Courses
-          </Link>
-          <Link
-            href="/dashboard/lyrics"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Manage Lyrics
-          </Link>
-          <Link
-            href="/dashboard/subscribers"
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Manage Newsletter
-          </Link>
+    <Card className="hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-full bg-green-100 text-green-600">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <CardTitle>Content Management</CardTitle>
+            <CardDescription>Manage your digital content</CardDescription>
+          </div>
         </div>
-      </div>
-    </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {primaryLinks.map((link) => (
+          <Button
+            key={link.href}
+            variant="ghost"
+            className="w-full justify-start gap-3"
+            asChild
+          >
+            <a href={link.href}>
+              <link.icon className="w-4 h-4" />
+              {link.label}
+            </a>
+          </Button>
+        ))}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="w-full justify-start gap-3">
+              <ChevronDown className="w-4 h-4" />
+              More Content Types
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56">
+            {secondaryLinks.map((link) => (
+              <DropdownMenuItem key={link.href} asChild>
+                <a href={link.href} className="flex items-center gap-2">
+                  <link.icon className="w-4 h-4" />
+                  {link.label}
+                </a>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </CardContent>
+    </Card>
   );
 }

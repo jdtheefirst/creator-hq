@@ -3,6 +3,7 @@ import ContentManagementLinks from "@/components/dashboard/ContentManagementLink
 import { createClient } from "@/lib/supabase/server";
 import { format, formatDate } from "date-fns";
 import { AlertCircle } from "lucide-react";
+import QuickActions from "@/components/dashboard/quickActions";
 
 // Temporary dashboard data
 const stats = [
@@ -215,48 +216,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold mb-4">Content Management</h3>
-            <ContentManagementLinks />
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold mb-4">Analytics</h3>
-            <div className="space-y-2">
-              <Link
-                href="/dashboard/analytics"
-                className="block text-blue-600 hover:text-blue-700"
-              >
-                View Analytics
-              </Link>
-              <Link
-                href="/dashboard/reports"
-                className="block text-blue-600 hover:text-blue-700"
-              >
-                Generate Reports
-              </Link>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold mb-4">Settings</h3>
-            <div className="space-y-2">
-              <Link
-                href="/dashboard/profile"
-                className="block text-blue-600 hover:text-blue-700"
-              >
-                Profile Settings
-              </Link>
-              <Link
-                href="/dashboard/integrations"
-                className="block text-blue-600 hover:text-blue-700"
-              >
-                Integrations
-              </Link>
-            </div>
-          </div>
-        </div>
+        <QuickActions />
       </div>
     </div>
   );

@@ -10,13 +10,21 @@ create table page_views (
   country text,
   device_type text,
   session_id text
+  city text,
+  region text,
+  timezone text,
+  latitude double precision,
+  longitude double precision,
+  country_code text,
+  browser text,
+  os text;
 );
 
 -- Create user_engagement table
 create table user_engagement (
   id uuid default uuid_generate_v4() primary key,
   creator_id uuid references auth.users(id) on delete cascade not null,
-  event_type text not null check (event_type in ('view', 'click', 'scroll', 'time_spent', 'conversion', 'view', 'like', 'share', 'comment', 'click', 'save')),
+  event_type text not null check (event_type in ('hover', 'scroll', 'time_spent', 'conversion', 'view', 'like', 'share', 'comment', 'click', 'save')),
   event_date timestamp with time zone default timezone('utc'::text, now()) not null,
   page_path text not null,
   element_id text,
@@ -311,7 +319,8 @@ BEGIN
   
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+ALTER FUNCTION update_newsletter_metrics() OWNER TO postgres;
 
 -- Create triggers for newsletter metrics
 CREATE TRIGGER update_newsletter_metrics_on_subscriber

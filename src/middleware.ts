@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { UAParser } from "ua-parser-js";
 import { getGeolocation } from "@/lib/geolocation";
 import { createClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "./lib/supabaseAdmin";
 
 export async function middleware(request: NextRequest) {
   console.log("Middleware processing request for:", request.nextUrl.pathname);
@@ -15,6 +16,17 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname === "/auth/callback"
   ) {
     return NextResponse.next();
+  }
+
+  const userAgent = request.headers.get("user-agent") || "";
+  const isKnownBot = /bot|crawler|spider|crawling/i.test(userAgent);
+  const isGoogleBot = /Googlebot|bingbot|slurp|DuckDuckBot|Baiduspider/i.test(
+    userAgent
+  );
+
+  if (isKnownBot && !isGoogleBot) {
+    console.log("Blocked non-SEO bot:", userAgent);
+    return NextResponse.next(); // let them pass but don't track
   }
 
   const res = NextResponse.next();
@@ -72,7 +84,7 @@ export async function middleware(request: NextRequest) {
 
     // Track page view for all users (authenticated and guests)
     const pageView = {
-      creator_id: user?.id || null,
+      creator_id: process.env.NEXT_PUBLIC_CREATOR_UID,
       page_path: request.nextUrl.pathname,
       user_agent: request.headers.get("user-agent"),
       referrer: request.headers.get("referer"),
@@ -90,13 +102,13 @@ export async function middleware(request: NextRequest) {
       session_id: request.cookies.get("session_id")?.value,
     };
 
-    await supabase.from("page_views").insert(pageView);
+    await supabaseAdmin.from("page_views").insert(pageView);
 
     // Track additional engagement events for authenticated users
     if (user) {
       const engagementEvents = [
         {
-          creator_id: user.id,
+          creator_id: process.env.NEXT_PUBLIC_CREATOR_UID,
           event_type: "view",
           page_path: request.nextUrl.pathname,
           metadata: {
@@ -114,7 +126,7 @@ export async function middleware(request: NextRequest) {
         },
       ];
 
-      await supabase.from("user_engagement").insert(engagementEvents);
+      await supabaseAdmin.from("user_engagement").insert(engagementEvents);
     }
   } catch (error) {
     console.error("Middleware error:", error);

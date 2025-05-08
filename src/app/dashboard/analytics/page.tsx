@@ -80,13 +80,14 @@ export default async function AnalyticsPage({
   searchParams,
 }: AnalyticsPageProps) {
   const supabase = await createClient();
+  const searchParam = await searchParams;
 
   // Default to last 30 days if no date range is specified
-  const endDate = searchParams.end_date
-    ? new Date(searchParams.end_date)
+  const endDate = searchParam.end_date
+    ? new Date(searchParam.end_date)
     : new Date();
-  const startDate = searchParams.start_date
-    ? new Date(searchParams.start_date)
+  const startDate = searchParam.start_date
+    ? new Date(searchParam.start_date)
     : subDays(endDate, 30);
 
   // Fetch aggregated metrics
@@ -162,11 +163,17 @@ export default async function AnalyticsPage({
 
   return (
     <div className="space-y-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
+        <p className="mt-2 text-sm text-gray-600">
+          Track your platform's performance and user engagement
+        </p>
+      </div>
       <div className="flex justify-end">
         <AnalyticsFilters
-          currentDateRange={searchParams.date_range}
-          currentStartDate={searchParams.start_date}
-          currentEndDate={searchParams.end_date}
+          currentDateRange={searchParam.date_range}
+          currentStartDate={searchParam.start_date}
+          currentEndDate={searchParam.end_date}
         />
       </div>
 
