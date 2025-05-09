@@ -30,7 +30,7 @@ const primaryLinks = [
 
 const secondaryLinks = [
   { href: "/dashboard/videos", label: "Videos", icon: Video },
-  { href: "/dashboard/vip", label: "VIP Content", icon: BookOpen },
+  // { href: "/dashboard/vip", label: "VIP Content", icon: BookOpen },
   { href: "/dashboard/podcasts", label: "Podcasts", icon: Mic2 },
   { href: "/dashboard/courses", label: "Courses", icon: BookOpen },
   { href: "/dashboard/lyrics", label: "Lyrics", icon: FileText },

@@ -39,7 +39,7 @@ export default function PackagesPage() {
             </ul>
             <div className="text-3xl font-bold text-yellow-400 mb-4">$100</div>
             <Link
-              href="https://www.upwork.com/freelancers/jdtheefirst"
+              href="https://www.upwork.com/services/product/development-it-one-time-creator-site-fully-branded-custom-domain-lifetime-ownership-1920823450162886041?ref=project_share"
               passHref
             >
               <span className="inline-block bg-yellow-400 text-black font-semibold px-6 py-2 rounded-xl hover:bg-yellow-300 transition cursor-pointer">
