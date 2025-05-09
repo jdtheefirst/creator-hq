@@ -5,9 +5,9 @@ import Image from "next/image";
 export default async function PodcastPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  const { id } = await params;
   const supabase = await createClient();
   const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 

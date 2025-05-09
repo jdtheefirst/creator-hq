@@ -1,18 +1,18 @@
-// dashboard/lyrics/[id]/edit.tsx
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import LyricsForm from "@/components/LyricsForm";
 
-interface Props {
-  params: { id: string };
-}
-
-export default async function EditLyricsPage({ params }: Props) {
+export default async function EditLyricsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const supabase = await createClient();
+  const { id } = await params;
   const { data: lyric, error } = await supabase
     .from("lyrics")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   if (!lyric || error) notFound();

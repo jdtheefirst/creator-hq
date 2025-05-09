@@ -8,10 +8,10 @@ import { getEmbedUrl } from "@/lib/utils";
 export default async function LyricsDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const supabase = await createClient();
-  const { id } = params;
+  const { id } = await params;
 
   const {
     data: { user },

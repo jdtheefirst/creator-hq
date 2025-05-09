@@ -4,10 +4,10 @@ import PodcastForm from "@/components/PodcastForm";
 export default async function EditPodcastPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const supabase = await createClient();
-  const { id } = params;
+  const { id } = await params;
   const { data: podcast } = await supabase
     .from("podcasts")
     .select("*")

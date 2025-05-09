@@ -4,9 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 export default async function EditVideoPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  const { id } = await params;
   const supabase = await createClient(); // your server-side Supabase client
   const { data: video, error } = await supabase
     .from("videos")

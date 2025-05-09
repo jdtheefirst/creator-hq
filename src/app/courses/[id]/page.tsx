@@ -6,9 +6,9 @@ import { redirect } from "next/navigation";
 export default async function CourseDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  const { id } = await params;
   const supabase = await createClient();
   const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
 

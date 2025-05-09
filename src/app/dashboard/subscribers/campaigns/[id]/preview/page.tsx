@@ -5,17 +5,18 @@ import { format } from "date-fns";
 export default async function CampaignPreviewPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const { id } = await params;
 
   const { data: campaign, error } = await supabase
     .from("newsletter_campaigns")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .eq("creator_id", user?.id)
     .single();
 

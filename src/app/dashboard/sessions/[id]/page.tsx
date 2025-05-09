@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 export default async function SessionDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  const { id } = await params;
 
   // You could optionally check if id exists just to show a different msg
   if (!id) notFound();

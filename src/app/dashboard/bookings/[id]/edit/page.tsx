@@ -5,13 +5,13 @@ import { ManageBooking } from "@/components/manageBooking";
 export default async function EditBookingPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { id } = params;
+  const { id } = await params;
 
   console.log("Booking ID:", id, "User ID:", user?.id);
 

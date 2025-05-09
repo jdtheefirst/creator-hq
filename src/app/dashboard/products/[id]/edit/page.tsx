@@ -6,11 +6,11 @@ import { getCurrencyOptions } from "@/lib/utils";
 export default async function EditProductPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const supabase = await createClient();
   const currencyOptions = getCurrencyOptions();
-  const { id } = params;
+  const { id } = await params;
 
   const { data: product, error } = await supabase
     .from("products")

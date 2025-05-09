@@ -8,10 +8,10 @@ import Link from "next/link";
 export default async function ProductPage({
   params,
 }: {
-  params: { productId: string };
+  params: Promise<{ productId: string }>;
 }) {
   const supabase = await createClient();
-  const { productId } = params;
+  const { productId } = await params;
 
   const {
     data: { user },
