@@ -16,8 +16,8 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
 import {
-  Calendar,
   Loader,
   MailOpen,
   MousePointerClick,
@@ -256,7 +256,7 @@ export default function CampaignEditPage({
                   <Calendar
                     mode="single"
                     selected={date}
-                    onSelect={setDate as (date: Date | undefined) => void}
+                    onSelect={setDate}
                     initialFocus
                   />
                 </PopoverContent>
