@@ -2,13 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
 
-interface PodcastPageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default async function PodcastPage({ params }: PodcastPageProps) {
+export default async function PodcastPage({
+  params,
+}: {
+  params: Record<string, string>;
+}) {
   const { id } = params;
   const supabase = await createClient();
   const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

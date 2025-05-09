@@ -5,13 +5,11 @@ import { AddToCartButton } from "@/components/ui/addToCart"; // You'll need this
 import Image from "next/image";
 import Link from "next/link";
 
-interface Props {
-  params: {
-    productId: string;
-  };
-}
-
-export default async function ProductPage({ params }: Props) {
+export default async function ProductPage({
+  params,
+}: {
+  params: Record<string, string>;
+}) {
   const supabase = await createClient();
   const { productId } = params;
 

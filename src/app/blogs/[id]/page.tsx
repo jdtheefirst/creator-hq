@@ -3,14 +3,12 @@ import { format } from "date-fns";
 import Image from "next/image";
 import { notFound, redirect } from "next/navigation";
 
-interface BlogPostPageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const { id } = params;
+export default async function BlogPostPage({
+  params,
+}: {
+  params: Record<string, string>;
+}) {
+  const { id } = await params;
   const supabase = await createClient();
 
   const {

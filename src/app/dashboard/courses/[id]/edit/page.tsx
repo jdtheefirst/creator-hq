@@ -1,13 +1,11 @@
 import CourseForm from "@/components/CourseForm";
 import { createClient } from "@/lib/supabase/server";
 
-interface EditCourseProps {
-  params: {
-    id: string;
-  };
-}
-
-export default async function EditCoursePage({ params }: EditCourseProps) {
+export default async function EditCoursePage({
+  params,
+}: {
+  params: Record<string, string>;
+}) {
   const supabase = await createClient();
   const { id } = params;
 

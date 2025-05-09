@@ -2,15 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { ManageBooking } from "@/components/manageBooking";
 
-interface EditBookingPageProps {
-  params: {
-    id: string;
-  };
-}
-
 export default async function EditBookingPage({
   params,
-}: EditBookingPageProps) {
+}: {
+  params: Record<string, string>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },

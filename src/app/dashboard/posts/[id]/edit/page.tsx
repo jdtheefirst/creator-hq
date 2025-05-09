@@ -2,13 +2,11 @@ import BlogForm from "@/components/BlogForm";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 
-interface EditBlogPostProps {
-  params: {
-    id: string;
-  };
-}
-
-export default async function EditBlogPost({ params }: EditBlogPostProps) {
+export default async function EditBlogPost({
+  params,
+}: {
+  params: Record<string, string>;
+}) {
   const supabase = await createClient();
   const { id } = params;
 

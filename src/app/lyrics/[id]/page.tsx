@@ -5,11 +5,11 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { getEmbedUrl } from "@/lib/utils";
 
-interface Props {
-  params: { id: string };
-}
-
-export default async function LyricsDetailPage({ params }: Props) {
+export default async function LyricsDetailPage({
+  params,
+}: {
+  params: Record<string, string>;
+}) {
   const supabase = await createClient();
   const { id } = params;
 

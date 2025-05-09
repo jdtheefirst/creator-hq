@@ -3,15 +3,11 @@ import { ProductForm } from "@/components/store/ProductForm";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrencyOptions } from "@/lib/utils";
 
-interface EditProductPageProps {
-  params: {
-    id: string;
-  };
-}
-
 export default async function EditProductPage({
   params,
-}: EditProductPageProps) {
+}: {
+  params: Record<string, string>;
+}) {
   const supabase = await createClient();
   const currencyOptions = getCurrencyOptions();
   const { id } = params;
