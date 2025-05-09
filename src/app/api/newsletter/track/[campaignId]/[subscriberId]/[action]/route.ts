@@ -1,25 +1,30 @@
-import { createClient } from "@/lib/supabase/server";
+import { secureRatelimit } from "@/lib/limit";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
   {
     params,
-  }: {
-    params: {
-      campaignId: string;
-      subscriberId: string;
-      action: "open" | "click";
-    };
-  }
+  }: { params: { campaignId: string; subscriberId: string; action: string } }
 ) {
-  const supabase = await createClient();
+  const { success } = await secureRatelimit(request);
+  if (!success) {
+    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+  }
+
   const { campaignId, subscriberId, action } = params;
+
+  // Validate action type
+  if (action !== "open" && action !== "click") {
+    return new NextResponse(null, { status: 400 });
+  }
+
   const { searchParams } = new URL(request.url);
 
   try {
     // Get campaign details
-    const { data: campaign } = await supabase
+    const { data: campaign } = await supabaseAdmin
       .from("newsletter_campaigns")
       .select("stats")
       .eq("id", campaignId)
@@ -39,13 +44,13 @@ export async function GET(
     }
 
     // Update campaign stats
-    await supabase
+    await supabaseAdmin
       .from("newsletter_campaigns")
       .update({ stats })
       .eq("id", campaignId);
 
     // Log the event
-    await supabase.from("newsletter_campaign_logs").insert({
+    await supabaseAdmin.from("newsletter_campaign_logs").insert({
       campaign_id: campaignId,
       subscriber_id: subscriberId,
       event_type: action,
@@ -58,6 +63,7 @@ export async function GET(
       if (targetUrl) {
         return NextResponse.redirect(targetUrl);
       }
+      return new NextResponse(null, { status: 400 });
     }
 
     // For opens, return a transparent 1x1 pixel
