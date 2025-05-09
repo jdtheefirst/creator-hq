@@ -2,21 +2,27 @@ import { secureRatelimit } from "@/lib/limit";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
-interface TrackParams {
-  params: {
-    campaignId: string;
-    subscriberId: string;
-    action: "open" | "click";
-  };
+interface Params {
+  campaignId: string;
+  subscriberId: string;
+  action: string;
 }
 
-export async function GET(request: Request, { params }: TrackParams) {
+export async function GET(
+  request: Request,
+  { params }: { params: Params }
+): Promise<NextResponse> {
   const { success } = await secureRatelimit(request);
   if (!success) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
   const { campaignId, subscriberId, action } = params;
+
+  // Validate action type
+  if (action !== "open" && action !== "click") {
+    return new NextResponse(null, { status: 400 });
+  }
 
   const { searchParams } = new URL(request.url);
 
