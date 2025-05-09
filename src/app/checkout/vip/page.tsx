@@ -39,7 +39,7 @@ export default function CheckoutPage() {
     };
 
     handleVipCheckout();
-  }, [router]);
+  }, [router, user]);
 
   return (
     <div className="p-8 text-center">

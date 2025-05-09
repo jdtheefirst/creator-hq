@@ -57,7 +57,6 @@ export default function CreateNewsletterCampaign() {
       status: "draft",
     },
   });
-  const { control } = form;
 
   const onSubmit = async (values: FormData) => {
     setLoading(true);

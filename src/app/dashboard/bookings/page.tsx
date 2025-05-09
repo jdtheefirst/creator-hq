@@ -63,12 +63,6 @@ export default function BookingsPage() {
   const router = useRouter();
   const [showMeetingFields, setShowMeetingFields] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      fetchBookings();
-    }
-  }, [user]);
-
   const fetchBookings = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -86,6 +80,12 @@ export default function BookingsPage() {
       setLoading(false);
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    if (user) {
+      fetchBookings();
+    }
+  }, [user, fetchBookings]);
 
   const updateBookingStatus = async (id: string, status: Booking["status"]) => {
     setUpdate(true);

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FloatingCartButton } from "@/components/ui/cartButton";
 import { AddToCartButton } from "@/components/ui/addToCart"; // You'll need this
 import Image from "next/image";
+import Link from "next/link";
 
 interface Props {
   params: {
@@ -93,12 +94,12 @@ export default async function ProductPage({ params }: Props) {
               </span>
             </div>
             <div className="flex items-center justify-between mt-3">
-              <a
+              <Link
                 href="/store"
                 className="inline-block text-gray-400 hover:underline py-2"
               >
                 Go back to Store
-              </a>
+              </Link>
               <AddToCartButton
                 product={{ ...product, purchasable_type: "product" }}
               />

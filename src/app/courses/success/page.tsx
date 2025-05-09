@@ -1,4 +1,5 @@
 import { CheckCircle } from "lucide-react";
+import Link from "next/link";
 
 export default async function CourseSuccessPage({
   searchParams,
@@ -13,12 +14,12 @@ export default async function CourseSuccessPage({
         <h1 className="text-2xl font-bold text-red-700 mb-2">
           Invalid success URL: Missing course ID
         </h1>
-        <a
+        <Link
           href="/courses"
           className="inline-block bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
         >
           Return to Courses
-        </a>
+        </Link>
       </div>
     );
   }
@@ -37,12 +38,12 @@ export default async function CourseSuccessPage({
         <p className="text-gray-700 mb-4">
           You’re now enrolled in course <strong>{courseId}</strong>.
         </p>
-        <a
+        <Link
           href={`/courses/${courseId}`}
           className="inline-block bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
         >
           Go to Course
-        </a>
+        </Link>
       </div>
     </main>
   );

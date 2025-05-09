@@ -115,9 +115,9 @@ export default async function CourseDetailPage({
               </button>
             </Link>
           )}
-          <a href="/courses" className="text-gray-600 hover:underline">
+          <Link href="/courses" className="text-gray-600 hover:underline">
             Back to Courses
-          </a>
+          </Link>
         </div>
       </div>
     </div>

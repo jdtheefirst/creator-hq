@@ -107,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     }: {
       data: { subscription: { unsubscribe: () => void } };
-    } = supabase.auth.onAuthStateChange((_event: String, session: Session) => {
+    } = supabase.auth.onAuthStateChange((_event: string, session: Session) => {
       if (!mounted) return;
 
       (async () => {
@@ -252,7 +252,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isCreator: user?.role === "creator",
       supabase,
     };
-  }, [user, loading, supabase]);
+  }, [
+    user,
+    loading,
+    supabase,
+    deleteFileFromSupabase,
+    signIn,
+    signInWithGoogle,
+    signInWithMagicLink,
+    signInWithTwitter,
+    signOut,
+    signUp,
+  ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

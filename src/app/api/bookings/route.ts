@@ -97,17 +97,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
-export async function GET(request: Request) {
-  try {
-    // TODO: Add authentication check
-    // TODO: Fetch bookings from database
-
-    return NextResponse.json({ bookings: [] }, { status: 200 });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to fetch bookings" },
-      { status: 500 }
-    );
-  }
-}

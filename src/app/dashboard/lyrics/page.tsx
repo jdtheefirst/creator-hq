@@ -2,15 +2,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import DeleteButton from "@/components/ui/deleteButton";
 
-interface Lyrics {
-  id: string;
-  title: string;
-  artist: string;
-  genre: string;
-  language: string;
-  created_at: string;
-}
-
 export default async function LyricsPage() {
   const supabase = await createClient();
   const { data: lyrics, error } = await supabase

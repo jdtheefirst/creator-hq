@@ -2,16 +2,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import DeleteButton from "@/components/ui/deleteButton";
 
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  level: string;
-  duration: string;
-  created_at: string;
-}
-
 export default async function CoursesPage() {
   const supabase = await createClient();
   const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;

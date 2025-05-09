@@ -22,7 +22,7 @@ export default async function EditProductPage({
     .eq("id", id)
     .single();
 
-  const { data: variants, error: variantsError } = await supabase
+  const { data: variants } = await supabase
     .from("product_variants")
     .select("*")
     .eq("product_id", id);

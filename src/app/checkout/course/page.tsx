@@ -65,7 +65,7 @@ export default function CheckoutPage() {
     };
 
     handleCheckout();
-  }, [router, searchParams, supabase]);
+  }, [router, searchParams, supabase, user]);
 
   return (
     <div className="p-8 text-center">

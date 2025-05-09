@@ -2,17 +2,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import DeleteButton from "@/components/ui/deleteButton";
 
-interface Podcast {
-  id: string;
-  title: string;
-  description: string;
-  audio_url: string;
-  duration: number;
-  episode_number: number;
-  season_number: number;
-  created_at: string;
-}
-
 export default async function PodcastsPage() {
   const supabase = await createClient();
   const { data: podcasts, error } = await supabase

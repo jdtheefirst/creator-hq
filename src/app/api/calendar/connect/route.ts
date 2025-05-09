@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getGoogleAuthUrl } from "@/lib/calendar/google";
 import { NextResponse } from "next/server";
 
-export async function GET(request: Request) {
+export async function GET() {
   const supabase = await createClient();
 
   try {

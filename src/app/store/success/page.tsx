@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function SuccessPage() {
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-4 py-20">
@@ -29,28 +31,28 @@ export default function SuccessPage() {
           Thanks for your order! I’ll get started right away. Once payment is
           confirmed, I’ll reach out and ship your order. Got questions? Hit me
           up at{" "}
-          <a
+          <Link
             href="mailto:jngatia@gmail.com"
             className="text-blue-500 hover:underline"
           >
             Gmail
-          </a>
+          </Link>
           .
         </p>
 
         <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <a
+          <Link
             href="/store"
             className="inline-block px-6 py-3 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition"
           >
             Back to Store
-          </a>
-          <a
+          </Link>
+          <Link
             href="/"
             className="inline-block px-6 py-3 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 transition"
           >
             Go to Homepage
-          </a>
+          </Link>
         </div>
       </div>
     </div>

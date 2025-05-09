@@ -6,7 +6,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -78,11 +78,7 @@ export default function CampaignEditPage({
 
   const formValues = watch();
 
-  useEffect(() => {
-    fetchCampaign();
-  }, [resolvedParams.id]);
-
-  const fetchCampaign = async () => {
+  const fetchCampaign = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("newsletter_campaigns")
@@ -106,7 +102,11 @@ export default function CampaignEditPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, [resolvedParams.id]);
+
+  useEffect(() => {
+    fetchCampaign();
+  }, [resolvedParams.id, fetchCampaign]);
 
   const onSubmit = async (data: Campaign) => {
     try {

@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import Link from "next/link";
 
 export default async function CourseCancelPage({
   searchParams,
@@ -14,12 +15,12 @@ export default async function CourseCancelPage({
         <h1 className="text-2xl font-bold text-red-700 mb-2">
           Invalid cancel URL: Missing course ID
         </h1>
-        <a
+        <Link
           href="/courses"
           className="inline-block bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
         >
           Return to Courses
-        </a>
+        </Link>
       </div>
     );
   }
@@ -40,12 +41,12 @@ export default async function CourseCancelPage({
           {courseId ? <strong>course {courseId}</strong> : "this course"}. You
           can try again anytime.
         </p>
-        <a
+        <Link
           href="/courses"
           className="inline-block bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
         >
           Return to Courses
-        </a>
+        </Link>
       </div>
     </main>
   );
