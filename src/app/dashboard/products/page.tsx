@@ -4,11 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import ProductActions from "@/components/ui/actions";
 
 interface ProductsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     search?: string;
     category?: string;
     status?: string;
-  };
+  }>;
 }
 
 export default async function ProductsPage({

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import Link from "next/link";
 
 interface Subscriber {
