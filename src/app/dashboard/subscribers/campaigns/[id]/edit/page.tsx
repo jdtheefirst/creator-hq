@@ -256,7 +256,7 @@ export default function CampaignEditPage({
                   <Calendar
                     mode="single"
                     selected={date}
-                    onSelect={setDate}
+                    onSelect={setDate as (date: Date | undefined) => void}
                     initialFocus
                   />
                 </PopoverContent>
