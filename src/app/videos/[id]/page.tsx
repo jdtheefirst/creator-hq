@@ -7,21 +7,6 @@ import VideoPlayer from "@/components/VideoPlayer";
 import VideoEngagement from "@/components/VideoEngagement";
 import Comments from "@/components/Comments";
 
-interface VideoData {
-  id: string;
-  title: string;
-  description: string;
-  url: string;
-  thumbnail_url: string;
-  source: "youtube" | "upload";
-  video_id?: string;
-  status: "published";
-  views: number;
-  likes: number;
-  creator_id: string;
-  created_at: string;
-}
-
 export default async function VideoPage({
   params,
 }: {

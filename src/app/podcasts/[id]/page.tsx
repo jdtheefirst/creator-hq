@@ -5,7 +5,7 @@ import Image from "next/image";
 export default async function PodcastPage({
   params,
 }: {
-  params: Record<string, string>;
+  params: { id: string };
 }) {
   const { id } = params;
   const supabase = await createClient();

@@ -5,7 +5,7 @@ import { ManageBooking } from "@/components/manageBooking";
 export default async function EditBookingPage({
   params,
 }: {
-  params: Record<string, string>;
+  params: { id: string };
 }) {
   const supabase = await createClient();
   const {

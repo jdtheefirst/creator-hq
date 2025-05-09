@@ -6,7 +6,7 @@ import { notFound, redirect } from "next/navigation";
 export default async function BlogPostPage({
   params,
 }: {
-  params: Record<string, string>;
+  params: { id: string };
 }) {
   const { id } = await params;
   const supabase = await createClient();

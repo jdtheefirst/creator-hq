@@ -1,4 +1,3 @@
-// 2. /dashboard/podcasts/[id]/edit/page.tsx
 import { createClient } from "@/lib/supabase/server";
 import PodcastForm from "@/components/PodcastForm";
 

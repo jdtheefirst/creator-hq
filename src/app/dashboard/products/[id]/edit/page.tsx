@@ -6,7 +6,7 @@ import { getCurrencyOptions } from "@/lib/utils";
 export default async function EditProductPage({
   params,
 }: {
-  params: Record<string, string>;
+  params: { id: string };
 }) {
   const supabase = await createClient();
   const currencyOptions = getCurrencyOptions();

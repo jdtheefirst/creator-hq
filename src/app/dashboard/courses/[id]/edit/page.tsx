@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 export default async function EditCoursePage({
   params,
 }: {
-  params: Record<string, string>;
+  params: { id: string };
 }) {
   const supabase = await createClient();
   const { id } = params;

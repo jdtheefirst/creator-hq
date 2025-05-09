@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 export default async function EditBlogPost({
   params,
 }: {
-  params: Record<string, string>;
+  params: { id: string };
 }) {
   const supabase = await createClient();
   const { id } = params;

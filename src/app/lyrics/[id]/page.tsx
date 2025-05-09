@@ -8,7 +8,7 @@ import { getEmbedUrl } from "@/lib/utils";
 export default async function LyricsDetailPage({
   params,
 }: {
-  params: Record<string, string>;
+  params: { id: string };
 }) {
   const supabase = await createClient();
   const { id } = params;

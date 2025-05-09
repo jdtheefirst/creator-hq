@@ -8,7 +8,7 @@ import Link from "next/link";
 export default async function ProductPage({
   params,
 }: {
-  params: Record<string, string>;
+  params: { productId: string };
 }) {
   const supabase = await createClient();
   const { productId } = params;
