@@ -75,9 +75,12 @@ export default function PackagesPage() {
               Launching in{" "}
               <span className="font-semibold text-white">May 2025</span>
             </div>
-            <span className="inline-block bg-gray-600 text-white font-semibold px-6 py-2 rounded-xl cursor-not-allowed">
-              Join Waitlist Soon
-            </span>
+            <Link
+              href={"/waitlist"}
+              className="inline-block bg-yellow-400 text-black font-semibold px-6 py-2 rounded-xl hover:bg-yellow-300 transition cursor-pointer"
+            >
+              Join Waitlist
+            </Link>
           </div>
         </div>
 

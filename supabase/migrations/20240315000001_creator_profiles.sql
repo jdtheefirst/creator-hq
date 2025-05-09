@@ -14,6 +14,46 @@ CREATE TABLE public.featured_content (
 ALTER TABLE public.featured_content
 ADD CONSTRAINT unique_creator_url UNIQUE (creator_id, url);
 
+-- Table: waitlist_signups
+create table public.waitlist_signups (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  created_at timestamptz default now()
+);
+
+-- RLS Policies
+alter table public.waitlist_signups enable row level security;
+CREATE INDEX idx_waitlist_signups_id ON public.waitlist_signups(id);
+CREATE INDEX idx_waitlist_signups_email ON public.waitlist_signups(email);
+ALTER TABLE public.waitlist_signups
+ADD CONSTRAINT waitlist_signups_email_unique UNIQUE (email);
+
+CREATE OR REPLACE FUNCTION public.join_waitlist(p_email text)
+RETURNS jsonb AS $$
+DECLARE
+  result jsonb;
+BEGIN
+  INSERT INTO waitlist_signups (email) 
+  VALUES (p_email)
+  ON CONFLICT ON CONSTRAINT waitlist_signups_email_unique DO NOTHING;
+  
+  IF FOUND THEN
+    result := jsonb_build_object(
+      'status', 'success',
+      'message', 'Added to waitlist!',
+      'isNew', true
+    );
+  ELSE
+    result := jsonb_build_object(
+      'status', 'success',
+      'message', 'You were already on the list!',
+      'isNew', false
+    );
+  END IF;
+  
+  RETURN result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Search & Filters (Indexes for fast filtering)
 CREATE INDEX idx_featured_content_type ON public.featured_content(type);
