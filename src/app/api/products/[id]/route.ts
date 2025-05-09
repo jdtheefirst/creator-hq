@@ -1,4 +1,3 @@
-// src/app/api/products/[id]/route.ts
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -28,12 +27,9 @@ export async function GET(request: NextRequest, context: any) {
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(request: NextRequest, context: any) {
+  const { id } = context.params as { id: string };
   const supabase = await createClient();
-  const { id } = params;
 
   try {
     const {
@@ -82,12 +78,9 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(request: NextRequest, context: any) {
+  const { id } = context.params as { id: string };
   const supabase = await createClient();
-  const { id } = params;
 
   try {
     //delete product
