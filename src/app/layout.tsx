@@ -13,12 +13,12 @@ export const metadata: Metadata = {
   title: "Creator HQ - Your Digital Hub",
   description:
     "A comprehensive platform for creators to showcase their work, sell products, and connect with their audience.",
-  metadataBase: new URL("https://www.worldsamma.org"),
+  metadataBase: new URL("https://creator-hq-xv3h.vercel.app"),
   openGraph: {
     title: "Creator HQ - Your Digital Hub",
     description:
       "A comprehensive platform for creators to showcase their work, sell products, and connect with their audience.",
-    url: "https://www.worldsamma.org",
+    url: "https://creator-hq-xv3h.vercel.app",
     siteName: "Creator HQ",
     images: [
       {
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     creator: "@creatorhq",
   },
   alternates: {
-    canonical: "https://www.worldsamma.org",
+    canonical: "https://creator-hq-xv3h.vercel.app",
   },
 };
 
@@ -52,7 +52,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Favicon links */}
         {/* Basic favicon */}
         <link rel="icon" href="/favicon.ico" sizes="any" />
 
