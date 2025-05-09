@@ -2,23 +2,23 @@ import { secureRatelimit } from "@/lib/limit";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
-export async function GET(
-  request: Request,
-  context: {
-    params: { campaignId: string; subscriberId: string; action: string };
-  }
-) {
+interface TrackParams {
+  params: {
+    campaignId: string;
+    subscriberId: string;
+    action: "open" | "click";
+  };
+}
+
+export async function GET(request: Request, { params }: TrackParams) {
   const { success } = await secureRatelimit(request);
   if (!success) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
-  const { campaignId, subscriberId, action } = context.params;
-  const { searchParams } = new URL(request.url);
+  const { campaignId, subscriberId, action } = params;
 
-  if (action !== "open" && action !== "click") {
-    return new NextResponse(null, { status: 400 });
-  }
+  const { searchParams } = new URL(request.url);
 
   try {
     const { data: campaign } = await supabaseAdmin
@@ -27,13 +27,11 @@ export async function GET(
       .eq("id", campaignId)
       .single();
 
-    if (!campaign) {
-      return new NextResponse(null, { status: 404 });
-    }
+    if (!campaign) return new NextResponse(null, { status: 404 });
 
     const stats = campaign.stats || { sent: 0, opened: 0, clicked: 0 };
     if (action === "open") stats.opened++;
-    else if (action === "click") stats.clicked++;
+    if (action === "click") stats.clicked++;
 
     await supabaseAdmin
       .from("newsletter_campaigns")
@@ -49,9 +47,8 @@ export async function GET(
 
     if (action === "click") {
       const targetUrl = searchParams.get("url");
-      return targetUrl
-        ? NextResponse.redirect(targetUrl)
-        : new NextResponse(null, { status: 400 });
+      if (targetUrl) return NextResponse.redirect(targetUrl);
+      return new NextResponse(null, { status: 400 });
     }
 
     return new NextResponse(
@@ -69,8 +66,8 @@ export async function GET(
         },
       }
     );
-  } catch (error) {
-    console.error("Tracking error:", error);
+  } catch (err) {
+    console.error("Tracking error:", err);
     return new NextResponse(null, { status: 500 });
   }
 }
