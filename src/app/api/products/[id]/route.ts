@@ -1,13 +1,11 @@
 // src/app/api/products/[id]/route.ts
 import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, context: any) {
+  const { id } = context.params as { id: string };
+
   const supabase = await createClient();
-  const { id } = params;
 
   try {
     const { data, error } = await supabase
