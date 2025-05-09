@@ -12,11 +12,11 @@ import { createClient } from "@/lib/supabase/server";
 import BookingAnalytics from "@/components/analytics/BookingAnalytics";
 
 interface AnalyticsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     date_range?: string;
     start_date?: string;
     end_date?: string;
-  };
+  }>;
 }
 
 interface DailyMetrics {
