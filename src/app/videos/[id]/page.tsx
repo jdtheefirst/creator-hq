@@ -28,7 +28,7 @@ export default async function VideoPage({
   params: { id: string };
 }) {
   const supabase = await createClient();
-  const { id } = await params;
+  const { id } = params;
 
   const {
     data: { user },

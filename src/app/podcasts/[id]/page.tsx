@@ -9,7 +9,7 @@ interface PodcastPageProps {
 }
 
 export default async function PodcastPage({ params }: PodcastPageProps) {
-  const { id } = await params;
+  const { id } = params;
   const supabase = await createClient();
   const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 

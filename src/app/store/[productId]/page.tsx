@@ -13,7 +13,7 @@ interface Props {
 
 export default async function ProductPage({ params }: Props) {
   const supabase = await createClient();
-  const { productId } = await params;
+  const { productId } = params;
 
   const {
     data: { user },

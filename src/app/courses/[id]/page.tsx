@@ -8,7 +8,7 @@ export default async function CourseDetailPage({
 }: {
   params: { id: string };
 }) {
-  const { id } = await params;
+  const { id } = params;
   const supabase = await createClient();
   const creatorId = process.env.NEXT_PUBLIC_CREATOR_UID;
 

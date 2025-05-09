@@ -14,9 +14,8 @@ export default async function EditBookingPage({
   const supabase = await createClient();
   const {
     data: { user },
-    error: userError,
   } = await supabase.auth.getUser();
-  const { id } = await params;
+  const { id } = params;
 
   console.log("Booking ID:", id, "User ID:", user?.id);
 

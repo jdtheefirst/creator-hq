@@ -6,7 +6,7 @@ export default async function EditVideoPage({
 }: {
   params: { id: string };
 }) {
-  const { id } = await params;
+  const { id } = params;
   const supabase = await createClient(); // your server-side Supabase client
   const { data: video, error } = await supabase
     .from("videos")

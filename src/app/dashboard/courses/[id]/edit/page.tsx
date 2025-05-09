@@ -1,6 +1,5 @@
 import CourseForm from "@/components/CourseForm";
 import { createClient } from "@/lib/supabase/server";
-import { th } from "date-fns/locale";
 
 interface EditCourseProps {
   params: {
@@ -10,7 +9,7 @@ interface EditCourseProps {
 
 export default async function EditCoursePage({ params }: EditCourseProps) {
   const supabase = await createClient();
-  const { id } = await params;
+  const { id } = params;
 
   let initialData = null;
 

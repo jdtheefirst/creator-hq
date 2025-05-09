@@ -8,7 +8,7 @@ export default async function EditPodcastPage({
   params: { id: string };
 }) {
   const supabase = await createClient();
-  const { id } = await params;
+  const { id } = params;
   const { data: podcast } = await supabase
     .from("podcasts")
     .select("*")

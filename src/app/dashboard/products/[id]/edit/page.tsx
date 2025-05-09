@@ -14,7 +14,7 @@ export default async function EditProductPage({
 }: EditProductPageProps) {
   const supabase = await createClient();
   const currencyOptions = getCurrencyOptions();
-  const { id } = await params;
+  const { id } = params;
 
   const { data: product, error } = await supabase
     .from("products")

@@ -10,7 +10,7 @@ interface EditBlogPostProps {
 
 export default async function EditBlogPost({ params }: EditBlogPostProps) {
   const supabase = await createClient();
-  const { id } = await params;
+  const { id } = params;
 
   let initialData = null;
 

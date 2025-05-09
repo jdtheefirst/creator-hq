@@ -10,7 +10,7 @@ interface BlogPostPageProps {
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const { id } = await params;
+  const { id } = params;
   const supabase = await createClient();
 
   const {

@@ -11,7 +11,7 @@ interface Props {
 
 export default async function LyricsDetailPage({ params }: Props) {
   const supabase = await createClient();
-  const { id } = await params;
+  const { id } = params;
 
   const {
     data: { user },
