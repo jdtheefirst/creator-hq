@@ -2,16 +2,17 @@ import { secureRatelimit } from "@/lib/limit";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(
-  request: NextRequest,
-  context: { params: Record<string, string> }
-): Promise<NextResponse> {
+export async function GET(request: NextRequest, context: any) {
   const { success } = await secureRatelimit(request);
   if (!success) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
-  const { campaignId, subscriberId, action } = context.params;
+  const { campaignId, subscriberId, action } = context.params as {
+    campaignId: string;
+    subscriberId: string;
+    action: "open" | "click";
+  };
 
   // Validate action type
   if (action !== "open" && action !== "click") {
