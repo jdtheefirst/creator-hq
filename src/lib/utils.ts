@@ -18,6 +18,13 @@ export function formatCurrency(
   }).format(amount);
 }
 
+// src/lib/utils/format.ts
+export function formatFollowers(count: number): string {
+  if (count >= 1_000_000) return (count / 1_000_000).toFixed(1) + "M";
+  if (count >= 1_000) return (count / 1_000).toFixed(1) + "K";
+  return count?.toString();
+}
+
 export function getEmbedUrl(source: string, videoIdOrUrl: string) {
   if (!videoIdOrUrl) return "";
 

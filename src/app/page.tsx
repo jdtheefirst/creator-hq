@@ -23,7 +23,7 @@ import {
 import { FaVimeo, FaXTwitter } from "react-icons/fa6";
 import { SiTiktok, SiTwitch } from "react-icons/si";
 import NewsletterForm from "@/components/NewsletterForm";
-import { getSafeUrl } from "@/lib/utils";
+import { formatFollowers, getSafeUrl } from "@/lib/utils";
 import { CiLinkedin } from "react-icons/ci";
 import { GiSpiderWeb } from "react-icons/gi";
 import { FaDiscord, FaPinterest, FaSnapchat, FaTelegram } from "react-icons/fa";
@@ -81,12 +81,6 @@ interface FeaturedContent {
 interface NotificationState {
   message: string;
   type: "success" | "error" | "info";
-}
-
-export function formatFollowers(count: number): string {
-  if (count >= 1_000_000) return (count / 1_000_000).toFixed(1) + "M";
-  if (count >= 1_000) return (count / 1_000).toFixed(1) + "K";
-  return count?.toString();
 }
 
 export default function CreatorProfilePage() {
