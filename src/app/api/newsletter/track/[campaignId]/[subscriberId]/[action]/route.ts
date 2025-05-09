@@ -1,23 +1,17 @@
 import { secureRatelimit } from "@/lib/limit";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { NextResponse } from "next/server";
-
-interface Params {
-  campaignId: string;
-  subscriberId: string;
-  action: string;
-}
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
-  request: Request,
-  { params }: { params: Params }
+  request: NextRequest,
+  context: { params: Record<string, string> }
 ): Promise<NextResponse> {
   const { success } = await secureRatelimit(request);
   if (!success) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
 
-  const { campaignId, subscriberId, action } = params;
+  const { campaignId, subscriberId, action } = context.params;
 
   // Validate action type
   if (action !== "open" && action !== "click") {
