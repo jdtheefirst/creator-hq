@@ -1,10 +1,9 @@
-// src/app/dashboard/orders/page.tsx
-import { createClient } from "@/lib/supabase/server";
+"use client";
+
 import { useAuth } from "@/lib/context/AuthContext";
 
 export default async function OrdersPage() {
-  const { user } = useAuth();
-  const supabase = await createClient();
+  const { user, supabase } = useAuth();
 
   const { data: orders, error } = await supabase
     .from("orders")
@@ -20,7 +19,7 @@ export default async function OrdersPage() {
     <div>
       <h1>Your Orders</h1>
       <ul>
-        {orders.map((order) => (
+        {orders.map((order: any) => (
           <li key={order.id}>
             <p>Order ID: {order.id}</p>
             <p>Status: {order.status}</p>
