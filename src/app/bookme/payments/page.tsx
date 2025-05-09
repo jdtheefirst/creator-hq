@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default async function PaymentStatusPage({
   searchParams,
 }: {
-  searchParams: { status?: string };
+  searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
 

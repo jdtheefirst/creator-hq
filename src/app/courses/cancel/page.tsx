@@ -4,7 +4,7 @@ import Link from "next/link";
 export default async function CourseCancelPage({
   searchParams,
 }: {
-  searchParams: { courseId?: string };
+  searchParams: Promise<{ courseId?: string }>;
 }) {
   const { courseId } = await searchParams;
   //

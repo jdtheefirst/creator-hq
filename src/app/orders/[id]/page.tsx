@@ -1,17 +1,17 @@
-// src/app/dashboard/orders/[id]/page.tsx
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 
-interface orderProps {
-  params: { id: string };
-}
-
-export default async function OrderDetailsPage({ params }: orderProps) {
+export default async function OrderDetailsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const supabase = await createClient();
+  const { id } = await params;
   const { data: order, error } = await supabase
     .from("orders")
     .select("*")
-    .eq("id", params?.id)
+    .eq("id", id)
     .single();
 
   if (error || !order) {
