@@ -24,11 +24,11 @@ import { FaVimeo, FaXTwitter } from "react-icons/fa6";
 import { SiTiktok, SiTwitch } from "react-icons/si";
 import NewsletterForm from "@/components/NewsletterForm";
 import { getSafeUrl } from "@/lib/utils";
-import { CountdownTimer } from "@/components/countdownTimer";
 import { CiLinkedin } from "react-icons/ci";
 import { GiSpiderWeb } from "react-icons/gi";
 import { FaDiscord, FaPinterest, FaSnapchat, FaTelegram } from "react-icons/fa";
 import { MONETIZATION_PLATFORMS } from "@/components/ProfileForm";
+import CountdownTimerWrapper from "@/components/countdownWrapper";
 
 interface Profile {
   id: string;
@@ -751,8 +751,7 @@ export default function CreatorProfilePage() {
             href="/packages"
             className="bg-yellow-400 text-black px-4 py-2 rounded-full font-bold shadow-md hover:bg-yellow-300 transition text-sm text-center line-clamp-1"
           >
-            🔥 One-time deal ends in{" "}
-            <CountdownTimer targetDate="2025-05-20T00:00:00Z" /> – Lock Yours
+            🔥 One-time deal ends in <CountdownTimerWrapper /> – Lock Yours
           </Link>
         </div>
       </div>

@@ -8,6 +8,7 @@ import { ColorPicker } from "@/components/ui/ColorPicker";
 import SignOutButton from "./SignOutButton";
 import { useAuth } from "@/lib/context/AuthContext";
 import { toast } from "sonner";
+import Link from "next/link";
 
 interface BaseProfileData {
   id: string;
@@ -121,20 +122,6 @@ const contentFocusOptions = [
   "course",
   "lyrics",
 ];
-
-const QUICK_LINK_ICONS = {
-  blog: "M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2.5 2.5 0 00-2.5-2.5H15",
-  video:
-    "M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 9h14l1 12H4L5 9z",
-  store: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z",
-  vip: "M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z",
-  podcast:
-    "M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z",
-  course:
-    "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253",
-  music:
-    "M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3",
-};
 
 type SocialPlatform =
   | "twitter"
@@ -392,40 +379,16 @@ export default function ProfileForm({
     }
   };
 
-  const handleFeaturedContentChange = (
-    index: number,
-    field: string,
-    value: string
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      featured_content: prev.featured_content.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      ),
-    }));
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-4">
-        {isCreator ? (
-          <button
-            type="button"
-            onClick={() => router.push("/dashboard")}
-            className="px-4 py-2 text-sm rounded-lg transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200
-          "
+        {isCreator && (
+          <Link
+            href="/dashboard"
+            className="text-sm transition-colors text-gray-700"
           >
             Dashboard
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => router.push("/")}
-            className="px-4 py-2 text-sm rounded-lg transition-colors bg-gray-200 text-gray-700 hover:bg-gray-300
-              "
-          >
-            Home
-          </button>
+          </Link>
         )}
 
         <button
@@ -515,6 +478,7 @@ export default function ProfileForm({
                     src={coverPreview}
                     alt="Cover Preview"
                     fill
+                    sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
                     className="object-cover"
                   />
                 ) : formData.cover_image ? (
@@ -522,6 +486,7 @@ export default function ProfileForm({
                     src={coverUrl}
                     alt="Cover"
                     fill
+                    sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
                     className="object-cover"
                   />
                 ) : (
@@ -559,14 +524,18 @@ export default function ProfileForm({
                       src={avatarPreview}
                       alt="Avatar Preview"
                       fill
-                      className="object-cover"
+                      priority
+                      sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
+                      className="object-cover rounded-full"
                     />
                   ) : formData.avatar_url ? (
                     <Image
                       src={avatarUrl}
                       alt="Avatar"
                       fill
-                      className="object-cover"
+                      priority
+                      sizes="(max-width: 640px) 40px, (max-width: 1024px) 50px, 60px"
+                      className="object-cover rounded-full"
                     />
                   ) : (
                     <div className="h-full w-full bg-gray-200" />
@@ -782,225 +751,6 @@ export default function ProfileForm({
 
                   <div className="space-y-4">
                     <label className="block text-sm font-medium text-gray-700">
-                      Featured Content
-                    </label>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {formData.featured_content.map((content, index) => (
-                        <div
-                          key={index}
-                          className="bg-white rounded-lg shadow-sm overflow-hidden group relative"
-                        >
-                          {content.is_vip && (
-                            <div className="absolute top-2 right-2 z-10">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                VIP
-                              </span>
-                            </div>
-                          )}
-                          <div className="relative h-48">
-                            {content.thumbnail_url ? (
-                              <Image
-                                src={content.thumbnail_url}
-                                alt={content.title}
-                                fill
-                                className="object-cover group-hover:scale-105 transition-transform duration-200"
-                              />
-                            ) : (
-                              <div className="h-full w-full bg-gray-200 flex items-center justify-center">
-                                <svg
-                                  className="h-12 w-12 text-gray-400"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                  />
-                                </svg>
-                              </div>
-                            )}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  const reader = new FileReader();
-                                  reader.onloadend = () => {
-                                    const newContent = [
-                                      ...formData.featured_content,
-                                    ];
-                                    newContent[index] = {
-                                      ...content,
-                                      thumbnail_url: reader.result as string,
-                                    };
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      featured_content: newContent,
-                                    }));
-                                  };
-                                  reader.readAsDataURL(file);
-                                }
-                              }}
-                              className="absolute inset-0 cursor-pointer opacity-0"
-                              disabled={previewMode}
-                            />
-                          </div>
-                          <div className="p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <select
-                                value={content.type}
-                                onChange={(e) =>
-                                  handleFeaturedContentChange(
-                                    index,
-                                    "type",
-                                    e.target.value
-                                  )
-                                }
-                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border-none focus:ring-0"
-                                disabled={previewMode}
-                              >
-                                <option value="blog">Blog</option>
-                                <option value="product">Product</option>
-                                <option value="video">Video</option>
-                                <option value="vip">VIP</option>
-                                <option value="podcast">Podcast</option>
-                                <option value="course">Course</option>
-                                <option value="lyrics">Lyrics</option>
-                              </select>
-                              <div className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  checked={content.is_vip}
-                                  onChange={(e) => {
-                                    const newContent = [
-                                      ...formData.featured_content,
-                                    ];
-                                    newContent[index] = {
-                                      ...content,
-                                      is_vip: e.target.checked,
-                                    };
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      featured_content: newContent,
-                                    }));
-                                  }}
-                                  className="h-4 w-4 text-yellow-500 focus:ring-yellow-500 border-gray-300 rounded"
-                                  disabled={previewMode}
-                                />
-                                <span className="ml-2 text-xs text-gray-500">
-                                  VIP
-                                </span>
-                              </div>
-                            </div>
-                            <input
-                              type="text"
-                              value={content.title}
-                              onChange={(e) =>
-                                handleFeaturedContentChange(
-                                  index,
-                                  "title",
-                                  e.target.value
-                                )
-                              }
-                              className="text-lg font-medium text-gray-900 w-full bg-transparent border-none focus:ring-0 p-0 mb-1"
-                              placeholder="Content Title"
-                              disabled={previewMode}
-                            />
-                            <textarea
-                              value={content.description}
-                              onChange={(e) =>
-                                handleFeaturedContentChange(
-                                  index,
-                                  "description",
-                                  e.target.value
-                                )
-                              }
-                              className="text-sm text-gray-500 w-full bg-transparent border-none focus:ring-0 p-0 resize-none mb-4"
-                              placeholder="Content Description"
-                              rows={2}
-                            />
-                            <input
-                              type="url"
-                              value={content.url}
-                              onChange={(e) =>
-                                handleFeaturedContentChange(
-                                  index,
-                                  "url",
-                                  e.target.value
-                                )
-                              }
-                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                              placeholder="Content URL"
-                              disabled={previewMode}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newContent =
-                                  formData.featured_content.filter(
-                                    (_, i) => i !== index
-                                  );
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  featured_content: newContent,
-                                }));
-                              }}
-                              className="mt-2 text-red-500 hover:text-red-700 text-sm"
-                            >
-                              Remove Content
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            featured_content: [
-                              ...prev.featured_content,
-                              {
-                                id: Date.now().toString(),
-                                type: "video",
-                                title: "",
-                                description: "",
-                                thumbnail_url: "",
-                                url: "",
-                                is_vip: false,
-                              },
-                            ],
-                          }));
-                        }}
-                        className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border-2 border-dashed border-gray-300 flex items-center justify-center"
-                      >
-                        <div className="text-center">
-                          <svg
-                            className="mx-auto h-12 w-12 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                            />
-                          </svg>
-                          <span className="mt-2 block text-sm font-medium text-gray-900">
-                            Add Featured Content
-                          </span>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="block text-sm font-medium text-gray-700">
                       Branding Colors
                     </label>
                     <div className="grid grid-cols-2 gap-4">
@@ -1040,205 +790,6 @@ export default function ProfileForm({
                       </div>
                     </div>
                   </div>
-
-                  <div className="space-y-4">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Booking Settings
-                    </label>
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        name="booking_enabled"
-                        checked={formData.booking_enabled}
-                        onChange={handleChange}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        disabled={previewMode}
-                      />
-                      <label className="ml-2 block text-sm text-gray-700">
-                        Enable booking form
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Quick Links
-                    </label>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {formData.quick_links?.map((link, index) => (
-                        <div
-                          key={link.id}
-                          className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
-                        >
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                              <svg
-                                className={`h-6 w-6 text-${link.color}-500`}
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d={link.icon}
-                                />
-                              </svg>
-                            </div>
-                            <div className="ml-4 flex-1">
-                              <input
-                                type="text"
-                                value={link.title}
-                                onChange={(e) => {
-                                  const newLinks = [...formData.quick_links];
-                                  newLinks[index] = {
-                                    ...link,
-                                    title: e.target.value,
-                                  };
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    quick_links: newLinks,
-                                  }));
-                                }}
-                                className="text-lg font-medium text-gray-900 w-full bg-transparent border-none focus:ring-0 p-0"
-                                placeholder="Link Title"
-                                disabled={previewMode}
-                              />
-                              <textarea
-                                value={link.description}
-                                onChange={(e) => {
-                                  const newLinks = [...formData.quick_links];
-                                  newLinks[index] = {
-                                    ...link,
-                                    description: e.target.value,
-                                  };
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    quick_links: newLinks,
-                                  }));
-                                }}
-                                className="text-sm text-gray-500 w-full bg-transparent border-none focus:ring-0 p-0 resize-none"
-                                placeholder="Link Description"
-                                rows={2}
-                                disabled={previewMode}
-                              />
-                            </div>
-                          </div>
-                          <div className="mt-4 flex items-center space-x-2">
-                            <input
-                              type="text"
-                              value={link.href}
-                              onChange={(e) => {
-                                const newLinks = [...formData.quick_links];
-                                newLinks[index] = {
-                                  ...link,
-                                  href: e.target.value,
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  quick_links: newLinks,
-                                }));
-                              }}
-                              className="flex-1 text-sm text-gray-500 bg-transparent border-none focus:ring-0 p-0"
-                              placeholder="Link URL"
-                              disabled={previewMode}
-                            />
-                            <select
-                              value={link.color}
-                              onChange={(e) => {
-                                const newLinks = [...formData.quick_links];
-                                newLinks[index] = {
-                                  ...link,
-                                  color: e.target.value as QuickLink["color"],
-                                };
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  quick_links: newLinks,
-                                }));
-                              }}
-                              className="text-sm text-gray-500 bg-transparent border-none focus:ring-0 p-0"
-                              disabled={previewMode}
-                            >
-                              <option value="blue">Blue</option>
-                              <option value="red">Red</option>
-                              <option value="green">Green</option>
-                              <option value="yellow">Yellow</option>
-                              <option value="indigo">Indigo</option>
-                              <option value="teal">Teal</option>
-                              <option value="purple">Purple</option>
-                            </select>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newLinks = formData.quick_links.filter(
-                                  (_, i) => i !== index
-                                );
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  quick_links: newLinks,
-                                }));
-                              }}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <svg
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormData((prev) => ({
-                            ...prev,
-                            quick_links: [
-                              ...(prev.quick_links || []),
-                              {
-                                id: Date.now().toString(),
-                                href: "",
-                                icon: QUICK_LINK_ICONS.blog,
-                                title: "",
-                                description: "",
-                                color: "blue",
-                              },
-                            ],
-                          }));
-                        }}
-                        className="relative group bg-white p-6 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border-2 border-dashed border-gray-300 flex items-center justify-center"
-                      >
-                        <div className="text-center">
-                          <svg
-                            className="mx-auto h-12 w-12 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                            />
-                          </svg>
-                          <span className="mt-2 block text-sm font-medium text-gray-900">
-                            Add Quick Link
-                          </span>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
                 </div>
               </TabPanel>
             )}
@@ -1253,7 +804,7 @@ export default function ProfileForm({
                     </label>
                     <input
                       type="password"
-                      disabled={previewMode}
+                      disabled
                       className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
                         previewMode ? "bg-gray-50 cursor-not-allowed" : ""
                       }`}
@@ -1265,7 +816,7 @@ export default function ProfileForm({
                     </label>
                     <input
                       type="password"
-                      disabled={previewMode}
+                      disabled
                       className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
                         previewMode ? "bg-gray-50 cursor-not-allowed" : ""
                       }`}
@@ -1277,7 +828,7 @@ export default function ProfileForm({
                     </label>
                     <input
                       type="password"
-                      disabled={previewMode}
+                      disabled
                       className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
                         previewMode ? "bg-gray-50 cursor-not-allowed" : ""
                       }`}
@@ -1305,7 +856,7 @@ export default function ProfileForm({
                   <h2 className="text-lg font-semibold">Account Actions</h2>
                   <div className="space-y-2">
                     <SignOutButton />
-                    <button
+                    {/* <button
                       type="button"
                       className="w-full px-4 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
                     >
@@ -1314,9 +865,10 @@ export default function ProfileForm({
                     <button
                       type="button"
                       className="w-full px-4 py-2 text-sm text-red-600 bg-red-50 rounded-lg hover:bg-red-100"
+                      onClick={() => toast.info('Deleting account')}
                     >
                       Delete Account
-                    </button>
+                    </button> */}
                   </div>
                 </div>
               </div>
@@ -1334,6 +886,9 @@ export default function ProfileForm({
           </button>
         </div>
       </form>
+      <Link href={"/"} className="text-sm transition-colors text-gray-700">
+        Home
+      </Link>
     </div>
   );
 }

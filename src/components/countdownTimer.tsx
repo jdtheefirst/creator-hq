@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
+const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
   const calculateTimeLeft = () => {
     const difference = +new Date(targetDate) - +new Date();
     if (difference <= 0) return null;
@@ -34,3 +34,5 @@ export const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
     </span>
   );
 };
+
+export default CountdownTimer;

@@ -1,4 +1,4 @@
-import { CountdownTimer } from "@/components/countdownTimer";
+import CountdownTimerWrapper from "@/components/countdownWrapper";
 import { Clock, BadgeCheck, Flame } from "lucide-react";
 import Link from "next/link";
 
@@ -47,8 +47,7 @@ export default function PackagesPage() {
               </span>
             </Link>
             <p className="text-gray-400 text-sm mt-4">
-              CreatorHQ Monthly drops in{" "}
-              <CountdownTimer targetDate="2025-05-20T00:00:00Z" />. After that,
+              CreatorHQ Monthly drops in <CountdownTimerWrapper />. After that,
               this one-time offer is gone for good.
             </p>
           </div>
