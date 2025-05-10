@@ -239,10 +239,10 @@ export default function CreatorProfilePage() {
                   <Image
                     src={avatarUrl}
                     alt={profile.full_name}
-                    sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 100vw"
-                    priority
                     fill
-                    className="object-cover rounded-full"
+                    priority
+                    sizes="(max-width: 640px) 128px, 160px"
+                    className="object-cover rounded-full bg-white"
                   />
                 ) : (
                   <div className="h-full w-full bg-gray-200 flex items-center justify-center">
